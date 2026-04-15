@@ -1,6 +1,6 @@
 # Blog Team Tools
 
-Internal tools for the blog content team.
+Internal Automation tools for the Blog Team.
 
 ## Tools
 
