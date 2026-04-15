@@ -44,13 +44,15 @@ export async function getSheetRows(
   if (values.length < 2) return [];
 
   const headers = values[0] as string[];
-  return values.slice(1).map((row, i) => {
-    const obj: Record<string, string> = { _rowIndex: String(i + 2) }; // 1-based, row 1 is header
-    headers.forEach((h, j) => {
-      obj[h] = (row[j] as string) ?? "";
-    });
-    return obj;
-  });
+  return values.slice(1)
+    .map((row, i) => {
+      const obj: Record<string, string> = { _rowIndex: String(i + 2) }; // 1-based, row 1 is header
+      headers.forEach((h, j) => {
+        obj[h] = (row[j] as string) ?? "";
+      });
+      return obj;
+    })
+    .filter((row) => headers.some((h) => (row[h] ?? "").trim() !== ""));
 }
 
 // Saves a batch of cell updates back to the sheet

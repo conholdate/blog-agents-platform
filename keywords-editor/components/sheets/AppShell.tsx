@@ -18,6 +18,8 @@ export function AppShell() {
 
   // Fetch tabs whenever domain changes
   useEffect(() => {
+    let cancelled = false;
+
     setTabs([]);
     setActiveTab("");
     setRows(null);
@@ -27,17 +29,22 @@ export function AppShell() {
     fetch(`/api/sheets/${encodeURIComponent(activeDomain)}/tabs`)
       .then((r) => r.json())
       .then((data) => {
+        if (cancelled) return;
         if (data.error) throw new Error(data.error);
         setTabs(data.tabs);
         if (data.tabs.length > 0) setActiveTab(data.tabs[0]);
       })
-      .catch((e) => setError(e.message))
-      .finally(() => setTabsLoading(false));
+      .catch((e) => { if (!cancelled) setError(e.message); })
+      .finally(() => { if (!cancelled) setTabsLoading(false); });
+
+    return () => { cancelled = true; };
   }, [activeDomain]);
 
   // Fetch rows whenever tab changes
   useEffect(() => {
     if (!activeTab) return;
+    let cancelled = false;
+
     setRows(null);
     setRowsLoading(true);
     setError(null);
@@ -47,11 +54,14 @@ export function AppShell() {
     )
       .then((r) => r.json())
       .then((data) => {
+        if (cancelled) return;
         if (data.error) throw new Error(data.error);
         setRows(data.rows);
       })
-      .catch((e) => setError(e.message))
-      .finally(() => setRowsLoading(false));
+      .catch((e) => { if (!cancelled) setError(e.message); })
+      .finally(() => { if (!cancelled) setRowsLoading(false); });
+
+    return () => { cancelled = true; };
   }, [activeDomain, activeTab]);
 
   return (
