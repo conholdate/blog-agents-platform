@@ -13,9 +13,6 @@ export const COLUMNS: ColumnDef[] = [
   { key: "status",             label: "Status",           type: "status",   width: "120px" },
   { key: "generated_title",    label: "Title",            type: "text",     width: "280px" },
   { key: "primary_keyword",    label: "Primary Keyword",  type: "text",     width: "220px" },
-  { key: "seed_topic",         label: "Seed Topic",       type: "readonly", width: "200px" },
-  { key: "category",           label: "Category",         type: "readonly", width: "120px" },
-  { key: "sub_category",       label: "Sub Category",     type: "readonly", width: "150px" },
   { key: "selected_platform",  label: "Platform",         type: "text",     width: "110px" },
 
   // ── Generated content ───────────────────────────────────────────
@@ -30,6 +27,9 @@ export const COLUMNS: ColumnDef[] = [
   // ── Metadata: rarely needed ─────────────────────────────────────
   { key: "product",            label: "Product",         type: "readonly", width: "100px" },
   { key: "brand",              label: "Brand",           type: "readonly", width: "90px"  },
+  { key: "seed_topic",         label: "Seed Topic",       type: "readonly", width: "200px" },
+  { key: "category",           label: "Category",         type: "readonly", width: "120px" },
+  { key: "sub_category",       label: "Sub Category",     type: "readonly", width: "150px" },
   { key: "baseline_platform",  label: "Base Platform",   type: "readonly", width: "110px" },
   { key: "generated_at_utc",   label: "Generated At",    type: "readonly", width: "180px" },
   { key: "run_id",             label: "Run ID",          type: "readonly", width: "100px" },
