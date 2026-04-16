@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { DOMAINS, DOMAIN_LABELS } from "@/lib/config";
-import { Loader2 } from "lucide-react";
+import { Loader2, ExternalLink } from "lucide-react";
 import { DataTable } from "./DataTable";
 
 const DOMAIN_LIST = Object.keys(DOMAINS);
@@ -11,6 +11,7 @@ export function AppShell() {
   const [activeDomain, setActiveDomain] = useState(DOMAIN_LIST[0]);
   const [tabs, setTabs] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string>("");
+  const [sheetUrl, setSheetUrl] = useState<string | null>(null);
   const [rows, setRows] = useState<Record<string, string>[] | null>(null);
   const [tabsLoading, setTabsLoading] = useState(false);
   const [rowsLoading, setRowsLoading] = useState(false);
@@ -22,6 +23,7 @@ export function AppShell() {
 
     setTabs([]);
     setActiveTab("");
+    setSheetUrl(null);
     setRows(null);
     setError(null);
     setTabsLoading(true);
@@ -32,6 +34,7 @@ export function AppShell() {
         if (cancelled) return;
         if (data.error) throw new Error(data.error);
         setTabs(data.tabs);
+        setSheetUrl(data.sheetUrl ?? null);
         if (data.tabs.length > 0) setActiveTab(data.tabs[0]);
       })
       .catch((e) => { if (!cancelled) setError(e.message); })
@@ -96,7 +99,7 @@ export function AppShell() {
 
         {/* Product tab bar */}
         {tabs.length > 0 && (
-          <div className="px-6 flex gap-0 overflow-x-auto border-t border-gray-100">
+          <div className="px-6 flex gap-0 overflow-x-auto border-t border-gray-100 items-center">
             {tabs.map((tab) => {
               const isActive = tab === activeTab;
               return (
@@ -113,6 +116,18 @@ export function AppShell() {
                 </button>
               );
             })}
+
+            {sheetUrl && (
+              <a
+                href={sheetUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-auto flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-gray-400 hover:text-green-600 whitespace-nowrap transition-colors"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open Sheet
+              </a>
+            )}
           </div>
         )}
       </header>
