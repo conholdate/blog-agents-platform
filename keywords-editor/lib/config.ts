@@ -9,11 +9,11 @@ export const DOMAINS: Record<string, string> = {
 
 export const DOMAIN_LABELS: Record<string, { label: string; color: string; brandColor: string }> = {
   "blog.aspose.com":        { label: "Aspose",            color: "bg-blue-600",   brandColor: "#3387CC" },
-  "blog.aspose.cloud":      { label: "Aspose Cloud",      color: "bg-blue-400",   brandColor: "#3387CC" },
-  "blog.groupdocs.com":     { label: "GroupDocs",         color: "bg-blue-500",   brandColor: "#4187FF" },
-  "blog.groupdocs.cloud":   { label: "GroupDocs Cloud",   color: "bg-blue-400",   brandColor: "#4187FF" },
-  "blog.conholdate.com":    { label: "Conholdate",        color: "bg-cyan-500",   brandColor: "#3CA3D9" },
-  "blog.conholdate.cloud":  { label: "Conholdate Cloud",  color: "bg-cyan-400",   brandColor: "#3CA3D9" },
+  "blog.aspose.cloud":      { label: "Aspose Cloud",      color: "bg-blue-400",   brandColor: "#5BA3DC" },
+  "blog.groupdocs.com":     { label: "GroupDocs",         color: "bg-green-600",  brandColor: "#34A853" },
+  "blog.groupdocs.cloud":   { label: "GroupDocs Cloud",   color: "bg-green-400",  brandColor: "#5DC274" },
+  "blog.conholdate.com":    { label: "Conholdate",        color: "bg-orange-500", brandColor: "#E8702A" },
+  "blog.conholdate.cloud":  { label: "Conholdate Cloud",  color: "bg-purple-400", brandColor: "#7B3FBE" },
 };
 
 export const STATUS_OPTIONS = ["ok", "pending", "rejected"] as const;

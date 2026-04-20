@@ -74,11 +74,11 @@ export function AppShell() {
   }, [activeDomain, activeTab]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-slate-800">
       {/* Top nav */}
-      <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-10">
+      <header className="bg-slate-900 border-b border-slate-700 shadow-lg sticky top-0 z-10">
         <div className="px-6 py-3 flex items-center gap-6">
-          <span className="text-[15px] font-semibold tracking-tight text-gray-900 shrink-0">
+          <span className="text-[15px] font-semibold tracking-tight text-white shrink-0">
             Keywords Editor
           </span>
           <nav className="flex flex-wrap gap-1.5">
@@ -91,8 +91,8 @@ export function AppShell() {
                   onClick={() => setActiveDomain(domain)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-medium transition-all border ${
                     isActive
-                      ? "bg-gray-900 text-white border-gray-900"
-                      : "bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-800"
+                      ? "bg-white text-slate-900 border-white"
+                      : "bg-transparent text-slate-400 border-slate-600 hover:border-slate-400 hover:text-slate-200"
                   }`}
                 >
                   <span className={`h-2 w-2 rounded-full ${meta.color}`} />
@@ -105,7 +105,7 @@ export function AppShell() {
 
         {/* Product tab bar */}
         {tabs.length > 0 && (
-          <div className="px-6 flex gap-0 overflow-x-auto border-t border-gray-100 items-center">
+          <div className="px-6 flex gap-0 overflow-x-auto border-t border-slate-700 items-center">
             {tabs.filter((t) => t !== ALL_MISSING_TAB).map((tab) => {
               const isActive = tab === activeTab;
               return (
@@ -114,8 +114,8 @@ export function AppShell() {
                   onClick={() => setActiveTab(tab)}
                   className={`px-4 py-2 text-[13px] font-medium border-b-2 transition-colors whitespace-nowrap ${
                     isActive
-                      ? "border-gray-900 text-gray-900"
-                      : "border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300"
+                      ? "border-white text-white"
+                      : "border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-500"
                   }`}
                 >
                   {tab}
@@ -125,13 +125,13 @@ export function AppShell() {
 
             {tabs.includes(ALL_MISSING_TAB) && (
               <>
-                <div className="mx-3 self-stretch w-px bg-gray-200 my-1.5" />
+                <div className="mx-3 self-stretch w-px bg-slate-600 my-1.5" />
                 <button
                   onClick={() => setActiveTab(ALL_MISSING_TAB)}
                   className={`px-4 py-2 text-[13px] font-medium border-b-2 transition-colors whitespace-nowrap ${
                     activeTab === ALL_MISSING_TAB
-                      ? "border-amber-400 text-amber-600"
-                      : "border-transparent text-amber-400 hover:text-amber-500 hover:border-amber-300"
+                      ? "border-amber-400 text-amber-400"
+                      : "border-transparent text-amber-500/70 hover:text-amber-400 hover:border-amber-500"
                   }`}
                 >
                   {ALL_MISSING_TAB}
@@ -144,7 +144,7 @@ export function AppShell() {
                 href={sheetUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-auto flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-gray-400 hover:text-green-600 whitespace-nowrap transition-colors"
+                className="ml-auto flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-slate-500 hover:text-green-400 whitespace-nowrap transition-colors"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
                 Open Sheet
@@ -163,7 +163,7 @@ export function AppShell() {
         )}
 
         {(tabsLoading || rowsLoading) && (
-          <div className="flex items-center justify-center py-24 gap-2 text-gray-400">
+          <div className="flex items-center justify-center py-24 gap-2 text-slate-400">
             <Loader2 className="h-5 w-5 animate-spin" />
             <span className="text-sm">
               {tabsLoading ? "Loading tabs…" : "Loading rows…"}
@@ -174,8 +174,8 @@ export function AppShell() {
         {!tabsLoading && activeTab === ALL_MISSING_TAB && (
           <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
             <span className="text-4xl">🗂️</span>
-            <p className="text-base font-medium text-gray-600">Current view does not support <span className="font-semibold">All Missing Topics</span></p>
-            <p className="text-sm text-gray-400">Open the sheet directly to review this tab.</p>
+            <p className="text-base font-medium text-slate-300">Current view does not support <span className="font-semibold">All Missing Topics</span></p>
+            <p className="text-sm text-slate-500">Open the sheet directly to review this tab.</p>
             {sheetUrl && (
               <a href={sheetUrl} target="_blank" rel="noopener noreferrer" className="mt-1 text-sm text-blue-500 hover:underline flex items-center gap-1">
                 <ExternalLink className="h-3.5 w-3.5" /> Open in Google Sheets

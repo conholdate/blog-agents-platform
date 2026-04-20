@@ -63,7 +63,7 @@ export function CardGrid({ rows: initialRows, domain, tab }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <span className="text-sm text-gray-500">{rows.length} entries</span>
+      <span className="text-sm text-slate-400">{rows.length} entries</span>
 
       {rows.length === 0 && (
         <div className="py-16 text-center text-gray-400 text-sm">No rows found.</div>
