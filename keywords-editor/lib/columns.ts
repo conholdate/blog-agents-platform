@@ -42,10 +42,11 @@ export function isEditable(col: ColumnDef): boolean {
   return EDITABLE_TYPES.includes(col.type);
 }
 
-// Split pipe-separated string into array of items
+// Split pipe- or newline-separated string into array of items.
+// Handles values entered as "a | b | c", "a\nb\nc", or a mix of both.
 export function parseItems(value: string): string[] {
   return value
-    .split("|")
+    .split(/[|\n]/)
     .map((s) => s.trim())
     .filter(Boolean);
 }
