@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { DOMAINS, DOMAIN_LABELS } from "@/lib/config";
 import { Loader2, ExternalLink } from "lucide-react";
-import { DataTable } from "./DataTable";
+import { CardGrid } from "./CardGrid";
 
 const DOMAIN_LIST = Object.keys(DOMAINS);
 
@@ -33,9 +33,13 @@ export function AppShell() {
       .then((data) => {
         if (cancelled) return;
         if (data.error) throw new Error(data.error);
-        setTabs(data.tabs);
+        const sorted = [
+          ...data.tabs.filter((t: string) => t !== "All Missing Topics"),
+          ...data.tabs.filter((t: string) => t === "All Missing Topics"),
+        ];
+        setTabs(sorted);
         setSheetUrl(data.sheetUrl ?? null);
-        if (data.tabs.length > 0) setActiveTab(data.tabs[0]);
+        if (sorted.length > 0) setActiveTab(sorted[0]);
       })
       .catch((e) => { if (!cancelled) setError(e.message); })
       .finally(() => { if (!cancelled) setTabsLoading(false); });
@@ -43,9 +47,11 @@ export function AppShell() {
     return () => { cancelled = true; };
   }, [activeDomain]);
 
+  const ALL_MISSING_TAB = "All Missing Topics";
+
   // Fetch rows whenever tab changes
   useEffect(() => {
-    if (!activeTab) return;
+    if (!activeTab || activeTab === ALL_MISSING_TAB) return;
     let cancelled = false;
 
     setRows(null);
@@ -100,7 +106,7 @@ export function AppShell() {
         {/* Product tab bar */}
         {tabs.length > 0 && (
           <div className="px-6 flex gap-0 overflow-x-auto border-t border-gray-100 items-center">
-            {tabs.map((tab) => {
+            {tabs.filter((t) => t !== ALL_MISSING_TAB).map((tab) => {
               const isActive = tab === activeTab;
               return (
                 <button
@@ -116,6 +122,22 @@ export function AppShell() {
                 </button>
               );
             })}
+
+            {tabs.includes(ALL_MISSING_TAB) && (
+              <>
+                <div className="mx-3 self-stretch w-px bg-gray-200 my-1.5" />
+                <button
+                  onClick={() => setActiveTab(ALL_MISSING_TAB)}
+                  className={`px-4 py-2 text-[13px] font-medium border-b-2 transition-colors whitespace-nowrap ${
+                    activeTab === ALL_MISSING_TAB
+                      ? "border-amber-400 text-amber-600"
+                      : "border-transparent text-amber-400 hover:text-amber-500 hover:border-amber-300"
+                  }`}
+                >
+                  {ALL_MISSING_TAB}
+                </button>
+              </>
+            )}
 
             {sheetUrl && (
               <a
@@ -149,8 +171,21 @@ export function AppShell() {
           </div>
         )}
 
-        {!tabsLoading && !rowsLoading && rows !== null && activeTab && (
-          <DataTable rows={rows} domain={activeDomain} tab={activeTab} />
+        {!tabsLoading && activeTab === ALL_MISSING_TAB && (
+          <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+            <span className="text-4xl">🗂️</span>
+            <p className="text-base font-medium text-gray-600">Current view does not support <span className="font-semibold">All Missing Topics</span></p>
+            <p className="text-sm text-gray-400">Open the sheet directly to review this tab.</p>
+            {sheetUrl && (
+              <a href={sheetUrl} target="_blank" rel="noopener noreferrer" className="mt-1 text-sm text-blue-500 hover:underline flex items-center gap-1">
+                <ExternalLink className="h-3.5 w-3.5" /> Open in Google Sheets
+              </a>
+            )}
+          </div>
+        )}
+
+        {!tabsLoading && !rowsLoading && rows !== null && activeTab && activeTab !== ALL_MISSING_TAB && (
+          <CardGrid rows={rows} domain={activeDomain} tab={activeTab} />
         )}
 
         {!tabsLoading && !rowsLoading && tabs.length === 0 && !error && (
