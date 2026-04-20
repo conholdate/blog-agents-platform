@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { COLUMNS, joinItems } from "@/lib/columns";
 import { KeywordCard } from "./KeywordCard";
 import { RowDrawer } from "./RowDrawer";
+import { PinDialog } from "./PinDialog";
+
+const SESSION_KEY = "blog_tools_edit_auth";
 
 interface Props {
   rows: Record<string, string>[];
@@ -14,6 +17,40 @@ interface Props {
 export function CardGrid({ rows: initialRows, domain, tab }: Props) {
   const [rows, setRows] = useState(initialRows);
   const [editingRow, setEditingRow] = useState<Record<string, string> | null>(null);
+  const [authorized, setAuthorized] = useState(false);
+  const [pendingRow, setPendingRow] = useState<Record<string, string> | null>(null);
+  const [showPin, setShowPin] = useState(false);
+
+  // Restore auth from sessionStorage on mount
+  useEffect(() => {
+    if (sessionStorage.getItem(SESSION_KEY) === "true") {
+      setAuthorized(true);
+    }
+  }, []);
+
+  function requestEdit(row: Record<string, string>) {
+    if (authorized) {
+      setEditingRow(row);
+    } else {
+      setPendingRow(row);
+      setShowPin(true);
+    }
+  }
+
+  function handlePinSuccess() {
+    sessionStorage.setItem(SESSION_KEY, "true");
+    setAuthorized(true);
+    setShowPin(false);
+    if (pendingRow) {
+      setEditingRow(pendingRow);
+      setPendingRow(null);
+    }
+  }
+
+  function handlePinCancel() {
+    setShowPin(false);
+    setPendingRow(null);
+  }
 
   async function handleSave(rowIndex: number, changes: Record<string, string>) {
     const currentRow = rows.find((r) => Number(r._rowIndex) === rowIndex);
@@ -76,7 +113,7 @@ export function CardGrid({ rows: initialRows, domain, tab }: Props) {
             row={row}
             domain={domain}
             isEditing={editingRow?._rowIndex === row._rowIndex}
-            onEdit={() => setEditingRow(row)}
+            onEdit={() => requestEdit(row)}
           />
         ))}
       </div>
@@ -89,6 +126,10 @@ export function CardGrid({ rows: initialRows, domain, tab }: Props) {
           onSave={handleSave}
           onClose={() => setEditingRow(null)}
         />
+      )}
+
+      {showPin && (
+        <PinDialog onSuccess={handlePinSuccess} onCancel={handlePinCancel} />
       )}
     </div>
   );
