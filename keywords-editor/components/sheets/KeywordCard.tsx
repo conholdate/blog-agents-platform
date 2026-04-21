@@ -10,6 +10,7 @@ interface Props {
   row: Record<string, string>;
   domain: string;
   isEditing: boolean;
+  defaultExpanded?: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
   onEdit: () => void;
@@ -64,8 +65,8 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function KeywordCard({ row, domain, isEditing, canMoveUp, canMoveDown, onEdit, onMoveUp, onMoveDown }: Props) {
-  const [expanded, setExpanded] = useState(false);
+export function KeywordCard({ row, domain, isEditing, defaultExpanded = false, canMoveUp, canMoveDown, onEdit, onMoveUp, onMoveDown }: Props) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const brandColor  = DOMAIN_LABELS[domain]?.brandColor ?? "#64748B";
   const bannerColor = getPlatformColor(row.selected_platform ?? "", brandColor);
 
@@ -209,33 +210,35 @@ export function KeywordCard({ row, domain, isEditing, canMoveUp, canMoveDown, on
             </div>
           </div>
 
-          {/* Outline */}
-          {outline.length > 0 && (
-            <div className="px-4 md:px-5 py-3 border-b border-gray-100">
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Outline</p>
-              <ol className="md:columns-2 gap-x-8 space-y-1">
-                {outline.slice(0, 8).map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 text-[13px] text-gray-800">
-                    <span className="text-[11px] text-gray-400 font-mono mt-0.5 shrink-0">{i + 1}.</span>
-                    <span className="leading-relaxed">{item}</span>
-                  </li>
-                ))}
-              </ol>
-              {outline.length > 8 && (
-                <p className="text-[11px] text-gray-400 mt-1.5 pl-5">+{outline.length - 8} more sections</p>
-              )}
-            </div>
-          )}
+          {/* Outline + Editorial Notes — side by side */}
+          {(outline.length > 0 || editorialNotes.length > 0) && (
+            <div className="flex flex-col md:grid md:grid-cols-5 md:divide-x divide-gray-100 border-b border-gray-100">
 
-          {/* Editorial Notes */}
-          {editorialNotes.length > 0 && (
-            <div className="px-4 md:px-5 py-3 bg-amber-50/60 border-b border-amber-100">
-              <p className="text-[11px] font-semibold text-amber-500 uppercase tracking-wider mb-2">Editorial Notes</p>
-              <ul className="space-y-1.5">
-                {editorialNotes.map((note, i) => (
-                  <li key={i} className="text-[13px] text-amber-900 leading-relaxed">· {note}</li>
-                ))}
-              </ul>
+              {outline.length > 0 && (
+                <div className={`px-4 md:px-5 py-3 border-b md:border-b-0 border-gray-100 ${editorialNotes.length > 0 ? "md:col-span-2" : "md:col-span-5"}`}>
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Outline</p>
+                  <ol className="space-y-1">
+                    {outline.map((item, i) => (
+                      <li key={i} className="flex items-start gap-2 text-[13px] text-gray-800">
+                        <span className="text-[11px] text-gray-400 font-mono mt-0.5 shrink-0">{i + 1}.</span>
+                        <span className="leading-relaxed">{item}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              {editorialNotes.length > 0 && (
+                <div className={`px-4 md:px-5 py-3 bg-amber-50/60 ${outline.length > 0 ? "md:col-span-3" : "md:col-span-5"}`}>
+                  <p className="text-[11px] font-semibold text-amber-500 uppercase tracking-wider mb-2">Editorial Notes</p>
+                  <ul className="space-y-1.5">
+                    {editorialNotes.map((note, i) => (
+                      <li key={i} className="text-[13px] text-amber-900 leading-relaxed">· {note}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
             </div>
           )}
 

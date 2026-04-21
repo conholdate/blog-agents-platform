@@ -200,6 +200,7 @@ export function CardGrid({ rows: initialRows, domain, tab }: Props) {
             row={row}
             domain={domain}
             isEditing={editingRow?._rowIndex === row._rowIndex}
+            defaultExpanded={index === 0}
             canMoveUp={index > 0}
             canMoveDown={index < rows.length - 1}
             onEdit={() => requestEdit(row)}
