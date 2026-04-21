@@ -18,3 +18,18 @@ export const DOMAIN_LABELS: Record<string, { label: string; color: string; brand
 
 export const STATUS_OPTIONS = ["ok", "pending", "rejected"] as const;
 export type Status = (typeof STATUS_OPTIONS)[number];
+
+// Platform banner colors
+const PLATFORM_COLORS: { match: RegExp; color: string }[] = [
+  { match: /\.net|dotnet|c#|csharp/i,  color: "#512BD4" }, // .NET purple
+  { match: /java(?!script)/i,           color: "#9B2335" }, // Java maroon red
+  { match: /python/i,                   color: "#3776AB" }, // Python blue
+  { match: /c\+\+|cpp/i,               color: "#00599C" }, // C++ blue
+  { match: /node|nodejs|node\.js/i,     color: "#339933" }, // Node.js green
+];
+
+export function getPlatformColor(platform: string, fallback: string): string {
+  if (!platform) return fallback;
+  const match = PLATFORM_COLORS.find((p) => p.match.test(platform));
+  return match ? match.color : fallback;
+}

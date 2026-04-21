@@ -8,14 +8,16 @@ A web-based tool for the blog team to review, manage, and edit AI-generated keyw
 
 ## What It Does
 
-Each blog post brief is pulled directly from a Google Sheet and displayed as a card. The card gives a complete picture of everything a writer needs before starting a post:
+Each blog post brief is pulled directly from a Google Sheet and displayed as a collapsible card. The card gives a complete picture of everything a writer needs before starting a post:
 
-- **Title** — the AI-generated blog post title
+- **Title** — the AI-generated blog post title (shown in the banner when collapsed)
 - **Status** — current state: `pending`, `ok`, or `rejected`
 - **Keywords** — primary, secondary, long-tail, and semantic keywords (colour-coded by type)
 - **Content Brief** — target persona and editorial angle
 - **Outline** — proposed section structure
 - **Editorial Notes** — any guidance for the writer
+
+Card banners are colour-coded by **publishing platform** (.NET, Java, Python, C++, Node.js) and fall back to the brand colour when no platform is set. The layout is fully **mobile-responsive**.
 
 Writers and editors can update the status and editable fields directly from the tool — changes are saved back to the Google Sheet in real time.
 
@@ -48,9 +50,18 @@ Each domain has its own Google Sheet. Switch between domains using the top navig
 ### Editing a Row
 
 1. Click the **pencil icon** on any card
-2. A drawer opens on the right with all editable fields
-3. Update **Status**, **Title**, **Keywords**, **Persona**, **Angle**, etc.
-4. Click **Save Row** — changes are written back to the Google Sheet instantly
+2. Enter the team PIN when prompted — you won't be asked again for the rest of the session
+3. A drawer opens on the right with all editable fields
+4. Update **Status**, **Title**, **Keywords**, **Persona**, **Angle**, etc.
+5. Click **Save Row** — changes are written back to the Google Sheet instantly
+
+### Reordering Rows
+
+1. Use the **↑ / ↓ arrow buttons** in the card banner to move cards up or down
+2. Reordering is instant in the UI — no API calls are made while moving
+3. When the order has changed, a **Save Order** / **Discard** bar appears at the top
+4. Click **Save Order** to write the new order to the sheet in one batch operation
+5. Click **Discard** to revert to the original order without touching the sheet
 
 ### Editable Fields
 

@@ -91,6 +91,36 @@ export async function saveSheetRows(
   });
 }
 
+// Writes rows in a new order. Each write: put `data` into sheet row `rowIndex`.
+// Used to persist a reordering operation in one batch call.
+export async function reorderRows(
+  domain: string,
+  tab: string,
+  writes: { rowIndex: number; data: Record<string, string> }[]
+): Promise<void> {
+  const auth = getAuth();
+  const sheets = google.sheets({ version: "v4", auth });
+  const spreadsheetId = getSheetId(domain);
+
+  // Get headers to know column order
+  const headerRes = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${tab}'!1:1`,
+  });
+  const headers: string[] = (headerRes.data.values?.[0] as string[]) ?? [];
+  const lastCol = columnLetter(headers.length - 1);
+
+  const data = writes.map(({ rowIndex, data: rowData }) => ({
+    range: `'${tab}'!A${rowIndex}:${lastCol}${rowIndex}`,
+    values: [headers.map((h) => rowData[h] ?? "")],
+  }));
+
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    requestBody: { valueInputOption: "USER_ENTERED", data },
+  });
+}
+
 function columnLetter(index: number): string {
   let letter = "";
   let n = index + 1;

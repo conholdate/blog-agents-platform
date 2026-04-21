@@ -111,7 +111,7 @@ export function RowDrawer({ row, domain, tab, onSave, onClose }: Props) {
       {/* Drawer */}
       <div
         ref={drawerRef}
-        className="fixed top-0 right-0 h-full w-[500px] bg-white shadow-2xl z-30 flex flex-col animate-in slide-in-from-right duration-200"
+        className="fixed top-0 right-0 h-full w-full md:w-[500px] bg-white shadow-2xl z-30 flex flex-col animate-in slide-in-from-right duration-200"
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-200 shrink-0">

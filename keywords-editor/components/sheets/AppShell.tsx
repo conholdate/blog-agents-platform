@@ -77,11 +77,11 @@ export function AppShell() {
     <div className="flex flex-col min-h-screen bg-slate-800">
       {/* Top nav */}
       <header className="bg-slate-900 border-b border-slate-700 shadow-lg sticky top-0 z-10">
-        <div className="px-6 py-3 flex items-center gap-6">
+        <div className="px-3 md:px-6 py-3 flex items-center gap-3 md:gap-6">
           <span className="text-[15px] font-semibold tracking-tight text-white shrink-0">
             Keywords Editor
           </span>
-          <nav className="flex flex-wrap gap-1.5">
+          <nav className="flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
             {DOMAIN_LIST.map((domain) => {
               const meta = DOMAIN_LABELS[domain];
               const isActive = domain === activeDomain;
@@ -105,7 +105,7 @@ export function AppShell() {
 
         {/* Product tab bar */}
         {tabs.length > 0 && (
-          <div className="px-6 flex gap-0 overflow-x-auto border-t border-slate-700 items-center">
+          <div className="px-3 md:px-6 flex gap-0 overflow-x-auto border-t border-slate-700 items-center scrollbar-none">
             {tabs.filter((t) => t !== ALL_MISSING_TAB).map((tab) => {
               const isActive = tab === activeTab;
               return (
@@ -155,7 +155,7 @@ export function AppShell() {
       </header>
 
       {/* Content */}
-      <main className="flex-1 px-6 py-5">
+      <main className="flex-1 px-3 md:px-6 py-4 md:py-5">
         {error && (
           <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 mb-4">
             {error}

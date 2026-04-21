@@ -5,6 +5,7 @@ import { COLUMNS, joinItems } from "@/lib/columns";
 import { KeywordCard } from "./KeywordCard";
 import { RowDrawer } from "./RowDrawer";
 import { PinDialog } from "./PinDialog";
+import { Loader2, Save, Undo2 } from "lucide-react";
 
 const SESSION_KEY = "blog_tools_edit_auth";
 
@@ -16,16 +17,21 @@ interface Props {
 
 export function CardGrid({ rows: initialRows, domain, tab }: Props) {
   const [rows, setRows] = useState(initialRows);
+  // Track the original order by _rowIndex to detect dirty state
+  const [originalOrder, setOriginalOrder] = useState(() => initialRows.map((r) => r._rowIndex));
+  const [savingOrder, setSavingOrder] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
+
   const [editingRow, setEditingRow] = useState<Record<string, string> | null>(null);
   const [authorized, setAuthorized] = useState(false);
   const [pendingRow, setPendingRow] = useState<Record<string, string> | null>(null);
   const [showPin, setShowPin] = useState(false);
 
+  const isDirty = rows.some((r, i) => r._rowIndex !== originalOrder[i]);
+
   // Restore auth from sessionStorage on mount
   useEffect(() => {
-    if (sessionStorage.getItem(SESSION_KEY) === "true") {
-      setAuthorized(true);
-    }
+    if (sessionStorage.getItem(SESSION_KEY) === "true") setAuthorized(true);
   }, []);
 
   function requestEdit(row: Record<string, string>) {
@@ -41,15 +47,67 @@ export function CardGrid({ rows: initialRows, domain, tab }: Props) {
     sessionStorage.setItem(SESSION_KEY, "true");
     setAuthorized(true);
     setShowPin(false);
-    if (pendingRow) {
-      setEditingRow(pendingRow);
-      setPendingRow(null);
-    }
+    if (pendingRow) { setEditingRow(pendingRow); setPendingRow(null); }
   }
 
   function handlePinCancel() {
     setShowPin(false);
     setPendingRow(null);
+  }
+
+  // Move card instantly in UI — no API call
+  function handleMove(index: number, direction: "up" | "down") {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= rows.length) return;
+    setRows((prev) => {
+      const next = [...prev];
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
+    setOrderError(null);
+  }
+
+  // Discard — restore original order
+  function handleDiscard() {
+    setRows((prev) => {
+      const map = Object.fromEntries(prev.map((r) => [r._rowIndex, r]));
+      return originalOrder.map((id) => map[id]).filter(Boolean);
+    });
+    setOrderError(null);
+  }
+
+  // Save — write new order to sheet in one batch
+  async function handleSaveOrder() {
+    setSavingOrder(true);
+    setOrderError(null);
+    try {
+      // originalOrder[i] = the sheet row index that lives at position i
+      // rows[i] = the data that should now be at position i
+      const writes = rows.map((row, i) => ({
+        rowIndex: Number(originalOrder[i]),
+        data: row,
+      }));
+
+      const res = await fetch(
+        `/api/sheets/${encodeURIComponent(domain)}/${encodeURIComponent(tab)}/move`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ writes }),
+        }
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? "Save failed");
+      }
+
+      // Commit — new order is now the baseline
+      setOriginalOrder(rows.map((r) => r._rowIndex));
+    } catch (e) {
+      setOrderError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSavingOrder(false);
+    }
   }
 
   async function handleSave(rowIndex: number, changes: Record<string, string>) {
@@ -58,18 +116,16 @@ export function CardGrid({ rows: initialRows, domain, tab }: Props) {
       .filter((key) => {
         const col = COLUMNS.find((c) => c.key === key);
         if (!col) return false;
-        const newVal =
-          col.type === "bullets"
-            ? joinItems(changes[key].split("\n").map((s) => s.trim()).filter(Boolean))
-            : changes[key];
+        const newVal = col.type === "bullets"
+          ? joinItems(changes[key].split("\n").map((s) => s.trim()).filter(Boolean))
+          : changes[key];
         return newVal !== (currentRow?.[key] ?? "");
       })
       .map((key) => {
         const col = COLUMNS.find((c) => c.key === key)!;
-        const value =
-          col.type === "bullets"
-            ? joinItems(changes[key].split("\n").map((s) => s.trim()).filter(Boolean))
-            : changes[key];
+        const value = col.type === "bullets"
+          ? joinItems(changes[key].split("\n").map((s) => s.trim()).filter(Boolean))
+          : changes[key];
         return { rowIndex, key, value };
       });
 
@@ -100,20 +156,55 @@ export function CardGrid({ rows: initialRows, domain, tab }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <span className="text-sm text-slate-400">{rows.length} entries</span>
+
+      {/* ── Top bar ──────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm text-slate-400">{rows.length} entries</span>
+
+        {isDirty && (
+          <div className="flex items-center gap-2">
+            {orderError && (
+              <span className="text-[12px] text-red-400">{orderError}</span>
+            )}
+            <button
+              onClick={handleDiscard}
+              disabled={savingOrder}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium text-slate-300 border border-slate-600 hover:border-slate-400 transition-colors disabled:opacity-50"
+            >
+              <Undo2 className="h-3.5 w-3.5" />
+              Discard
+            </button>
+            <button
+              onClick={handleSaveOrder}
+              disabled={savingOrder}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium bg-white text-slate-900 hover:bg-slate-100 transition-colors disabled:opacity-50"
+            >
+              {savingOrder
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Save className="h-3.5 w-3.5" />
+              }
+              {savingOrder ? "Saving…" : "Save Order"}
+            </button>
+          </div>
+        )}
+      </div>
 
       {rows.length === 0 && (
         <div className="py-16 text-center text-gray-400 text-sm">No rows found.</div>
       )}
 
       <div className="grid grid-cols-1 gap-5">
-        {rows.map((row) => (
+        {rows.map((row, index) => (
           <KeywordCard
             key={row._rowIndex}
             row={row}
             domain={domain}
             isEditing={editingRow?._rowIndex === row._rowIndex}
+            canMoveUp={index > 0}
+            canMoveDown={index < rows.length - 1}
             onEdit={() => requestEdit(row)}
+            onMoveUp={() => handleMove(index, "up")}
+            onMoveDown={() => handleMove(index, "down")}
           />
         ))}
       </div>
