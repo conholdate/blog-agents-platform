@@ -20,11 +20,20 @@ A web app for reviewing and editing AI-generated keyword briefs for technical bl
 
 ---
 
+### [URL Validator](./url-validator)
+
+**Status: Development Phase** — not yet ready for production use.
+
+A Python CLI that scans all blog post frontmatter for URL issues (missing URLs, wrong product segments, date-based URLs, translation mismatches, etc.) and writes a colour-coded report to Google Sheets.
+
+---
+
 ## Repo Structure
 
 ```
 blog-team-tools/
-└── keywords-editor/     # Keywords brief viewer and editor
+├── keywords-editor/     # Keywords brief viewer and editor (live)
+└── url-validator/       # Blog post URL linter — Python CLI (dev phase)
 ```
 
 Each tool lives in its own folder and is deployed independently on Vercel.

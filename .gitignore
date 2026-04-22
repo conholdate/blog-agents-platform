@@ -22,3 +22,7 @@ Thumbs.db
 **/*-credentials.json
 **/*-service-account*.json
 **/blog-team-ai-agents-*.json
+**/credentials.json
+
+# Python virtual environments
+**/venv/
