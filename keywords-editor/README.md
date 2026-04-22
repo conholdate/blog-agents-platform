@@ -95,7 +95,7 @@ Each sheet contains an **All Missing Topics** tab. This tab is not supported in 
 1. Clone the repo and navigate to the project:
 
 ```bash
-git clone https://github.com/shoaibkhan-aspose/blog-team-tools.git
+git clone https://github.com/conholdate/blog-team-tools.git
 cd blog-team-tools/keywords-editor
 ```
 

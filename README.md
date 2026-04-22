@@ -56,6 +56,5 @@ Each tool lives in its own folder and is deployed independently on Vercel.
 
 | Remote | URL |
 |---|---|
-| GitHub (personal) | https://github.com/shoaibkhan-aspose/blog-team-tools |
-| GitHub (org) | https://github.com/conholdate/blog-team-tools |
+| GitHub | https://github.com/conholdate/blog-team-tools |
 | GitLab | https://gitlab.recruitize.ai/sialkot/lahore-aspose/lahore-blogs-team/blog-team-tools |
