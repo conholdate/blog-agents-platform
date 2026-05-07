@@ -10,7 +10,7 @@
 
 ```
 blog-team-tools/
-├── keywords-editor/     # Web app — keyword brief viewer & editor (Live)
+├── dashboard/           # Blog Team Dashboard — multi-tool web app (Live)
 └── url-validator/       # Python CLI — blog post URL linter (Dev phase)
 ```
 
@@ -18,15 +18,16 @@ Each tool is self-contained and deployed independently.
 
 ---
 
-## 1. Keywords Editor
+## 1. Blog Team Dashboard
 
+**Folder:** `dashboard/`  
 **Live:** [blog-team-tools.vercel.app](https://blog-team-tools.vercel.app)  
 **Stack:** Next.js 16 · Tailwind CSS v4 · Google Sheets API v4 · Vercel  
 **Status: Active / Production**
 
 ### What It Does
 
-A web interface for the blog team to browse, review, and edit AI-generated keyword briefs stored in Google Sheets. Covers 6 brand domains across Aspose, GroupDocs, and Conholdate.
+A multi-tool web dashboard for the blog team across 6 brand domains (Aspose, GroupDocs, Conholdate + Cloud variants). Left sidebar navigation with sections for Overview, Keywords, Translations, Optimization, and URL Validator. Keywords section is live; others are coming soon.
 
 ---
 
@@ -40,9 +41,27 @@ A web interface for the blog team to browse, review, and edit AI-generated keywo
 - [x] Multi-delimiter parsing for bullet fields (`|` and newline / Alt+Enter)
 - [x] "Open Sheet" link — direct link to the Google Spreadsheet from the tab bar
 
+#### Dashboard Shell
+- [x] Left sidebar navigation — Overview, Keywords, Translations, Optimization, URL Validator
+- [x] Active section highlighted with left accent border
+- [x] Mobile sidebar as hamburger-toggled overlay drawer
+- [x] Domain switcher pills in sticky header — always visible across all sections
+- [x] Section switching resets keywords state (tabs, rows, errors)
+- [x] "Blog Team" branding in header
+
+#### Overview Section
+- [x] Keywords stats card — pending / ok / rejected counts + per-product progress bars (live data)
+- [x] WIP placeholder cards for Translations, Optimization, URL Validator
+- [x] "View →" link navigates directly to the Keywords section
+- [x] `/api/sheets/[domain]/summary` endpoint — fetches all tabs in parallel, returns status counts
+
+#### WIP Placeholder
+- [x] Section icon, label, "Coming Soon" badge, description per section
+- [x] Shows active domain name
+
 #### Navigation & Shell
 - [x] Domain switcher in top nav (Aspose, Aspose Cloud, GroupDocs, GroupDocs Cloud, Conholdate, Conholdate Cloud)
-- [x] Product tab bar per domain (Words, Cells, PDF, etc.)
+- [x] Product tab bar per domain (Words, Cells, PDF, etc.) — Keywords section only
 - [x] "All Missing Topics" tab separated from product tabs, shown with a message + link to open in Sheets
 - [x] Race condition fix for fast domain switching (cancelled flag pattern)
 - [x] Dark theme shell (slate-800 page, slate-900 header)

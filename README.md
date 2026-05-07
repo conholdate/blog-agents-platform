@@ -6,16 +6,15 @@ A monorepo of internal tools built for the Blog Team at Aspose, GroupDocs, and C
 
 ## Tools
 
-### [Keywords Editor](./keywords-editor)
+### [Blog Team Dashboard](./dashboard)
 
 **Live:** [blog-team-tools.vercel.app](https://blog-team-tools.vercel.app)
 
-A web app for reviewing and editing AI-generated keyword briefs for technical blog posts.
+A multi-tool web dashboard for the blog team, covering keyword briefs, translations, SEO optimization, and URL validation across all 6 brand domains.
 
-- Browse briefs across all 6 brand domains (Aspose, GroupDocs, Conholdate + Cloud variants)
-- Each brief shows title, status, keywords (primary / secondary / long-tail / semantic), content angle, target persona, outline, and editorial notes
-- Edit fields directly and save back to Google Sheets in real time
-- PIN-protected editing to prevent accidental changes
+- **Overview** — progress summary across all sections for the active domain
+- **Keywords** — review and edit AI-generated keyword briefs per product tab; edit fields and save back to Google Sheets in real time; reorder rows with ↑/↓ and save in one batch; PIN-protected editing
+- **Translations**, **Optimization**, **URL Validator** — coming soon
 - Built with Next.js · Tailwind CSS · Google Sheets API · Deployed on Vercel
 
 ---
@@ -32,7 +31,7 @@ A Python CLI that scans all blog post frontmatter for URL issues (missing URLs, 
 
 ```
 blog-team-tools/
-├── keywords-editor/     # Keywords brief viewer and editor (live)
+├── dashboard/           # Blog Team Dashboard — multi-tool web app (live)
 └── url-validator/       # Blog post URL linter — Python CLI (dev phase)
 ```
 

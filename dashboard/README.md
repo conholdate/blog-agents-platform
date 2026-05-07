@@ -1,25 +1,29 @@
-# Keywords Editor
+# Blog Team Dashboard
 
-A web-based tool for the blog team to review, manage, and edit AI-generated keyword briefs for technical blog posts across Aspose, GroupDocs, and Conholdate brands.
+A multi-tool web dashboard for the blog team at Aspose, GroupDocs, and Conholdate. Manage keyword briefs, track translations, monitor SEO optimization, and run URL validation — all from one place, across all 6 brand domains.
 
 **Live:** [blog-team-tools.vercel.app](https://blog-team-tools.vercel.app)
 
 ---
 
-## What It Does
+## Sections
 
-Each blog post brief is pulled directly from a Google Sheet and displayed as a collapsible card. The card gives a complete picture of everything a writer needs before starting a post:
+### Overview
+Landing page for the active domain. Shows a Keywords progress card (pending / ok / rejected counts with a per-product progress bar) and placeholder cards for Translations, Optimization, and URL Validator. Click **View →** on any card to jump straight to that section.
 
-- **Title** — the AI-generated blog post title (shown in the banner when collapsed)
-- **Status** — current state: `pending`, `ok`, or `rejected`
-- **Keywords** — primary, secondary, long-tail, and semantic keywords (colour-coded by type)
+### Keywords
+Review and edit AI-generated keyword briefs pulled from Google Sheets. Each brief is displayed as a collapsible card showing:
+
+- **Title** — the AI-generated blog post title
+- **Status** — `pending`, `ok`, or `rejected`
+- **Keywords** — primary, secondary, long-tail, and semantic (colour-coded by type)
 - **Content Brief** — target persona and editorial angle
-- **Outline** — proposed section structure
-- **Editorial Notes** — any guidance for the writer
+- **Outline** and **Editorial Notes** — side by side for quick review
 
-Card banners are colour-coded by **publishing platform** (.NET, Java, Python, C++, Node.js) and fall back to the brand colour when no platform is set. The layout is fully **mobile-responsive**.
+Card banners are colour-coded by publishing platform (.NET, Java, Python, C++, Node.js) and fall back to the brand colour when no platform is set.
 
-Writers and editors can update the status and editable fields directly from the tool — changes are saved back to the Google Sheet in real time.
+### Translations / Optimization / URL Validator
+Coming soon.
 
 ---
 
@@ -34,34 +38,34 @@ Writers and editors can update the status and editable fields directly from the 
 | blog.conholdate.com | Conholdate |
 | blog.conholdate.cloud | Conholdate Cloud |
 
-Each domain has its own Google Sheet. Switch between domains using the top navigation bar.
+Switch between domains using the domain pills in the top navigation bar. The active section updates for the selected domain.
 
 ---
 
 ## How to Use
 
-### Browsing
+### Navigation
+- Use the **left sidebar** to switch between sections (Overview, Keywords, Translations, Optimization, URL Validator)
+- On mobile, tap the **hamburger menu** in the top-left corner to open the sidebar
 
-1. Open [blog-team-tools.vercel.app](https://blog-team-tools.vercel.app)
-2. Select a **domain** from the top nav (e.g. Aspose, GroupDocs)
+### Keywords — Browsing
+1. Select a **domain** from the top nav
+2. Click **Keywords** in the sidebar
 3. Select a **product tab** (e.g. Words, Cells, PDF)
-4. Browse the keyword briefs — each card represents one blog post
+4. Browse the keyword briefs — first card is expanded by default
 
-### Editing a Row
-
+### Keywords — Editing a Row
 1. Click the **pencil icon** on any card
 2. Enter the team PIN when prompted — you won't be asked again for the rest of the session
 3. A drawer opens on the right with all editable fields
 4. Update **Status**, **Title**, **Keywords**, **Persona**, **Angle**, etc.
 5. Click **Save Row** — changes are written back to the Google Sheet instantly
 
-### Reordering Rows
-
+### Keywords — Reordering Rows
 1. Use the **↑ / ↓ arrow buttons** in the card banner to move cards up or down
-2. Reordering is instant in the UI — no API calls are made while moving
-3. When the order has changed, a **Save Order** / **Discard** bar appears at the top
-4. Click **Save Order** to write the new order to the sheet in one batch operation
-5. Click **Discard** to revert to the original order without touching the sheet
+2. When the order has changed, a **Save Order / Discard** bar appears
+3. Click **Save Order** to write the new order to the sheet in one batch
+4. Click **Discard** to revert without touching the sheet
 
 ### Editable Fields
 
@@ -78,8 +82,7 @@ Each domain has its own Google Sheet. Switch between domains using the top navig
 | Editorial Notes | Guidance for the writer |
 
 ### All Missing Topics Tab
-
-Each sheet contains an **All Missing Topics** tab. This tab is not supported in the card view — click **Open in Google Sheets** on the message page to review it directly.
+Each sheet contains an **All Missing Topics** tab that is not supported in the card view. Click **Open in Google Sheets** on the message page to review it directly.
 
 ---
 
@@ -96,7 +99,7 @@ Each sheet contains an **All Missing Topics** tab. This tab is not supported in 
 
 ```bash
 git clone https://github.com/conholdate/blog-team-tools.git
-cd blog-team-tools/keywords-editor
+cd blog-team-tools/dashboard
 ```
 
 2. Install dependencies:
@@ -137,18 +140,11 @@ npm run dev
 
 6. Open [http://localhost:3000](http://localhost:3000)
 
-To stop the server, press `Ctrl+C` in the terminal.
-
 ---
 
 ## Deployment
 
 The app is deployed on [Vercel](https://vercel.com) and auto-deploys on every push to `main`.
-
-To trigger a manual redeploy without a code change:
-- Vercel Dashboard → Project → Deployments → ··· → Redeploy
-
-### Environment Variables on Vercel
 
 Set the same variables from `.env.local` in:
 **Vercel Dashboard → Project → Settings → Environment Variables**

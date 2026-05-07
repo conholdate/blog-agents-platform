@@ -50,16 +50,26 @@ If you don't have a service account yet:
 
 Share the target Google Spreadsheet with the service account email (`client_email` in `credentials.json`), giving it **Editor** access.
 
-**4. Configure paths (if needed)**
+**4. Configure paths**
 
-Open `main.py` and verify these constants match your setup:
+Create a `.env` file inside the `url-validator/` folder:
 
-```python
-CONTENT_DIR    = REPO_ROOT / "aspose-blog" / "content" / "Aspose.Blog"
-SPREADSHEET_ID = "your-spreadsheet-id-here"
+```bash
+cp .env.example .env   # or create it manually
 ```
 
-`REPO_ROOT` is resolved as two levels up from the script (`url-validator/` → `blog-team-tools/` → repo root). The blog content repo is expected to be checked out alongside `blog-team-tools/`.
+Set these variables:
+
+```env
+# Absolute path to the blog content directory
+# (the folder that contains product sub-folders like "words/", "cells/", etc.)
+BLOG_CONTENT_DIR=/path/to/aspose-blog/content/Aspose.Blog
+
+# Google Spreadsheet ID (from the sheet URL)
+SPREADSHEET_ID=your-spreadsheet-id-here
+```
+
+If `BLOG_CONTENT_DIR` is not set, the script defaults to looking two levels up from its own directory (`url-validator/` → `blog-team-tools/` → repo root), then `aspose-blog/content/Aspose.Blog` relative to that root. This works if the blog content repo is checked out alongside `blog-team-tools/`.
 
 ## Usage
 
