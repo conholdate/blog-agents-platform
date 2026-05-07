@@ -101,7 +101,7 @@ export function AppShell() {
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
-          <aside className="relative flex flex-col w-48 h-full bg-slate-900 border-r border-slate-700">
+          <aside className="relative flex flex-col w-56 h-full bg-slate-900 border-r border-slate-700">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
               <span className="text-sm font-semibold text-white">Menu</span>
               <button onClick={() => setSidebarOpen(false)} className="text-slate-400 hover:text-white">
@@ -109,13 +109,14 @@ export function AppShell() {
               </button>
             </div>
             <nav className="flex flex-col pt-2 pb-4">
-              {(["overview", "keywords", "translations", "optimization", "url-validator"] as Section[]).map((key) => {
+              {(["overview", "keywords", "translations", "optimization", "post-generation", "url-validator"] as Section[]).map((key) => {
                 const labels: Record<Section, string> = {
-                  overview: "Overview",
-                  keywords: "Keywords",
-                  translations: "Translations",
-                  optimization: "Optimization",
-                  "url-validator": "URL Validator",
+                  overview:          "Overview",
+                  keywords:          "Keyword Agent",
+                  translations:      "Translation Agent",
+                  optimization:      "Optimization Agent",
+                  "post-generation": "Post Generation Agent",
+                  "url-validator":   "URL Validator",
                 };
                 return (
                   <button

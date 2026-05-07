@@ -27,7 +27,7 @@ Each tool is self-contained and deployed independently.
 
 ### What It Does
 
-A multi-tool web dashboard for the blog team across 6 brand domains (Aspose, GroupDocs, Conholdate + Cloud variants). Left sidebar navigation with sections for Overview, Keywords, Translations, Optimization, and URL Validator. Keywords section is live; others are coming soon.
+A multi-tool web dashboard for the blog team across 6 brand domains (Aspose, GroupDocs, Conholdate + Cloud variants). Left sidebar navigation with agent sections: Overview, Keyword Agent, Translation Agent, Optimization Agent, Post Generation Agent, URL Validator. Keyword Agent is live; others are coming soon.
 
 ---
 
@@ -42,7 +42,7 @@ A multi-tool web dashboard for the blog team across 6 brand domains (Aspose, Gro
 - [x] "Open Sheet" link — direct link to the Google Spreadsheet from the tab bar
 
 #### Dashboard Shell
-- [x] Left sidebar navigation — Overview, Keywords, Translations, Optimization, URL Validator
+- [x] Left sidebar navigation — Overview, Keyword Agent, Translation Agent, Optimization Agent, Post Generation Agent, URL Validator
 - [x] Active section highlighted with left accent border
 - [x] Mobile sidebar as hamburger-toggled overlay drawer
 - [x] Domain switcher pills in sticky header — always visible across all sections
@@ -51,8 +51,8 @@ A multi-tool web dashboard for the blog team across 6 brand domains (Aspose, Gro
 
 #### Overview Section
 - [x] Keywords stats card — pending / ok / rejected counts + per-product progress bars (live data)
-- [x] WIP placeholder cards for Translations, Optimization, URL Validator
-- [x] "View →" link navigates directly to the Keywords section
+- [x] WIP placeholder cards for Translation Agent, Optimization Agent, Post Generation Agent, URL Validator
+- [x] "View →" link navigates directly to the Keyword Agent section
 - [x] `/api/sheets/[domain]/summary` endpoint — fetches all tabs in parallel, returns status counts
 
 #### WIP Placeholder
@@ -61,7 +61,7 @@ A multi-tool web dashboard for the blog team across 6 brand domains (Aspose, Gro
 
 #### Navigation & Shell
 - [x] Domain switcher in top nav (Aspose, Aspose Cloud, GroupDocs, GroupDocs Cloud, Conholdate, Conholdate Cloud)
-- [x] Product tab bar per domain (Words, Cells, PDF, etc.) — Keywords section only
+- [x] Product tab bar per domain (Words, Cells, PDF, etc.) — Keyword Agent section only
 - [x] "All Missing Topics" tab separated from product tabs, shown with a message + link to open in Sheets
 - [x] Race condition fix for fast domain switching (cancelled flag pattern)
 - [x] Dark theme shell (slate-800 page, slate-900 header)

@@ -1,15 +1,16 @@
 "use client";
 
-import { LayoutDashboard, BookMarked, Languages, TrendingUp, Link } from "lucide-react";
+import { LayoutDashboard, BookMarked, Languages, TrendingUp, Link, Bot } from "lucide-react";
 
-export type Section = "overview" | "keywords" | "translations" | "optimization" | "url-validator";
+export type Section = "overview" | "keywords" | "translations" | "optimization" | "url-validator" | "post-generation";
 
 const NAV_ITEMS: { key: Section; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { key: "overview",      label: "Overview",      icon: LayoutDashboard },
-  { key: "keywords",      label: "Keywords",      icon: BookMarked },
-  { key: "translations",  label: "Translations",  icon: Languages },
-  { key: "optimization",  label: "Optimization",  icon: TrendingUp },
-  { key: "url-validator", label: "URL Validator", icon: Link },
+  { key: "overview",         label: "Overview",              icon: LayoutDashboard },
+  { key: "keywords",         label: "Keyword Agent",         icon: BookMarked },
+  { key: "translations",     label: "Translation Agent",     icon: Languages },
+  { key: "optimization",     label: "Optimization Agent",    icon: TrendingUp },
+  { key: "post-generation",  label: "Post Generation Agent", icon: Bot },
+  { key: "url-validator",    label: "URL Validator",         icon: Link },
 ];
 
 interface SidebarProps {
@@ -19,7 +20,7 @@ interface SidebarProps {
 
 export function Sidebar({ activeSection, onSelect }: SidebarProps) {
   return (
-    <aside className="hidden md:flex flex-col w-48 bg-slate-900 border-r border-slate-700 shrink-0">
+    <aside className="hidden md:flex flex-col w-56 bg-slate-900 border-r border-slate-700 shrink-0">
       <nav className="flex flex-col pt-2 pb-4">
         {NAV_ITEMS.map(({ key, label, icon: Icon }) => {
           const isActive = key === activeSection;

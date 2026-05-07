@@ -1,4 +1,4 @@
-import { Languages, TrendingUp, Link } from "lucide-react";
+import { Languages, TrendingUp, Link, Bot } from "lucide-react";
 import type { Section } from "./Sidebar";
 
 const WIP_META: Record<string, {
@@ -17,12 +17,17 @@ const WIP_META: Record<string, {
     icon: Link,
     description: "Run URL validation scans and view issues reported to Google Sheets",
   },
+  "post-generation": {
+    icon: Bot,
+    description: "Generate full blog post drafts from keyword briefs using AI agents",
+  },
 };
 
 const SECTION_LABELS: Record<string, string> = {
-  translations: "Translations",
-  optimization: "Optimization",
-  "url-validator": "URL Validator",
+  translations:      "Translation Agent",
+  optimization:      "Optimization Agent",
+  "url-validator":   "URL Validator",
+  "post-generation": "Post Generation Agent",
 };
 
 interface WorkInProgressProps {

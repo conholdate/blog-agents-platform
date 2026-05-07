@@ -1,6 +1,6 @@
 # Blog Team Dashboard
 
-A multi-tool web dashboard for the blog team at Aspose, GroupDocs, and Conholdate. Manage keyword briefs, track translations, monitor SEO optimization, and run URL validation — all from one place, across all 6 brand domains.
+A multi-tool web dashboard for the blog team at Aspose, GroupDocs, and Conholdate. Manage keyword briefs, translations, SEO optimization, post generation, and URL validation — all from one place, across all 6 brand domains.
 
 **Live:** [blog-team-tools.vercel.app](https://blog-team-tools.vercel.app)
 
@@ -9,9 +9,9 @@ A multi-tool web dashboard for the blog team at Aspose, GroupDocs, and Conholdat
 ## Sections
 
 ### Overview
-Landing page for the active domain. Shows a Keywords progress card (pending / ok / rejected counts with a per-product progress bar) and placeholder cards for Translations, Optimization, and URL Validator. Click **View →** on any card to jump straight to that section.
+Landing page for the active domain. Shows a Keyword Agent progress card (pending / ok / rejected counts with a per-product progress bar) and placeholder cards for all other agents. Click **View →** on any card to jump straight to that section.
 
-### Keywords
+### Keyword Agent
 Review and edit AI-generated keyword briefs pulled from Google Sheets. Each brief is displayed as a collapsible card showing:
 
 - **Title** — the AI-generated blog post title
@@ -22,7 +22,7 @@ Review and edit AI-generated keyword briefs pulled from Google Sheets. Each brie
 
 Card banners are colour-coded by publishing platform (.NET, Java, Python, C++, Node.js) and fall back to the brand colour when no platform is set.
 
-### Translations / Optimization / URL Validator
+### Translation Agent / Optimization Agent / Post Generation Agent / URL Validator
 Coming soon.
 
 ---

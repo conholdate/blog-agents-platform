@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BookMarked, Languages, TrendingUp, Link, Loader2 } from "lucide-react";
+import { BookMarked, Languages, TrendingUp, Link, Bot, Loader2 } from "lucide-react";
 import type { Section } from "./Sidebar";
 
 type TabSummary = {
@@ -20,15 +20,21 @@ interface OverviewProps {
 const WIP_CARDS: { section: Section; label: string; icon: React.ComponentType<{ className?: string }>; description: string }[] = [
   {
     section: "translations",
-    label: "Translations",
+    label: "Translation Agent",
     icon: Languages,
     description: "Track translation status per product and language",
   },
   {
     section: "optimization",
-    label: "Optimization",
+    label: "Optimization Agent",
     icon: TrendingUp,
     description: "See which articles are queued for SEO optimization",
+  },
+  {
+    section: "post-generation",
+    label: "Post Generation Agent",
+    icon: Bot,
+    description: "Generate full blog post drafts from keyword briefs using AI agents",
   },
   {
     section: "url-validator",
@@ -72,14 +78,14 @@ export function Overview({ domain, onNavigate }: OverviewProps) {
       <h1 className="text-xl font-semibold text-white mb-5">Overview</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Keywords card */}
+        {/* Keyword Agent card — live data */}
         <div className="bg-slate-700/50 border border-slate-600 rounded-xl p-5 flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="rounded-lg bg-slate-600 p-2">
                 <BookMarked className="h-4 w-4 text-slate-200" />
               </div>
-              <span className="text-[15px] font-semibold text-white">Keywords</span>
+              <span className="text-[15px] font-semibold text-white">Keyword Agent</span>
             </div>
             <button
               onClick={() => onNavigate("keywords")}

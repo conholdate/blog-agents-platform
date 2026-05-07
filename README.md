@@ -10,11 +10,11 @@ A monorepo of internal tools built for the Blog Team at Aspose, GroupDocs, and C
 
 **Live:** [blog-team-tools.vercel.app](https://blog-team-tools.vercel.app)
 
-A multi-tool web dashboard for the blog team, covering keyword briefs, translations, SEO optimization, and URL validation across all 6 brand domains.
+A multi-tool web dashboard for the blog team across all 6 brand domains. Each tool is a dedicated agent section in the left sidebar.
 
-- **Overview** — progress summary across all sections for the active domain
-- **Keywords** — review and edit AI-generated keyword briefs per product tab; edit fields and save back to Google Sheets in real time; reorder rows with ↑/↓ and save in one batch; PIN-protected editing
-- **Translations**, **Optimization**, **URL Validator** — coming soon
+- **Overview** — progress summary across all agents for the active domain
+- **Keyword Agent** — review and edit AI-generated keyword briefs; save back to Google Sheets in real time; reorder rows; PIN-protected editing
+- **Translation Agent**, **Optimization Agent**, **Post Generation Agent**, **URL Validator** — coming soon
 - Built with Next.js · Tailwind CSS · Google Sheets API · Deployed on Vercel
 
 ---
