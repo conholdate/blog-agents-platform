@@ -21,12 +21,24 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 # ── Config ────────────────────────────────────────────────────────────────────
+import os
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).parent / ".env")
+
 SCRIPT_DIR      = Path(__file__).parent
 REPO_ROOT       = SCRIPT_DIR.parent.parent
-CONTENT_DIR     = REPO_ROOT / "aspose-blog" / "content" / "Aspose.Blog"
+
+_content_override = os.environ.get("BLOG_CONTENT_DIR")
+CONTENT_DIR     = Path(_content_override) if _content_override else REPO_ROOT / "aspose-blog" / "content" / "Aspose.Blog"
+
 SPREADSHEET_ID  = "1LVr91XakURG1CMCGpO4aaloF4d5wLqnZkob8uBI6jOc"
 CREDENTIALS_FILE = SCRIPT_DIR / "credentials.json"
 SCOPES          = ["https://www.googleapis.com/auth/spreadsheets"]
+
+# File lang code → URL lang prefix (when they differ by convention)
+LANG_URL_ALIASES = {
+    "zh-hant": "zh-tw",  # Traditional Chinese files use zh-tw in URLs
+}
 
 # ── Frontmatter ───────────────────────────────────────────────────────────────
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---", re.DOTALL)
@@ -63,15 +75,19 @@ def slug_from_folder(post_folder: str) -> str:
 
 # ── Validators ────────────────────────────────────────────────────────────────
 def make_issue(product, post_folder, rel_path, lang, error_type, current_url, expected_url, notes=""):
+    redirect = ""
+    if current_url and expected_url and current_url != expected_url:
+        redirect = f'"{current_url}": "https://blog.aspose.com{expected_url}"'
     return {
-        "product":      product,
-        "post_folder":  post_folder,
-        "file":         rel_path,
-        "lang":         lang,
-        "error_type":   error_type,
-        "current_url":  current_url,
-        "expected_url": expected_url,
-        "notes":        notes,
+        "product":       product,
+        "post_folder":   post_folder,
+        "file":          rel_path,
+        "lang":          lang,
+        "error_type":    error_type,
+        "current_url":   current_url,
+        "expected_url":  expected_url,
+        "notes":         notes,
+        "redirect_rule": redirect,
     }
 
 
@@ -81,7 +97,7 @@ def validate_english(file_path: Path, product: str, post_folder: str) -> tuple[l
     normalized_english_url is None if url is missing.
     """
     fm = parse_frontmatter(file_path)
-    rel = str(file_path.relative_to(REPO_ROOT))
+    rel = str(file_path.relative_to(CONTENT_DIR))
     url = get_url(fm)
     issues = []
 
@@ -111,7 +127,7 @@ def validate_english(file_path: Path, product: str, post_folder: str) -> tuple[l
             "URL_TOO_SHORT", url, f"/{product}/{slug}/",
             f"Expected 2 path segments, got {len(parts)}"
         ))
-        return issues, normalized
+        return issues, None
 
     # Detect date-based URL: /YYYY/MM/DD/slug/
     date_match = DATE_URL_RE.match(normalized.rstrip("/") + "/")
@@ -128,7 +144,7 @@ def validate_english(file_path: Path, product: str, post_folder: str) -> tuple[l
         return issues, normalized
 
     if parts[0] != product:
-        expected = f"/{product}/{'/'.join(parts[1:])}/"
+        expected = f"/{product}/{slug}/"
         issues.append(make_issue(
             product, post_folder, rel, "en",
             "WRONG_PRODUCT", url, expected,
@@ -143,14 +159,15 @@ def validate_translated(file_path: Path, product: str, post_folder: str, lang: s
     english_url: normalized English URL string, or None if English base is missing.
     """
     fm = parse_frontmatter(file_path)
-    rel = str(file_path.relative_to(REPO_ROOT))
+    rel = str(file_path.relative_to(CONTENT_DIR))
     url = get_url(fm)
     issues = []
     slug = slug_from_folder(post_folder)
+    url_lang = LANG_URL_ALIASES.get(lang, lang)  # URL prefix may differ from file lang
 
     expected_fallback = (
-        f"/{lang}{english_url}" if english_url
-        else f"/{lang}/{product}/{slug}/"
+        f"/{url_lang}{english_url}" if english_url
+        else f"/{url_lang}/{product}/{slug}/"
     )
 
     if not url:
@@ -184,23 +201,23 @@ def validate_translated(file_path: Path, product: str, post_folder: str, lang: s
     reported_errors = set()
 
     # Check lang prefix
-    if lang_in_url != lang:
+    if lang_in_url != url_lang:
         issues.append(make_issue(
             product, post_folder, rel, lang,
             "LANG_CODE_MISMATCH", url,
-            f"/{lang}/{'/'.join(parts[1:])}/",
-            f"URL has '/{lang_in_url}/' but file lang is '{lang}'"
+            f"/{url_lang}/{product}/{slug}/",
+            f"URL has '/{lang_in_url}/' but expected '/{url_lang}/'"
         ))
         reported_errors.add("LANG_CODE_MISMATCH")
 
     # Detect date-based URL: /lang/YYYY/MM/DD/slug/
     if re.match(r"^\d{4}$", prod_in_url):
         date_slug = parts[-1] if parts[-1] else slug
-        expected = f"/{lang}/{product}/{date_slug}/"
+        expected = f"/{url_lang}/{product}/{date_slug}/"
         issues.append(make_issue(
             product, post_folder, rel, lang,
             "DATE_BASED_URL", url, expected,
-            f"URL uses date-based format instead of /{lang}/{product}/slug/"
+            f"URL uses date-based format instead of /{url_lang}/{product}/slug/"
         ))
         reported_errors.add("DATE_BASED_URL")
     elif prod_in_url != product:
@@ -208,14 +225,14 @@ def validate_translated(file_path: Path, product: str, post_folder: str, lang: s
         issues.append(make_issue(
             product, post_folder, rel, lang,
             "WRONG_PRODUCT", url,
-            f"/{lang}/{product}/{'/'.join(parts[2:])}/",
+            f"/{url_lang}/{product}/{slug}/",
             f"URL has '/{prod_in_url}/' but post is under '/{product}/'"
         ))
         reported_errors.add("WRONG_PRODUCT")
 
     # Check full match against English base URL
     if english_url:
-        expected_translated = f"/{lang}{english_url}"
+        expected_translated = f"/{url_lang}{english_url}"
         if normalized != expected_translated:
             # Only report if not already explained by other errors above
             if not reported_errors:
@@ -266,7 +283,7 @@ def scan_all() -> tuple[list, dict]:
                     fm = parse_frontmatter(md_file)
                     all_issues.append(make_issue(
                         product, post_folder,
-                        str(md_file.relative_to(REPO_ROOT)),
+                        str(md_file.relative_to(CONTENT_DIR)),
                         lang,
                         "NO_ENGLISH_BASE",
                         get_url(fm), "",
@@ -316,11 +333,12 @@ def write_to_sheets(issues: list, stats: dict):
             pass
 
     # ── Tab 1: All Issues ─────────────────────────────────────────────────────
+    issues = sorted(issues, key=lambda x: x["error_type"])
     print(f"\nCreating sheet '{tab_issues}'...", flush=True)
-    ws = spreadsheet.add_worksheet(title=tab_issues, rows=len(issues) + 2, cols=8)
+    ws = spreadsheet.add_worksheet(title=tab_issues, rows=len(issues) + 2, cols=9, index=0)
 
     headers = ["#", "Product", "Post Folder", "Language", "Error Type",
-               "Current URL", "Expected URL", "Notes"]
+               "Current URL", "Expected URL", "Notes", "Redirect Rule"]
     rows = [headers]
     for i, issue in enumerate(issues, 1):
         rows.append([
@@ -332,6 +350,7 @@ def write_to_sheets(issues: list, stats: dict):
             issue["current_url"],
             issue["expected_url"],
             issue["notes"],
+            issue["redirect_rule"],
         ])
 
     ws.update(rows, "A1")
@@ -340,6 +359,10 @@ def write_to_sheets(issues: list, stats: dict):
     ws.format("A1:H1", {
         "textFormat": {"bold": True, "foregroundColor": HEADER_FG},
         "backgroundColor": HEADER_COLOR,
+    })
+    ws.format("I1", {
+        "textFormat": {"bold": True, "foregroundColor": {"red": 0.4, "green": 0.3, "blue": 0.0}},
+        "backgroundColor": {"red": 1.0, "green": 0.95, "blue": 0.7},
     })
 
     # Freeze header row
@@ -377,9 +400,21 @@ def write_to_sheets(issues: list, stats: dict):
         for i in range(0, len(color_requests), 1000):
             spreadsheet.batch_update({"requests": color_requests[i:i+1000]})
 
+    # Auto-resize all columns to fit content
+    spreadsheet.batch_update({"requests": [{
+        "autoResizeDimensions": {
+            "dimensions": {
+                "sheetId": ws.id,
+                "dimension": "COLUMNS",
+                "startIndex": 0,
+                "endIndex": 9,
+            }
+        }
+    }]})
+
     # ── Tab 2: Summary ────────────────────────────────────────────────────────
     print(f"Creating sheet '{tab_summary}'...", flush=True)
-    ws2 = spreadsheet.add_worksheet(title=tab_summary, rows=80, cols=4)
+    ws2 = spreadsheet.add_worksheet(title=tab_summary, rows=80, cols=4, index=0)
 
     error_counts   = Counter(i["error_type"] for i in issues)
     product_counts = Counter(i["product"] for i in issues)
@@ -424,6 +459,17 @@ def write_to_sheets(issues: list, stats: dict):
         "textFormat": {"bold": True, "foregroundColor": HEADER_FG},
         "backgroundColor": HEADER_COLOR,
     })
+
+    spreadsheet.batch_update({"requests": [{
+        "autoResizeDimensions": {
+            "dimensions": {
+                "sheetId": ws2.id,
+                "dimension": "COLUMNS",
+                "startIndex": 0,
+                "endIndex": 4,
+            }
+        }
+    }]})
 
     print(f"\nDone! Open spreadsheet:")
     print(f"  https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}")

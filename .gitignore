@@ -26,3 +26,9 @@ Thumbs.db
 
 # Python virtual environments
 **/venv/
+
+# Python cache and test artifacts
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/.pytest_cache/
