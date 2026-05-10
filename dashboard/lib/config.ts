@@ -7,13 +7,13 @@ export const DOMAINS: Record<string, string> = {
   "blog.conholdate.cloud": process.env.SHEET_ID_CONHOLDATE_CLOUD ?? "",
 };
 
-export const DOMAIN_LABELS: Record<string, { label: string; color: string; brandColor: string }> = {
-  "blog.aspose.com":        { label: "Aspose",            color: "bg-blue-600",   brandColor: "#3387CC" },
-  "blog.aspose.cloud":      { label: "Aspose Cloud",      color: "bg-blue-400",   brandColor: "#5BA3DC" },
-  "blog.groupdocs.com":     { label: "GroupDocs",         color: "bg-green-600",  brandColor: "#34A853" },
-  "blog.groupdocs.cloud":   { label: "GroupDocs Cloud",   color: "bg-green-400",  brandColor: "#5DC274" },
-  "blog.conholdate.com":    { label: "Conholdate",        color: "bg-orange-500", brandColor: "#E8702A" },
-  "blog.conholdate.cloud":  { label: "Conholdate Cloud",  color: "bg-purple-400", brandColor: "#7B3FBE" },
+export const DOMAIN_LABELS: Record<string, { label: string; color: string; brandColor: string; logo: string }> = {
+  "blog.aspose.com":        { label: "Aspose",            color: "bg-blue-600",   brandColor: "#3387CC", logo: "/logos/aspose.png"      },
+  "blog.aspose.cloud":      { label: "Aspose Cloud",      color: "bg-blue-400",   brandColor: "#5BA3DC", logo: "/logos/aspose.png"      },
+  "blog.groupdocs.com":     { label: "GroupDocs",         color: "bg-green-600",  brandColor: "#34A853", logo: "/logos/groupdocs.png"   },
+  "blog.groupdocs.cloud":   { label: "GroupDocs Cloud",   color: "bg-green-400",  brandColor: "#5DC274", logo: "/logos/groupdocs.png"   },
+  "blog.conholdate.com":    { label: "Conholdate",        color: "bg-orange-500", brandColor: "#E8702A", logo: "/logos/conholdate.png"  },
+  "blog.conholdate.cloud":  { label: "Conholdate Cloud",  color: "bg-purple-400", brandColor: "#7B3FBE", logo: "/logos/conholdate.png"  },
 };
 
 export const STATUS_OPTIONS = ["ok", "pending", "rejected"] as const;

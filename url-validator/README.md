@@ -1,8 +1,8 @@
 # URL Validator
 
-> **Status: Development Phase** — This tool is not yet ready for production use. Behaviour, configuration, and output format may change without notice.
-
 Scans all blog post frontmatter for URL issues and reports findings to a Google Spreadsheet.
+
+The validation logic is also integrated into the **Blog Team Dashboard** UI — use the dashboard for interactive runs, or this CLI for scripted/offline use.
 
 Currently covers **blog.aspose.com** only. Support for other blog domains (GroupDocs, Conholdate, etc.) is planned.
 
@@ -30,44 +30,24 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-**2. Add Google service account credentials**
+**2. Configure `.env`**
 
-Copy the example file and fill in your real service account key:
-
-```bash
-cp credentials.example.json credentials.json
-```
-
-Then edit `credentials.json` with values from your Google Cloud service account JSON key file.
-
-If you don't have a service account yet:
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create or select a project → Enable **Google Sheets API**
-3. IAM & Admin → Service Accounts → Create → Add key → JSON
-4. Save the downloaded file as `credentials.json` in this folder
-
-**3. Share the spreadsheet**
-
-Share the target Google Spreadsheet with the service account email (`client_email` in `credentials.json`), giving it **Editor** access.
-
-**4. Configure paths**
-
-Create a `.env` file inside the `url-validator/` folder:
-
-```bash
-cp .env.example .env   # or create it manually
-```
-
-Set these variables:
+Create a `.env` file inside `url-validator/`:
 
 ```env
 # Absolute path to the blog content directory
-# (the folder that contains product sub-folders like "words/", "cells/", etc.)
 BLOG_CONTENT_DIR=/path/to/aspose-blog/content/Aspose.Blog
 
-# Google Spreadsheet ID (from the sheet URL)
-SPREADSHEET_ID=your-spreadsheet-id-here
+# Shared service account — same JSON used by the dashboard
+GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account","client_email":"...","private_key":"..."}
+
+# Google Spreadsheet ID for URL validation results
+URL_VALIDATOR_SHEET_ID=your-spreadsheet-id-here
 ```
+
+The tool uses the same `GOOGLE_SERVICE_ACCOUNT_JSON` env var as the dashboard — paste the same JSON value from `dashboard/.env.local`. The spreadsheet must be shared with that service account email (`client_email` in the JSON) with **Editor** access.
+
+As a fallback, credentials can still be placed in `credentials.json` (see `credentials.example.json`).
 
 If `BLOG_CONTENT_DIR` is not set, the script defaults to looking two levels up from its own directory (`url-validator/` → `blog-team-tools/` → repo root), then `aspose-blog/content/Aspose.Blog` relative to that root. This works if the blog content repo is checked out alongside `blog-team-tools/`.
 
@@ -79,18 +59,18 @@ python3 main.py
 ```
 
 The script will:
-1. Scan all product and post directories under `CONTENT_DIR`
+1. Scan all product and post directories under `BLOG_CONTENT_DIR`
 2. Print progress per product to the terminal
 3. Create two new tabs in the spreadsheet named after today's date:
-   - **`YYYY-MM-DD`** — full issue list with color-coded error types
+   - **`YYYY-MM-DD`** — full issue list with colour-coded error types
    - **`YYYY-MM-DD – Summary`** — counts by error type, product, and language
 
 ## Output example
 
 ```
 Scanning posts...
-  ✓ total (312 posts)
   ✓ words (198 posts)
+  ✓ cells (87 posts)
   ...
 
 Scan complete:
@@ -105,6 +85,15 @@ Scan complete:
   ...
 ```
 
+## Tests
+
+```bash
+source venv/bin/activate
+python3 -m pytest test_main.py -v
+```
+
+70 tests covering all validation rules, edge cases, and filesystem scanning.
+
 ## Security
 
-`credentials.json` is listed in `.gitignore` and will never be committed. Only `credentials.example.json` (with placeholder values) is tracked in git.
+Both `.env` and `credentials.json` are listed in `.gitignore` and will never be committed. Only `credentials.example.json` (with placeholder values) is tracked in git.

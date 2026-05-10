@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { DOMAINS, DOMAIN_LABELS } from "@/lib/config";
 import { Loader2, ExternalLink, Menu, X } from "lucide-react";
 import { CardGrid } from "./CardGrid";
 import { Sidebar, type Section } from "@/components/dashboard/Sidebar";
 import { Overview } from "@/components/dashboard/Overview";
 import { WorkInProgress } from "@/components/dashboard/WorkInProgress";
+import { UrlValidator } from "@/components/dashboard/UrlValidator";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const DOMAIN_LIST = Object.keys(DOMAINS);
 const ALL_MISSING_TAB = "All Missing Topics";
@@ -24,7 +27,6 @@ export function AppShell() {
   const [rowsLoading, setRowsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch tabs whenever domain changes (only for keywords section)
   useEffect(() => {
     if (activeSection !== "keywords") return;
     let cancelled = false;
@@ -55,7 +57,6 @@ export function AppShell() {
     return () => { cancelled = true; };
   }, [activeDomain, activeSection]);
 
-  // Fetch rows whenever tab changes (keywords only)
   useEffect(() => {
     if (activeSection !== "keywords") return;
     if (!activeTab || activeTab === ALL_MISSING_TAB) return;
@@ -65,9 +66,7 @@ export function AppShell() {
     setRowsLoading(true);
     setError(null);
 
-    fetch(
-      `/api/sheets/${encodeURIComponent(activeDomain)}/${encodeURIComponent(activeTab)}`
-    )
+    fetch(`/api/sheets/${encodeURIComponent(activeDomain)}/${encodeURIComponent(activeTab)}`)
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
@@ -83,7 +82,6 @@ export function AppShell() {
   function handleSectionSelect(section: Section) {
     setActiveSection(section);
     setSidebarOpen(false);
-    // Reset keywords state when switching away
     if (section !== "keywords") {
       setTabs([]);
       setActiveTab("");
@@ -92,8 +90,17 @@ export function AppShell() {
     }
   }
 
+  const mobileSectionLabels: Record<Section, string> = {
+    overview:          "Overview",
+    keywords:          "Keyword Agent",
+    translations:      "Translation Agent",
+    optimization:      "Optimization Agent",
+    "post-generation": "Post Generation Agent",
+    "url-validator":   "URL Validator",
+  };
+
   return (
-    <div className="flex min-h-screen bg-slate-800">
+    <div className="flex min-h-screen bg-slate-100 dark:bg-slate-800">
       {/* Desktop sidebar */}
       <Sidebar activeSection={activeSection} onSelect={handleSectionSelect} />
 
@@ -101,37 +108,27 @@ export function AppShell() {
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
-          <aside className="relative flex flex-col w-56 h-full bg-slate-900 border-r border-slate-700">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
-              <span className="text-sm font-semibold text-white">Menu</span>
-              <button onClick={() => setSidebarOpen(false)} className="text-slate-400 hover:text-white">
+          <aside className="relative flex flex-col w-56 h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+              <span className="text-sm font-semibold text-slate-900 dark:text-white">Menu</span>
+              <button onClick={() => setSidebarOpen(false)} className="text-slate-400 hover:text-slate-700 dark:hover:text-white">
                 <X className="h-4 w-4" />
               </button>
             </div>
             <nav className="flex flex-col pt-2 pb-4">
-              {(["overview", "keywords", "translations", "optimization", "post-generation", "url-validator"] as Section[]).map((key) => {
-                const labels: Record<Section, string> = {
-                  overview:          "Overview",
-                  keywords:          "Keyword Agent",
-                  translations:      "Translation Agent",
-                  optimization:      "Optimization Agent",
-                  "post-generation": "Post Generation Agent",
-                  "url-validator":   "URL Validator",
-                };
-                return (
-                  <button
-                    key={key}
-                    onClick={() => handleSectionSelect(key)}
-                    className={`px-4 py-2.5 text-left text-[13px] font-medium transition-colors border-l-2 ${
-                      key === activeSection
-                        ? "border-white bg-slate-800 text-white"
-                        : "border-transparent text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    {labels[key]}
-                  </button>
-                );
-              })}
+              {(Object.keys(mobileSectionLabels) as Section[]).map((key) => (
+                <button
+                  key={key}
+                  onClick={() => handleSectionSelect(key)}
+                  className={`px-4 py-2.5 text-left text-[13px] font-medium transition-colors border-l-2 ${
+                    key === activeSection
+                      ? "border-indigo-600 bg-indigo-50 text-indigo-700 dark:border-white dark:bg-slate-800 dark:text-white"
+                      : "border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+                  }`}
+                >
+                  {mobileSectionLabels[key]}
+                </button>
+              ))}
             </nav>
           </aside>
         </div>
@@ -140,21 +137,22 @@ export function AppShell() {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="bg-slate-900 border-b border-slate-700 shadow-lg sticky top-0 z-10">
-          <div className="px-3 md:px-6 py-3 flex items-center gap-3 md:gap-6">
+        <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 shadow-sm sticky top-0 z-10">
+          <div className="px-3 md:px-4 py-2.5 flex items-center gap-3">
             {/* Mobile hamburger */}
             <button
-              className="md:hidden text-slate-400 hover:text-white"
+              className="md:hidden text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
               onClick={() => setSidebarOpen(true)}
             >
               <Menu className="h-5 w-5" />
             </button>
 
-            <span className="text-[15px] font-semibold tracking-tight text-white shrink-0">
+            <span className="text-[15px] font-bold tracking-tight text-slate-900 dark:text-white shrink-0">
               Blog Team
             </span>
 
-            <nav className="flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+            {/* Domain pills */}
+            <nav className="flex gap-1.5 overflow-x-auto scrollbar-none flex-1 py-0.5">
               {DOMAIN_LIST.map((domain) => {
                 const meta = DOMAIN_LABELS[domain];
                 const isActive = domain === activeDomain;
@@ -162,23 +160,34 @@ export function AppShell() {
                   <button
                     key={domain}
                     onClick={() => setActiveDomain(domain)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-medium transition-all border ${
+                    className={`flex items-center gap-1.5 pl-1.5 pr-3 py-1 rounded-full text-[12px] font-medium transition-all border shrink-0 ${
                       isActive
-                        ? "bg-white text-slate-900 border-white"
-                        : "bg-transparent text-slate-400 border-slate-600 hover:border-slate-400 hover:text-slate-200"
+                        ? "text-white border-transparent shadow-sm"
+                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50 dark:bg-transparent dark:text-slate-400 dark:border-slate-600 dark:hover:border-slate-400 dark:hover:text-slate-200"
                     }`}
+                    style={isActive ? { backgroundColor: meta.brandColor } : undefined}
                   >
-                    <span className={`h-2 w-2 rounded-full ${meta.color}`} />
+                    <span className="h-5 w-5 rounded-full overflow-hidden shrink-0 bg-white/20 flex items-center justify-center">
+                      <Image
+                        src={meta.logo}
+                        alt={meta.label}
+                        width={20}
+                        height={20}
+                        className="object-contain"
+                      />
+                    </span>
                     {meta.label}
                   </button>
                 );
               })}
             </nav>
+
+            <ThemeToggle />
           </div>
 
           {/* Product tab bar — keywords only */}
           {activeSection === "keywords" && tabs.length > 0 && (
-            <div className="px-3 md:px-6 flex gap-0 overflow-x-auto border-t border-slate-700 items-center scrollbar-none">
+            <div className="px-3 md:px-4 flex gap-0 overflow-x-auto border-t border-slate-100 dark:border-slate-700 items-center scrollbar-none">
               {tabs.filter((t) => t !== ALL_MISSING_TAB).map((tab) => {
                 const isActive = tab === activeTab;
                 return (
@@ -187,8 +196,8 @@ export function AppShell() {
                     onClick={() => setActiveTab(tab)}
                     className={`px-4 py-2 text-[13px] font-medium border-b-2 transition-colors whitespace-nowrap ${
                       isActive
-                        ? "border-white text-white"
-                        : "border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-500"
+                        ? "border-indigo-600 text-indigo-700 dark:border-white dark:text-white"
+                        : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-500"
                     }`}
                   >
                     {tab}
@@ -198,13 +207,13 @@ export function AppShell() {
 
               {tabs.includes(ALL_MISSING_TAB) && (
                 <>
-                  <div className="mx-3 self-stretch w-px bg-slate-600 my-1.5" />
+                  <div className="mx-3 self-stretch w-px bg-slate-200 dark:bg-slate-600 my-1.5" />
                   <button
                     onClick={() => setActiveTab(ALL_MISSING_TAB)}
                     className={`px-4 py-2 text-[13px] font-medium border-b-2 transition-colors whitespace-nowrap ${
                       activeTab === ALL_MISSING_TAB
-                        ? "border-amber-400 text-amber-400"
-                        : "border-transparent text-amber-500/70 hover:text-amber-400 hover:border-amber-500"
+                        ? "border-amber-500 text-amber-600 dark:border-amber-400 dark:text-amber-400"
+                        : "border-transparent text-amber-500/80 hover:text-amber-600 hover:border-amber-400 dark:text-amber-500/70 dark:hover:text-amber-400 dark:hover:border-amber-500"
                     }`}
                   >
                     {ALL_MISSING_TAB}
@@ -217,7 +226,7 @@ export function AppShell() {
                   href={sheetUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="ml-auto flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-slate-500 hover:text-green-400 whitespace-nowrap transition-colors"
+                  className="ml-auto flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-slate-400 hover:text-green-600 dark:text-slate-500 dark:hover:text-green-400 whitespace-nowrap transition-colors"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                   Open Sheet
@@ -236,7 +245,7 @@ export function AppShell() {
           {activeSection === "keywords" && (
             <div className="px-3 md:px-6 py-4 md:py-5">
               {error && (
-                <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 mb-4">
+                <div className="rounded-lg bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800 p-4 text-sm text-red-700 dark:text-red-300 mb-4">
                   {error}
                 </div>
               )}
@@ -244,21 +253,19 @@ export function AppShell() {
               {(tabsLoading || rowsLoading) && (
                 <div className="flex items-center justify-center py-24 gap-2 text-slate-400">
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  <span className="text-sm">
-                    {tabsLoading ? "Loading tabs…" : "Loading rows…"}
-                  </span>
+                  <span className="text-sm">{tabsLoading ? "Loading tabs…" : "Loading rows…"}</span>
                 </div>
               )}
 
               {!tabsLoading && activeTab === ALL_MISSING_TAB && (
                 <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
                   <span className="text-4xl">🗂️</span>
-                  <p className="text-base font-medium text-slate-300">
+                  <p className="text-base font-medium text-slate-700 dark:text-slate-300">
                     Current view does not support <span className="font-semibold">All Missing Topics</span>
                   </p>
                   <p className="text-sm text-slate-500">Open the sheet directly to review this tab.</p>
                   {sheetUrl && (
-                    <a href={sheetUrl} target="_blank" rel="noopener noreferrer" className="mt-1 text-sm text-blue-500 hover:underline flex items-center gap-1">
+                    <a href={sheetUrl} target="_blank" rel="noopener noreferrer" className="mt-1 text-sm text-indigo-600 dark:text-blue-400 hover:underline flex items-center gap-1">
                       <ExternalLink className="h-3.5 w-3.5" /> Open in Google Sheets
                     </a>
                   )}
@@ -270,14 +277,18 @@ export function AppShell() {
               )}
 
               {!tabsLoading && !rowsLoading && tabs.length === 0 && !error && (
-                <div className="text-center py-24 text-gray-400 text-sm">
+                <div className="text-center py-24 text-slate-400 text-sm">
                   No product tabs found in this sheet.
                 </div>
               )}
             </div>
           )}
 
-          {activeSection !== "overview" && activeSection !== "keywords" && (
+          {activeSection === "url-validator" && (
+            <UrlValidator domain={activeDomain} />
+          )}
+
+          {activeSection !== "overview" && activeSection !== "keywords" && activeSection !== "url-validator" && (
             <WorkInProgress section={activeSection} domain={activeDomain} />
           )}
         </main>

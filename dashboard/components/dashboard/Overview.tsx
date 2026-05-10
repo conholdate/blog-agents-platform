@@ -17,30 +17,52 @@ interface OverviewProps {
   onNavigate: (section: Section) => void;
 }
 
-const WIP_CARDS: { section: Section; label: string; icon: React.ComponentType<{ className?: string }>; description: string }[] = [
+const WIP_CARDS: {
+  section: Section;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+  accentLight: string;
+  iconBg: string;
+  iconColor: string;
+  ready?: boolean;
+}[] = [
   {
     section: "translations",
     label: "Translation Agent",
     icon: Languages,
     description: "Track translation status per product and language",
+    accentLight: "border-l-sky-500",
+    iconBg: "bg-sky-50 dark:bg-slate-600/70",
+    iconColor: "text-sky-600 dark:text-slate-300",
   },
   {
     section: "optimization",
     label: "Optimization Agent",
     icon: TrendingUp,
     description: "See which articles are queued for SEO optimization",
+    accentLight: "border-l-emerald-500",
+    iconBg: "bg-emerald-50 dark:bg-slate-600/70",
+    iconColor: "text-emerald-600 dark:text-slate-300",
   },
   {
     section: "post-generation",
     label: "Post Generation Agent",
     icon: Bot,
     description: "Generate full blog post drafts from keyword briefs using AI agents",
+    accentLight: "border-l-rose-500",
+    iconBg: "bg-rose-50 dark:bg-slate-600/70",
+    iconColor: "text-rose-600 dark:text-slate-300",
   },
   {
     section: "url-validator",
     label: "URL Validator",
     icon: Link,
     description: "Run URL validation scans and view reported issues",
+    accentLight: "border-l-orange-500",
+    iconBg: "bg-orange-50 dark:bg-slate-600/70",
+    iconColor: "text-orange-600 dark:text-slate-300",
+    ready: true,
   },
 ];
 
@@ -75,21 +97,22 @@ export function Overview({ domain, onNavigate }: OverviewProps) {
 
   return (
     <div className="p-4 md:p-6 max-w-5xl">
-      <h1 className="text-xl font-semibold text-white mb-5">Overview</h1>
+      <h1 className="text-xl font-semibold text-slate-900 dark:text-white mb-5">Overview</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Keyword Agent card — live data */}
-        <div className="bg-slate-700/50 border border-slate-600 rounded-xl p-5 flex flex-col gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+
+        {/* Keyword Agent card */}
+        <div className="bg-white border border-slate-200 border-l-4 border-l-indigo-500 dark:bg-slate-700/50 dark:border-slate-600 dark:border-l-indigo-500 rounded-xl p-5 flex flex-col gap-4 shadow-sm dark:shadow-none">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="rounded-lg bg-slate-600 p-2">
-                <BookMarked className="h-4 w-4 text-slate-200" />
+              <div className="rounded-lg bg-indigo-50 dark:bg-slate-600 p-2">
+                <BookMarked className="h-4 w-4 text-indigo-600 dark:text-slate-200" />
               </div>
-              <span className="text-[15px] font-semibold text-white">Keyword Agent</span>
+              <span className="text-[15px] font-semibold text-slate-900 dark:text-white">Keyword Agent</span>
             </div>
             <button
               onClick={() => onNavigate("keywords")}
-              className="text-[12px] text-blue-400 hover:text-blue-300 transition-colors"
+              className="text-[12px] text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors font-medium"
             >
               View →
             </button>
@@ -102,32 +125,38 @@ export function Overview({ domain, onNavigate }: OverviewProps) {
             </div>
           )}
 
-          {error && (
-            <p className="text-sm text-red-400">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-500 dark:text-red-400">{error}</p>}
 
           {!loading && totals && (
             <>
               <div className="grid grid-cols-3 gap-3">
-                <StatBox label="Pending" value={totals.pending} color="text-amber-400" />
-                <StatBox label="OK" value={totals.ok} color="text-green-400" />
-                <StatBox label="Rejected" value={totals.rejected} color="text-red-400" />
+                <StatBox label="Pending" value={totals.pending}
+                  valueColor="text-amber-600 dark:text-amber-400"
+                  bgClass="bg-amber-50 dark:bg-slate-800/60"
+                  labelColor="text-amber-500/80 dark:text-slate-400" />
+                <StatBox label="OK" value={totals.ok}
+                  valueColor="text-green-700 dark:text-green-400"
+                  bgClass="bg-green-50 dark:bg-slate-800/60"
+                  labelColor="text-green-600/70 dark:text-slate-400" />
+                <StatBox label="Rejected" value={totals.rejected}
+                  valueColor="text-red-600 dark:text-red-400"
+                  bgClass="bg-red-50 dark:bg-slate-800/60"
+                  labelColor="text-red-400/80 dark:text-slate-400" />
               </div>
 
-              <div className="flex flex-col gap-1">
+              {/* Product chips — horizontal, space-efficient */}
+              <div className="flex flex-wrap gap-1.5">
                 {summary!.map((tab) => (
-                  <div key={tab.name} className="flex items-center gap-2 text-[12px]">
-                    <span className="text-slate-400 w-24 truncate shrink-0">{tab.name}</span>
-                    <div className="flex-1 bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                      {tab.total > 0 && (
-                        <div
-                          className="h-full bg-green-500 rounded-full"
-                          style={{ width: `${Math.round((tab.ok / tab.total) * 100)}%` }}
-                        />
-                      )}
-                    </div>
-                    <span className="text-slate-500 shrink-0">{tab.ok}/{tab.total}</span>
-                  </div>
+                  <span
+                    key={tab.name}
+                    className="flex items-center gap-1 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-[11px]"
+                  >
+                    <span className="text-slate-600 dark:text-slate-300 font-medium">{tab.name}</span>
+                    <span className="text-slate-300 dark:text-slate-600">·</span>
+                    <span className="text-green-600 dark:text-green-400 font-semibold">{tab.ok}</span>
+                    <span className="text-slate-300 dark:text-slate-600">/</span>
+                    <span className="text-slate-400 dark:text-slate-500">{tab.total}</span>
+                  </span>
                 ))}
               </div>
             </>
@@ -135,33 +164,47 @@ export function Overview({ domain, onNavigate }: OverviewProps) {
         </div>
 
         {/* WIP cards */}
-        {WIP_CARDS.map(({ section, label, icon: Icon, description }) => (
+        {WIP_CARDS.map(({ section, label, icon: Icon, description, accentLight, iconBg, iconColor, ready }) => (
           <div
             key={section}
-            className="bg-slate-700/30 border border-slate-600/60 rounded-xl p-5 flex flex-col gap-3 opacity-70"
+            className={`bg-white border border-slate-200 border-l-4 ${accentLight} dark:bg-slate-700/30 dark:border-slate-600/60 rounded-xl p-5 flex flex-col gap-3 shadow-sm dark:shadow-none ${ready ? "" : "opacity-80"}`}
           >
             <div className="flex items-center gap-2.5">
-              <div className="rounded-lg bg-slate-600/70 p-2">
-                <Icon className="h-4 w-4 text-slate-300" />
+              <div className={`rounded-lg ${iconBg} p-2`}>
+                <Icon className={`h-4 w-4 ${iconColor}`} />
               </div>
-              <span className="text-[15px] font-semibold text-slate-300">{label}</span>
-              <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                Coming Soon
-              </span>
+              <span className={`text-[15px] font-semibold ${ready ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}>{label}</span>
+              {ready ? (
+                <button
+                  onClick={() => onNavigate(section)}
+                  className="ml-auto text-[12px] text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 transition-colors font-medium"
+                >
+                  View →
+                </button>
+              ) : (
+                <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30">
+                  Coming Soon
+                </span>
+              )}
             </div>
-            <p className="text-sm text-slate-500">{description}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{description}</p>
           </div>
         ))}
+
       </div>
     </div>
   );
 }
 
-function StatBox({ label, value, color }: { label: string; value: number; color: string }) {
+function StatBox({
+  label, value, valueColor, bgClass, labelColor,
+}: {
+  label: string; value: number; valueColor: string; bgClass: string; labelColor: string;
+}) {
   return (
-    <div className="bg-slate-800/60 rounded-lg p-3 text-center">
-      <div className={`text-2xl font-bold ${color}`}>{value}</div>
-      <div className="text-[11px] text-slate-400 mt-0.5">{label}</div>
+    <div className={`${bgClass} rounded-lg p-3 text-center`}>
+      <div className={`text-2xl font-bold ${valueColor}`}>{value}</div>
+      <div className={`text-[11px] mt-0.5 font-medium ${labelColor}`}>{label}</div>
     </div>
   );
 }

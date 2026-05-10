@@ -5,11 +5,12 @@ Validates frontmatter URLs and reports issues to Google Sheets.
 
 Setup:
   1. pip install -r requirements.txt
-  2. Place your Google service account credentials.json in this folder
-  3. Share the target spreadsheet with the service account email
+  2. Set GOOGLE_SERVICE_ACCOUNT_JSON in url-validator/.env (same key as the dashboard)
+  3. Set URL_VALIDATOR_SHEET_ID in url-validator/.env
   4. Run: python3 main.py
 """
 
+import json
 import re
 import sys
 from collections import Counter, defaultdict
@@ -31,9 +32,17 @@ REPO_ROOT       = SCRIPT_DIR.parent.parent
 _content_override = os.environ.get("BLOG_CONTENT_DIR")
 CONTENT_DIR     = Path(_content_override) if _content_override else REPO_ROOT / "aspose-blog" / "content" / "Aspose.Blog"
 
-SPREADSHEET_ID  = "1LVr91XakURG1CMCGpO4aaloF4d5wLqnZkob8uBI6jOc"
+SPREADSHEET_ID   = os.environ.get("URL_VALIDATOR_SHEET_ID", "1LVr91XakURG1CMCGpO4aaloF4d5wLqnZkob8uBI6jOc")
 CREDENTIALS_FILE = SCRIPT_DIR / "credentials.json"
-SCOPES          = ["https://www.googleapis.com/auth/spreadsheets"]
+SCOPES           = ["https://www.googleapis.com/auth/spreadsheets"]
+
+
+def _load_credentials() -> Credentials:
+    """Load service account credentials from env var, falling back to credentials.json."""
+    sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+    if sa_json:
+        return Credentials.from_service_account_info(json.loads(sa_json), scopes=SCOPES)
+    return Credentials.from_service_account_file(str(CREDENTIALS_FILE), scopes=SCOPES)
 
 # File lang code → URL lang prefix (when they differ by convention)
 LANG_URL_ALIASES = {
@@ -317,7 +326,7 @@ ERROR_COLORS = {
 
 
 def write_to_sheets(issues: list, stats: dict):
-    creds = Credentials.from_service_account_file(str(CREDENTIALS_FILE), scopes=SCOPES)
+    creds = _load_credentials()
     gc = gspread.authorize(creds)
     spreadsheet = gc.open_by_key(SPREADSHEET_ID)
 
@@ -477,16 +486,17 @@ def write_to_sheets(issues: list, stats: dict):
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 def main():
-    if not CREDENTIALS_FILE.exists():
-        print("ERROR: credentials.json not found.")
-        print(f"Expected at: {CREDENTIALS_FILE}")
+    if not os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON") and not CREDENTIALS_FILE.exists():
+        print("ERROR: Google service account credentials not found.")
         print()
-        print("Setup steps:")
-        print("  1. Go to https://console.cloud.google.com/")
-        print("  2. Create a project → Enable 'Google Sheets API'")
-        print("  3. IAM & Admin → Service Accounts → Create → Download JSON key")
-        print("  4. Save the JSON key as credentials.json in this folder")
-        print("  5. Share the spreadsheet with the service account email")
+        print("Option A (recommended) — set env var in url-validator/.env:")
+        print("  GOOGLE_SERVICE_ACCOUNT_JSON=<paste full JSON on one line>")
+        print()
+        print("Option B — place credentials file:")
+        print(f"  Save the JSON key as: {CREDENTIALS_FILE}")
+        print()
+        print("Share the spreadsheet with the service account email and set:")
+        print("  URL_VALIDATOR_SHEET_ID=<sheet id>  (optional, has default)")
         sys.exit(1)
 
     print(f"Content dir : {CONTENT_DIR}")

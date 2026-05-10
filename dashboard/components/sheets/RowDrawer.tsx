@@ -47,11 +47,9 @@ export function RowDrawer({ row, domain, tab, onSave, onClose }: Props) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
 
-  // Initialise draft from row whenever row changes
   useEffect(() => {
     const initial: Record<string, string> = {};
     EDITABLE_FIELDS.forEach((col) => {
-      // bullets: store as newline-separated for textarea
       if (col.type === "bullets") {
         initial[col.key] = parseItems(row[col.key] ?? "").join("\n");
       } else {
@@ -62,7 +60,6 @@ export function RowDrawer({ row, domain, tab, onSave, onClose }: Props) {
     setSaveError(null);
   }, [row]);
 
-  // Close on Escape
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -74,7 +71,6 @@ export function RowDrawer({ row, domain, tab, onSave, onClose }: Props) {
   async function handleSave() {
     setSaving(true);
     setSaveError(null);
-    // Convert bullets back to pipe-separated before saving
     const toSave: Record<string, string> = {};
     EDITABLE_FIELDS.forEach((col) => {
       if (col.type === "bullets") {
@@ -103,29 +99,26 @@ export function RowDrawer({ row, domain, tab, onSave, onClose }: Props) {
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/20 z-20"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 bg-black/20 z-20" onClick={onClose} />
 
       {/* Drawer */}
       <div
         ref={drawerRef}
-        className="fixed top-0 right-0 h-full w-full md:w-[500px] bg-white shadow-2xl z-30 flex flex-col animate-in slide-in-from-right duration-200"
+        className="fixed top-0 right-0 h-full w-full md:w-[500px] bg-white dark:bg-slate-800 shadow-2xl z-30 flex flex-col animate-in slide-in-from-right duration-200"
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-200 shrink-0">
+        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
           <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-0.5">
+            <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide font-medium mb-0.5">
               {tab} · Row {row.source_sheet_row}
             </p>
-            <h2 className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 leading-snug line-clamp-2">
               {rowTitle}
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="shrink-0 p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition mt-0.5"
+            className="shrink-0 p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition mt-0.5"
           >
             <X className="h-4 w-4" />
           </button>
@@ -136,7 +129,7 @@ export function RowDrawer({ row, domain, tab, onSave, onClose }: Props) {
 
           {/* Read-only section */}
           <section>
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+            <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">
               Info
             </h3>
             <dl className="grid grid-cols-[140px_1fr] gap-x-3 gap-y-2">
@@ -145,25 +138,25 @@ export function RowDrawer({ row, domain, tab, onSave, onClose }: Props) {
                 if (!val) return null;
                 return (
                   <React.Fragment key={key}>
-                    <dt className="text-xs text-gray-400 pt-0.5 truncate">{label}</dt>
-                    <dd className="text-xs text-gray-700 break-words leading-relaxed">{val}</dd>
+                    <dt className="text-xs text-slate-400 dark:text-slate-500 pt-0.5 truncate">{label}</dt>
+                    <dd className="text-xs text-slate-700 dark:text-slate-300 break-words leading-relaxed">{val}</dd>
                   </React.Fragment>
                 );
               })}
             </dl>
           </section>
 
-          <div className="border-t border-gray-100" />
+          <div className="border-t border-slate-100 dark:border-slate-700" />
 
           {/* Editable section */}
           <section className="space-y-4">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
               Edit
             </h3>
 
             {EDITABLE_FIELDS.map((col) => (
               <div key={col.key}>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
                   {col.label}
                 </label>
 
@@ -209,7 +202,7 @@ export function RowDrawer({ row, domain, tab, onSave, onClose }: Props) {
                       rows={col.type === "bullets" ? 4 : 3}
                     />
                     {col.type === "bullets" && (
-                      <p className="text-[11px] text-gray-400 mt-1">
+                      <p className="text-[11px] text-slate-400 mt-1">
                         One item per line
                       </p>
                     )}
@@ -221,9 +214,9 @@ export function RowDrawer({ row, domain, tab, onSave, onClose }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 px-5 py-4 border-t border-gray-200 flex items-center justify-between gap-3">
+        <div className="shrink-0 px-5 py-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
           {saveError && (
-            <span className="text-xs text-red-600 flex-1">{saveError}</span>
+            <span className="text-xs text-red-600 dark:text-red-400 flex-1">{saveError}</span>
           )}
           {!saveError && <span className="flex-1" />}
           <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>

@@ -17,7 +17,6 @@ interface Props {
 
 export function CardGrid({ rows: initialRows, domain, tab }: Props) {
   const [rows, setRows] = useState(initialRows);
-  // Track the original order by _rowIndex to detect dirty state
   const [originalOrder, setOriginalOrder] = useState(() => initialRows.map((r) => r._rowIndex));
   const [savingOrder, setSavingOrder] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
@@ -29,7 +28,6 @@ export function CardGrid({ rows: initialRows, domain, tab }: Props) {
 
   const isDirty = rows.some((r, i) => r._rowIndex !== originalOrder[i]);
 
-  // Restore auth from sessionStorage on mount
   useEffect(() => {
     if (sessionStorage.getItem(SESSION_KEY) === "true") setAuthorized(true);
   }, []);
@@ -55,7 +53,6 @@ export function CardGrid({ rows: initialRows, domain, tab }: Props) {
     setPendingRow(null);
   }
 
-  // Move card instantly in UI — no API call
   function handleMove(index: number, direction: "up" | "down") {
     const targetIndex = direction === "up" ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= rows.length) return;
@@ -67,7 +64,6 @@ export function CardGrid({ rows: initialRows, domain, tab }: Props) {
     setOrderError(null);
   }
 
-  // Discard — restore original order
   function handleDiscard() {
     setRows((prev) => {
       const map = Object.fromEntries(prev.map((r) => [r._rowIndex, r]));
@@ -76,13 +72,10 @@ export function CardGrid({ rows: initialRows, domain, tab }: Props) {
     setOrderError(null);
   }
 
-  // Save — write new order to sheet in one batch
   async function handleSaveOrder() {
     setSavingOrder(true);
     setOrderError(null);
     try {
-      // originalOrder[i] = the sheet row index that lives at position i
-      // rows[i] = the data that should now be at position i
       const writes = rows.map((row, i) => ({
         rowIndex: Number(originalOrder[i]),
         data: row,
@@ -101,7 +94,6 @@ export function CardGrid({ rows: initialRows, domain, tab }: Props) {
         throw new Error(data.error ?? "Save failed");
       }
 
-      // Commit — new order is now the baseline
       setOriginalOrder(rows.map((r) => r._rowIndex));
     } catch (e) {
       setOrderError(e instanceof Error ? e.message : "Save failed");
@@ -157,19 +149,19 @@ export function CardGrid({ rows: initialRows, domain, tab }: Props) {
   return (
     <div className="flex flex-col gap-4">
 
-      {/* ── Top bar ──────────────────────────────────── */}
+      {/* Top bar */}
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-slate-400">{rows.length} entries</span>
+        <span className="text-sm text-slate-500 dark:text-slate-400">{rows.length} entries</span>
 
         {isDirty && (
           <div className="flex items-center gap-2">
             {orderError && (
-              <span className="text-[12px] text-red-400">{orderError}</span>
+              <span className="text-[12px] text-red-500 dark:text-red-400">{orderError}</span>
             )}
             <button
               onClick={handleDiscard}
               disabled={savingOrder}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium text-slate-300 border border-slate-600 hover:border-slate-400 transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium text-slate-600 border border-slate-300 hover:border-slate-500 dark:text-slate-300 dark:border-slate-600 dark:hover:border-slate-400 transition-colors disabled:opacity-50"
             >
               <Undo2 className="h-3.5 w-3.5" />
               Discard
@@ -177,7 +169,7 @@ export function CardGrid({ rows: initialRows, domain, tab }: Props) {
             <button
               onClick={handleSaveOrder}
               disabled={savingOrder}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium bg-white text-slate-900 hover:bg-slate-100 transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-colors disabled:opacity-50"
             >
               {savingOrder
                 ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -190,7 +182,7 @@ export function CardGrid({ rows: initialRows, domain, tab }: Props) {
       </div>
 
       {rows.length === 0 && (
-        <div className="py-16 text-center text-gray-400 text-sm">No rows found.</div>
+        <div className="py-16 text-center text-slate-400 text-sm">No rows found.</div>
       )}
 
       <div className="grid grid-cols-1 gap-5">

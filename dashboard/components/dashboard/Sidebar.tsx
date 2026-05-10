@@ -20,7 +20,7 @@ interface SidebarProps {
 
 export function Sidebar({ activeSection, onSelect }: SidebarProps) {
   return (
-    <aside className="hidden md:flex flex-col w-56 bg-slate-900 border-r border-slate-700 shrink-0">
+    <aside className="hidden md:flex flex-col w-56 bg-white border-r border-slate-200 dark:bg-slate-900 dark:border-slate-700 shrink-0">
       <nav className="flex flex-col pt-2 pb-4">
         {NAV_ITEMS.map(({ key, label, icon: Icon }) => {
           const isActive = key === activeSection;
@@ -30,11 +30,11 @@ export function Sidebar({ activeSection, onSelect }: SidebarProps) {
               onClick={() => onSelect(key)}
               className={`flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium transition-colors border-l-2 ${
                 isActive
-                  ? "border-white bg-slate-800 text-white"
-                  : "border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                  ? "border-indigo-600 bg-indigo-50 text-indigo-700 dark:border-white dark:bg-slate-800 dark:text-white"
+                  : "border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/50"
               }`}
             >
-              <Icon className="h-4 w-4 shrink-0" />
+              <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-indigo-600 dark:text-white" : ""}`} />
               {label}
             </button>
           );
