@@ -10,9 +10,5 @@ export function getUrlValidatorSheetId(domain: string): string | null {
 }
 
 export function getUrlValidatorContentDir(domain: string): string | null {
-  const perDomain = process.env[`URL_VALIDATOR_CONTENT_DIR_${domainToEnvKey(domain)}`];
-  if (perDomain) return perDomain;
-  // Fallback: the legacy BLOG_CONTENT_DIR was set up for blog.aspose.com
-  if (domain === "blog.aspose.com") return process.env.BLOG_CONTENT_DIR ?? null;
-  return null;
+  return process.env[`URL_VALIDATOR_CONTENT_DIR_${domainToEnvKey(domain)}`] ?? null;
 }

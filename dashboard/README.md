@@ -1,6 +1,6 @@
 # Blog Team Dashboard
 
-A multi-tool web dashboard for the blog team at Aspose, GroupDocs, and Conholdate. Manage keyword briefs, translations, SEO optimization, post generation, and URL validation — all from one place, across all 6 brand domains.
+A multi-tool web dashboard for the blog team at Aspose, GroupDocs, and Conholdate. Manage keyword briefs, URL validation, translations, SEO optimization, and post generation — all from one place, across all 6 brand domains.
 
 **Live:** [blog-team-tools.vercel.app](https://blog-team-tools.vercel.app)
 
@@ -9,7 +9,7 @@ A multi-tool web dashboard for the blog team at Aspose, GroupDocs, and Conholdat
 ## Sections
 
 ### Overview
-Landing page for the active domain. Shows a Keyword Agent progress card (pending / ok / rejected counts with a per-product progress bar) and placeholder cards for all other agents. Click **View →** on any card to jump straight to that section.
+Landing page for the active domain. Shows a Keyword Agent progress card (pending / ok / rejected counts with per-product chips) and summary cards for all other tools. Click **View →** on any live card to jump to that section.
 
 ### Keyword Agent
 Review and edit AI-generated keyword briefs pulled from Google Sheets. Each brief is displayed as a collapsible card showing:
@@ -22,7 +22,27 @@ Review and edit AI-generated keyword briefs pulled from Google Sheets. Each brie
 
 Card banners are colour-coded by publishing platform (.NET, Java, Python, C++, Node.js) and fall back to the brand colour when no platform is set.
 
-### Translation Agent / Optimization Agent / Post Generation Agent / URL Validator
+### URL Validator
+Scan blog post frontmatter for URL issues and view colour-coded results. Powered by the same validation logic as the standalone Python CLI.
+
+- **Run Scan** — streams live progress product by product, then writes results to Google Sheets (requires `URL_VALIDATOR_CONTENT_DIR_*` to be set locally)
+- **View Results** — reads the latest scan from Google Sheets; filter by error type using chips; links to the full sheet for 500+ results
+- **Domain-aware** — switching the domain pill at the top automatically switches to that domain's sheet
+
+Error types detected:
+
+| Error | Description |
+|---|---|
+| `MISSING_URL` | No `url` field in frontmatter |
+| `MISSING_TRAILING_SLASH` | URL doesn't end with `/` |
+| `WRONG_PRODUCT` | URL product segment doesn't match the post's product folder |
+| `DATE_BASED_URL` | URL uses `/YYYY/MM/DD/slug/` instead of `/product/slug/` |
+| `URL_TOO_SHORT` | URL has too few path segments |
+| `LANG_CODE_MISMATCH` | Translated file's URL has the wrong language prefix |
+| `URL_MISMATCH_WITH_ENGLISH` | Translated URL slug differs from the English base URL |
+| `NO_ENGLISH_BASE` | Translated file exists but `index.md` is missing |
+
+### Translation Agent / Optimization Agent / Post Generation Agent
 Coming soon.
 
 ---
@@ -38,19 +58,19 @@ Coming soon.
 | blog.conholdate.com | Conholdate |
 | blog.conholdate.cloud | Conholdate Cloud |
 
-Switch between domains using the domain pills in the top navigation bar. The active section updates for the selected domain.
+Switch between domains using the domain pills in the top navigation bar. All sections update for the selected domain.
 
 ---
 
 ## How to Use
 
 ### Navigation
-- Use the **left sidebar** to switch between sections (Overview, Keywords, Translations, Optimization, URL Validator)
-- On mobile, tap the **hamburger menu** in the top-left corner to open the sidebar
+- Use the **left sidebar** to switch between sections
+- On mobile, tap the **hamburger menu** in the top-left corner
 
 ### Keywords — Browsing
 1. Select a **domain** from the top nav
-2. Click **Keywords** in the sidebar
+2. Click **Keyword Agent** in the sidebar
 3. Select a **product tab** (e.g. Words, Cells, PDF)
 4. Browse the keyword briefs — first card is expanded by default
 
@@ -65,24 +85,16 @@ Switch between domains using the domain pills in the top navigation bar. The act
 1. Use the **↑ / ↓ arrow buttons** in the card banner to move cards up or down
 2. When the order has changed, a **Save Order / Discard** bar appears
 3. Click **Save Order** to write the new order to the sheet in one batch
-4. Click **Discard** to revert without touching the sheet
 
-### Editable Fields
-
-| Field | Notes |
-|---|---|
-| Status | `pending` / `ok` / `rejected` |
-| Generated Title | The blog post title |
-| Primary Keyword | Main SEO keyword |
-| Selected Platform | Target publishing platform |
-| Secondary / Long-tail / Semantic Keywords | One item per line |
-| Target Persona | Who the post is written for |
-| Angle | Editorial hook or approach |
-| Outline | One section per line |
-| Editorial Notes | Guidance for the writer |
+### URL Validator — Running a Scan
+1. Select a **domain** from the top nav
+2. Click **URL Validator** in the sidebar
+3. If `URL_VALIDATOR_CONTENT_DIR_*` is set for that domain, click **Run Scan**
+4. Watch progress per product in real time
+5. Results are written to Google Sheets and displayed immediately
 
 ### All Missing Topics Tab
-Each sheet contains an **All Missing Topics** tab that is not supported in the card view. Click **Open in Google Sheets** on the message page to review it directly.
+Each keyword sheet contains an **All Missing Topics** tab that is not supported in the card view. Click **Open in Google Sheets** on the message page to review it directly.
 
 ---
 
@@ -91,7 +103,7 @@ Each sheet contains an **All Missing Topics** tab that is not supported in the c
 ### Prerequisites
 
 - Node.js 18+
-- A Google Cloud service account with access to the relevant Google Sheets
+- A Google Cloud service account with Editor access to the relevant Google Sheets
 
 ### Setup
 
@@ -114,23 +126,38 @@ npm install
 cp .env.local.example .env.local
 ```
 
-4. Open `.env.local` and set:
+4. Open `.env.local` and configure:
 
 ```env
-# Paste the full Google Service Account JSON as a single line
+# Google Service Account (shared across all tools)
 GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account", ...}
 
-# Google Sheet IDs from each sheet's URL
-SHEET_ID_ASPOSE_COM=
-SHEET_ID_ASPOSE_CLOUD=
-SHEET_ID_GROUPDOCS_COM=
-SHEET_ID_GROUPDOCS_CLOUD=
-SHEET_ID_CONHOLDATE_COM=
-SHEET_ID_CONHOLDATE_CLOUD=
-```
+# Keyword Agent — one Sheet ID per domain
+KEYWORD_AGENT_SHEET_ID_ASPOSE_COM=
+KEYWORD_AGENT_SHEET_ID_ASPOSE_CLOUD=
+KEYWORD_AGENT_SHEET_ID_GROUPDOCS_COM=
+KEYWORD_AGENT_SHEET_ID_GROUPDOCS_CLOUD=
+KEYWORD_AGENT_SHEET_ID_CONHOLDATE_COM=
+KEYWORD_AGENT_SHEET_ID_CONHOLDATE_CLOUD=
 
-> The Sheet ID is the long string in the Google Sheets URL:
-> `docs.google.com/spreadsheets/d/**SHEET_ID**/edit`
+# URL Validator — one Sheet ID + content directory per domain
+# Sheet ID: the long string in the Google Sheets URL: docs.google.com/spreadsheets/d/SHEET_ID/edit
+URL_VALIDATOR_SHEET_ID_ASPOSE_COM=
+URL_VALIDATOR_SHEET_ID_ASPOSE_CLOUD=
+URL_VALIDATOR_SHEET_ID_GROUPDOCS_COM=
+URL_VALIDATOR_SHEET_ID_GROUPDOCS_CLOUD=
+URL_VALIDATOR_SHEET_ID_CONHOLDATE_COM=
+URL_VALIDATOR_SHEET_ID_CONHOLDATE_CLOUD=
+
+# Content dirs — absolute path to each blog's Hugo content folder
+# Required to run scans locally; viewing previous results works without these
+URL_VALIDATOR_CONTENT_DIR_ASPOSE_COM=
+URL_VALIDATOR_CONTENT_DIR_ASPOSE_CLOUD=
+URL_VALIDATOR_CONTENT_DIR_GROUPDOCS_COM=
+URL_VALIDATOR_CONTENT_DIR_GROUPDOCS_CLOUD=
+URL_VALIDATOR_CONTENT_DIR_CONHOLDATE_COM=
+URL_VALIDATOR_CONTENT_DIR_CONHOLDATE_CLOUD=
+```
 
 5. Start the development server:
 
@@ -146,26 +173,40 @@ npm run dev
 
 The app is deployed on [Vercel](https://vercel.com) and auto-deploys on every push to `main`.
 
-Set the same variables from `.env.local` in:
+**Vercel settings:**
+- Root Directory: `dashboard`
+- Framework: Next.js
+
+Set all variables from `.env.local` in:
 **Vercel Dashboard → Project → Settings → Environment Variables**
+
+> URL Validator scans require a local content directory and cannot run on Vercel. Viewing previous scan results works from Vercel without any content dir set.
 
 ---
 
 ## Google Sheet Structure
 
+### Keyword Agent sheets
+
 Each sheet must have a header row in row 1. The tool reads columns by name, so column order does not matter. Expected column names:
 
 `status`, `generated_title`, `primary_keyword`, `secondary_keywords`, `long_tail_keywords`, `semantic_keywords`, `target_persona`, `angle`, `outline`, `editorial_notes`, `selected_platform`, `product`, `brand`, `category`, `sub_category`, `seed_topic`, `baseline_platform`, `source_sheet_row`, `generated_at_utc`, `run_id`, `markdown_path`
 
-Multi-value fields (keywords, outline, notes) support both formats:
+Multi-value fields (keywords, outline, notes) support:
 - Pipe-separated: `value1 | value2 | value3`
-- Newline-separated (Alt+Enter in Google Sheets): values on separate lines
+- Newline-separated (Alt+Enter in Sheets)
+
+### URL Validator sheets
+
+Each scan creates two tabs named after the run date:
+- **`YYYY-MM-DD`** — full issue list with columns: `#`, `Product`, `Post Folder`, `Language`, `Error Type`, `Current URL`, `Expected URL`, `Notes`, `Redirect Rule`
+- **`YYYY-MM-DD – Summary`** — counts by error type, product, and language
 
 ---
 
 ## Tech Stack
 
-- [Next.js 16](https://nextjs.org) — framework
-- [Tailwind CSS v4](https://tailwindcss.com) — styling
-- [Google Sheets API v4](https://developers.google.com/sheets/api) — data source
+- [Next.js 16](https://nextjs.org) — framework (App Router)
+- [Tailwind CSS v4](https://tailwindcss.com) — styling with dark mode support
+- [Google Sheets API v4](https://developers.google.com/sheets/api) — data source and output
 - [Vercel](https://vercel.com) — hosting

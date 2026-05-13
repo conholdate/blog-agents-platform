@@ -10,20 +10,26 @@ A monorepo of internal tools built for the Blog Team at Aspose, GroupDocs, and C
 
 **Live:** [blog-team-tools.vercel.app](https://blog-team-tools.vercel.app)
 
-A multi-tool web dashboard for the blog team across all 6 brand domains. Each tool is a dedicated agent section in the left sidebar.
+A multi-tool web dashboard for the blog team across all 6 brand domains. Each tool is a dedicated section in the left sidebar.
 
-- **Overview** — progress summary across all agents for the active domain
-- **Keyword Agent** — review and edit AI-generated keyword briefs; save back to Google Sheets in real time; reorder rows; PIN-protected editing
-- **Translation Agent**, **Optimization Agent**, **Post Generation Agent**, **URL Validator** — coming soon
-- Built with Next.js · Tailwind CSS · Google Sheets API · Deployed on Vercel
+| Section | Status | Description |
+|---|---|---|
+| **Overview** | Live | Progress summary for the active domain — keyword stats, quick navigation to each tool |
+| **Keyword Agent** | Live | Review and edit AI-generated keyword briefs; save to Google Sheets; reorder rows; PIN-protected editing |
+| **URL Validator** | Live | Run URL validation scans and view colour-coded results; per-domain Google Sheets output |
+| **Translation Agent** | Coming Soon | Track translation status per product and language |
+| **Optimization Agent** | Coming Soon | Queue and track SEO optimization of existing posts |
+| **Post Generation Agent** | Coming Soon | Generate full blog post drafts from keyword briefs using AI agents |
+
+Built with Next.js · Tailwind CSS · Google Sheets API · Deployed on Vercel
 
 ---
 
 ### [URL Validator](./url-validator)
 
-**Status: Development Phase** — not yet ready for production use.
+A standalone Python CLI that scans all blog post frontmatter for URL issues and writes colour-coded reports to Google Sheets. The same validation logic is also available directly from the Dashboard UI (URL Validator section).
 
-A Python CLI that scans all blog post frontmatter for URL issues (missing URLs, wrong product segments, date-based URLs, translation mismatches, etc.) and writes a colour-coded report to Google Sheets.
+Use the CLI for scripted or offline runs; use the dashboard for interactive use.
 
 ---
 
@@ -31,11 +37,9 @@ A Python CLI that scans all blog post frontmatter for URL issues (missing URLs, 
 
 ```
 blog-team-tools/
-├── dashboard/           # Blog Team Dashboard — multi-tool web app (live)
-└── url-validator/       # Blog post URL linter — Python CLI (dev phase)
+├── dashboard/       # Blog Team Dashboard — multi-tool web app (live on Vercel)
+└── url-validator/   # URL Validator — standalone Python CLI (also integrated into dashboard)
 ```
-
-Each tool lives in its own folder and is deployed independently on Vercel.
 
 ---
 
@@ -47,7 +51,8 @@ Each tool lives in its own folder and is deployed independently on Vercel.
    ```
 2. Build the tool inside it
 3. Deploy on Vercel — set **Root Directory** to `my-new-tool/` during import
-4. Update this README with a description and live link
+4. Add a sidebar entry in `dashboard/components/dashboard/Sidebar.tsx`
+5. Update this README
 
 ---
 

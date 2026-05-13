@@ -1,10 +1,10 @@
 export const DOMAINS: Record<string, string> = {
-  "blog.aspose.com": process.env.SHEET_ID_ASPOSE_COM ?? "",
-  "blog.aspose.cloud": process.env.SHEET_ID_ASPOSE_CLOUD ?? "",
-  "blog.groupdocs.com": process.env.SHEET_ID_GROUPDOCS_COM ?? "",
-  "blog.groupdocs.cloud": process.env.SHEET_ID_GROUPDOCS_CLOUD ?? "",
-  "blog.conholdate.com": process.env.SHEET_ID_CONHOLDATE_COM ?? "",
-  "blog.conholdate.cloud": process.env.SHEET_ID_CONHOLDATE_CLOUD ?? "",
+  "blog.aspose.com": process.env.KEYWORD_AGENT_SHEET_ID_ASPOSE_COM ?? "",
+  "blog.aspose.cloud": process.env.KEYWORD_AGENT_SHEET_ID_ASPOSE_CLOUD ?? "",
+  "blog.groupdocs.com": process.env.KEYWORD_AGENT_SHEET_ID_GROUPDOCS_COM ?? "",
+  "blog.groupdocs.cloud": process.env.KEYWORD_AGENT_SHEET_ID_GROUPDOCS_CLOUD ?? "",
+  "blog.conholdate.com": process.env.KEYWORD_AGENT_SHEET_ID_CONHOLDATE_COM ?? "",
+  "blog.conholdate.cloud": process.env.KEYWORD_AGENT_SHEET_ID_CONHOLDATE_CLOUD ?? "",
 };
 
 export const DOMAIN_LABELS: Record<string, { label: string; color: string; brandColor: string; logo: string }> = {
