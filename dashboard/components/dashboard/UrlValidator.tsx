@@ -158,7 +158,7 @@ export function UrlValidator({ domain }: Props) {
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
               Last scan: <span className="font-medium text-slate-700 dark:text-slate-300">{results.latestDate}</span>
               {" · "}
-              <span className="font-medium text-slate-700 dark:text-slate-300">{results.issues.length} issues</span>
+              <span className="font-medium text-slate-700 dark:text-slate-300">{results.issues?.length ?? 0} issues</span>
               {results.spreadsheetId && (
                 <>
                   {" · "}
@@ -263,7 +263,9 @@ export function UrlValidator({ domain }: Props) {
 
       {results?.error && (
         <div className="rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 text-sm text-red-700 dark:text-red-300">
-          {results.error}
+          {/permission|forbidden|caller does not have/i.test(results.error)
+            ? `This tool currently does not have permission to access the sheet for ${domain}. Share the spreadsheet with the service account and try again.`
+            : results.error}
         </div>
       )}
 
@@ -279,7 +281,17 @@ export function UrlValidator({ domain }: Props) {
         </div>
       )}
 
-      {results && results.issues.length > 0 && (
+      {results && !results.error && results.latestDate && (results.issues?.length ?? 0) === 0 && !resultsLoading && (
+        <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+          <CheckCircle2 className="h-12 w-12 text-green-500 dark:text-green-400" />
+          <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">All clear!</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            No URL issues found in the <span className="font-medium text-slate-700 dark:text-slate-300">{results.latestDate}</span> scan.
+          </p>
+        </div>
+      )}
+
+      {results && (results.issues?.length ?? 0) > 0 && (
         <>
           {/* Error type filter chips */}
           <div className="flex flex-wrap gap-2 mb-4">
@@ -291,7 +303,7 @@ export function UrlValidator({ domain }: Props) {
                   : "bg-white dark:bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-600 hover:border-slate-400"
               }`}
             >
-              All ({results.issues.length})
+              All ({results.issues?.length ?? 0})
             </button>
             {Object.entries(errorTypeCounts)
               .sort((a, b) => b[1] - a[1])
@@ -321,6 +333,7 @@ export function UrlValidator({ domain }: Props) {
                     <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Error</th>
                     <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400">Current URL</th>
                     <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400">Expected URL</th>
+                    <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400">Redirect</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -333,11 +346,18 @@ export function UrlValidator({ domain }: Props) {
                           {issue["Error Type"].replace(/_/g, " ")}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-slate-500 dark:text-slate-400 font-mono text-[11px] max-w-[240px] truncate" title={issue["Current URL"]}>
-                        {issue["Current URL"] || <span className="italic text-slate-300 dark:text-slate-600">—</span>}
+                      <td className="px-3 py-2 font-mono text-[11px] max-w-[240px] truncate" title={issue["Current URL"]}>
+                        {issue["Current URL"]
+                          ? <a href={`https://${domain}${issue["Current URL"]}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline">{issue["Current URL"]}</a>
+                          : <span className="italic text-slate-300 dark:text-slate-600">—</span>}
                       </td>
                       <td className="px-3 py-2 text-slate-700 dark:text-slate-300 font-mono text-[11px] max-w-[240px] truncate" title={issue["Expected URL"]}>
                         {issue["Expected URL"]}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {issue["Redirect Rule"]
+                          ? <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Redirect Required</span>
+                          : <span className="text-slate-300 dark:text-slate-600">—</span>}
                       </td>
                     </tr>
                   ))}

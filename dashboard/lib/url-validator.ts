@@ -21,9 +21,7 @@ export interface ScanStats {
 
 export type ProgressCallback = (product: string, postCount: number) => void;
 
-const LANG_URL_ALIASES: Record<string, string> = {
-  "zh-hant": "zh-tw",
-};
+const LANG_URL_ALIASES: Record<string, string> = {};
 
 const FRONTMATTER_RE = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---/;
 

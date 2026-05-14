@@ -44,10 +44,7 @@ def _load_credentials() -> Credentials:
         return Credentials.from_service_account_info(json.loads(sa_json), scopes=SCOPES)
     return Credentials.from_service_account_file(str(CREDENTIALS_FILE), scopes=SCOPES)
 
-# File lang code → URL lang prefix (when they differ by convention)
-LANG_URL_ALIASES = {
-    "zh-hant": "zh-tw",  # Traditional Chinese files use zh-tw in URLs
-}
+LANG_URL_ALIASES: dict[str, str] = {}
 
 # ── Frontmatter ───────────────────────────────────────────────────────────────
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---", re.DOTALL)
