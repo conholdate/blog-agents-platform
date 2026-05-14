@@ -17,6 +17,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Blog Team Dashboard",
   description: "Blog team tools: keywords, translations, optimization, URL validation",
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({
