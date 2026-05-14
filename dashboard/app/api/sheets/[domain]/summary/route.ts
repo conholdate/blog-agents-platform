@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSheetTabs, getSheetRows } from "@/lib/sheets";
+import { getCached, setCached } from "@/lib/cache";
 
 type TabSummary = {
   name: string;
@@ -9,13 +10,23 @@ type TabSummary = {
   rejected: number;
 };
 
+const TTL = 10 * 60 * 1000;
+
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ domain: string }> }
 ) {
   try {
     const { domain } = await params;
     const decoded = decodeURIComponent(domain);
+    const refresh = req.nextUrl.searchParams.get("refresh") === "1";
+    const key = `summary:${decoded}`;
+
+    if (!refresh) {
+      const hit = getCached<object>(key, TTL);
+      if (hit) return NextResponse.json(hit);
+    }
+
     const allTabs = await getSheetTabs(decoded);
     const productTabs = allTabs.filter((t) => t !== "All Missing Topics");
 
@@ -33,7 +44,9 @@ export async function GET(
       })
     );
 
-    return NextResponse.json({ tabs: summaries });
+    const result = { tabs: summaries };
+    setCached(key, result);
+    return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });

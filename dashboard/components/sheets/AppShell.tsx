@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { DOMAINS, DOMAIN_LABELS } from "@/lib/config";
-import { Loader2, ExternalLink, Menu, X } from "lucide-react";
+import { Loader2, ExternalLink, Menu, X, RefreshCw } from "lucide-react";
 import { CardGrid } from "./CardGrid";
 import { Sidebar, type Section } from "@/components/dashboard/Sidebar";
 import { Overview } from "@/components/dashboard/Overview";
@@ -78,6 +78,21 @@ export function AppShell() {
 
     return () => { cancelled = true; };
   }, [activeDomain, activeTab, activeSection]);
+
+  function refreshKeywords() {
+    if (rowsLoading || tabsLoading) return;
+    setRows(null);
+    setRowsLoading(true);
+    setError(null);
+    fetch(`/api/sheets/${encodeURIComponent(activeDomain)}/${encodeURIComponent(activeTab)}?refresh=1`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) throw new Error(data.error);
+        setRows(data.rows);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setRowsLoading(false));
+  }
 
   function handleSectionSelect(section: Section) {
     setActiveSection(section);
@@ -221,17 +236,29 @@ export function AppShell() {
                 </>
               )}
 
-              {sheetUrl && (
-                <a
-                  href={sheetUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ml-auto flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-slate-400 hover:text-green-600 dark:text-slate-500 dark:hover:text-green-400 whitespace-nowrap transition-colors"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Open Sheet
-                </a>
-              )}
+              <div className="ml-auto flex items-center gap-1">
+                {activeTab && activeTab !== ALL_MISSING_TAB && (
+                  <button
+                    onClick={refreshKeywords}
+                    disabled={rowsLoading || tabsLoading}
+                    title="Refresh"
+                    className="h-7 w-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${rowsLoading ? "animate-spin" : ""}`} />
+                  </button>
+                )}
+                {sheetUrl && (
+                  <a
+                    href={sheetUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-slate-400 hover:text-green-600 dark:text-slate-500 dark:hover:text-green-400 whitespace-nowrap transition-colors"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Open Sheet
+                  </a>
+                )}
+              </div>
             </div>
           )}
         </header>

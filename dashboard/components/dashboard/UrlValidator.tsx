@@ -80,9 +80,10 @@ export function UrlValidator({ domain }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [domain]);
 
-  function loadResults() {
+  function loadResults(forceRefresh = false) {
     setResultsLoading(true);
-    fetch(`${base}/results`)
+    const url = forceRefresh ? `${base}/results?refresh=1` : `${base}/results`;
+    fetch(url)
       .then((r) => r.json())
       .then((data) => setResults(data))
       .catch((e) => setResults({ issues: [], latestDate: null, availableDates: [], error: e.message }))
@@ -122,7 +123,7 @@ export function UrlValidator({ domain }: Props) {
             setProgress((p) => ({ ...p, stats: event.stats, issueCount: event.issueCount }));
           } else if (event.type === "done") {
             setPhase("done");
-            loadResults();
+            loadResults(true);
           } else if (event.type === "error") {
             setProgress((p) => ({ ...p, errorMsg: event.message }));
             setPhase("error");
@@ -189,7 +190,7 @@ export function UrlValidator({ domain }: Props) {
           )}
 
           <button
-            onClick={loadResults}
+            onClick={() => loadResults(true)}
             disabled={resultsLoading}
             title="Refresh results"
             className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors"

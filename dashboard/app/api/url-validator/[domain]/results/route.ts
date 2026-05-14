@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 import { getUrlValidatorSheetId } from "@/lib/url-validator-config";
+import { getCached, setCached } from "@/lib/cache";
 
 type Params = Promise<{ domain: string }>;
 
@@ -13,13 +14,23 @@ function getAuth() {
   });
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Params }) {
+const TTL = 5 * 60 * 1000;
+
+export async function GET(req: NextRequest, { params }: { params: Params }) {
   const { domain } = await params;
   const decoded      = decodeURIComponent(domain);
   const spreadsheetId = getUrlValidatorSheetId(decoded);
 
   if (!spreadsheetId) {
     return NextResponse.json({ issues: [], latestDate: null, availableDates: [], notConfigured: true });
+  }
+
+  const refresh = req.nextUrl.searchParams.get("refresh") === "1";
+  const key = `urlresults:${decoded}`;
+
+  if (!refresh) {
+    const hit = getCached<object>(key, TTL);
+    if (hit) return NextResponse.json(hit);
   }
 
   try {
@@ -54,7 +65,9 @@ export async function GET(_req: NextRequest, { params }: { params: Params }) {
       return obj;
     });
 
-    return NextResponse.json({ issues, latestDate: latestTab, availableDates: dateTabs.slice(0, 10), spreadsheetId });
+    const result = { issues, latestDate: latestTab, availableDates: dateTabs.slice(0, 10), spreadsheetId };
+    setCached(key, result);
+    return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }

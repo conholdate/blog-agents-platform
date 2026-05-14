@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BookMarked, Languages, TrendingUp, Link, Bot, Loader2 } from "lucide-react";
+import { BookMarked, Languages, TrendingUp, Link, Bot, Loader2, RefreshCw } from "lucide-react";
 import type { Section } from "./Sidebar";
 
 type TabSummary = {
@@ -71,23 +71,24 @@ export function Overview({ domain, onNavigate }: OverviewProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  function loadSummary(forceRefresh = false) {
     setLoading(true);
     setSummary(null);
     setError(null);
-
-    fetch(`/api/sheets/${encodeURIComponent(domain)}/summary`)
+    const url = `/api/sheets/${encodeURIComponent(domain)}/summary${forceRefresh ? "?refresh=1" : ""}`;
+    fetch(url)
       .then((r) => r.json())
       .then((data) => {
-        if (cancelled) return;
         if (data.error) throw new Error(data.error);
         setSummary(data.tabs);
       })
-      .catch((e) => { if (!cancelled) setError(e.message); })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }
 
-    return () => { cancelled = true; };
+  useEffect(() => {
+    loadSummary();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [domain]);
 
   const totals = summary?.reduce(
@@ -97,7 +98,17 @@ export function Overview({ domain, onNavigate }: OverviewProps) {
 
   return (
     <div className="p-4 md:p-6 max-w-5xl">
-      <h1 className="text-xl font-semibold text-slate-900 dark:text-white mb-5">Overview</h1>
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Overview</h1>
+        <button
+          onClick={() => loadSummary(true)}
+          disabled={loading}
+          title="Refresh"
+          className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
 

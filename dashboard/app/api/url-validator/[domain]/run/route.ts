@@ -3,6 +3,7 @@ import { existsSync } from "fs";
 import { scanAll } from "@/lib/url-validator";
 import { writeToSheets } from "@/lib/url-validator-sheets";
 import { getUrlValidatorSheetId, getUrlValidatorContentDir } from "@/lib/url-validator-config";
+import { invalidateCache } from "@/lib/cache";
 
 type Params = Promise<{ domain: string }>;
 
@@ -41,6 +42,7 @@ export async function POST(_req: NextRequest, { params }: { params: Params }) {
         send({ type: "scan_complete", stats, issueCount: issues.length });
 
         await writeToSheets(issues, stats, spreadsheetId);
+        invalidateCache(`urlresults:${decoded}`);
 
         send({ type: "done", spreadsheetId, issueCount: issues.length });
       } catch (e) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { reorderRows } from "@/lib/sheets";
+import { invalidateCache } from "@/lib/cache";
 
 type Params = Promise<{ domain: string; tab: string }>;
 
@@ -14,7 +15,10 @@ export async function POST(req: NextRequest, { params }: { params: Params }) {
       return NextResponse.json({ error: "writes array is required" }, { status: 400 });
     }
 
-    await reorderRows(decodeURIComponent(domain), decodeURIComponent(tab), writes);
+    const decoded = decodeURIComponent(domain);
+    const decodedTab = decodeURIComponent(tab);
+    await reorderRows(decoded, decodedTab, writes);
+    invalidateCache(`rows:${decoded}:${decodedTab}`);
     return NextResponse.json({ ok: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
