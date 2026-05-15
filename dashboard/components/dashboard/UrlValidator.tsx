@@ -258,10 +258,9 @@ export function UrlValidator({ domain }: Props) {
         <div className="mb-5 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-300">
           <p className="font-medium mb-1">Run Scan requires local setup</p>
           <p className="text-amber-700 dark:text-amber-400">
-            Add <code className="font-mono bg-amber-100 dark:bg-amber-900/30 px-1 rounded">BLOG_CONTENT_DIR</code> and{" "}
-            <code className="font-mono bg-amber-100 dark:bg-amber-900/30 px-1 rounded">URL_VALIDATOR_SHEET_ID</code> to{" "}
-            <code className="font-mono bg-amber-100 dark:bg-amber-900/30 px-1 rounded">dashboard/.env.local</code>.{" "}
-            Viewing previous results still works from anywhere.
+            Add <code className="font-mono bg-amber-100 dark:bg-amber-900/30 px-1 rounded">URL_VALIDATOR_CONTENT_DIR_*</code> to{" "}
+            <code className="font-mono bg-amber-100 dark:bg-amber-900/30 px-1 rounded">dashboard/.env.local</code> to enable running scans locally.{" "}
+            Viewing previous results works from anywhere.
           </p>
         </div>
       )}
