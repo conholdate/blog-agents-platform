@@ -24,8 +24,10 @@ const DIR_TO_SUFFIX: Record<string, string> = {
   "omr":     "OMR",
   "pdf":     "PDF",
   "psd":     "PSD",
+  "pub":     "PUB",
   "svg":     "SVG",
   "tex":     "TeX",
+  "zip":     "ZIP",
 };
 
 export function productName(domain: string, dir: string): string {
