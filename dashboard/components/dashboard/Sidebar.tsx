@@ -7,9 +7,9 @@ export type Section = "overview" | "keywords" | "translations" | "optimization" 
 const NAV_ITEMS: { key: Section; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: "overview",         label: "Overview",              icon: LayoutDashboard },
   { key: "keywords",         label: "Keyword Agent",         icon: BookMarked },
+  { key: "post-generation",  label: "Post Generation Agent", icon: Bot },
   { key: "translations",     label: "Translation Agent",     icon: Languages },
   { key: "optimization",     label: "Optimization Agent",    icon: TrendingUp },
-  { key: "post-generation",  label: "Post Generation Agent", icon: Bot },
   { key: "url-validator",    label: "URL Validator",         icon: Link },
 ];
 

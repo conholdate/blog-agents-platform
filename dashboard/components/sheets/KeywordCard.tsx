@@ -65,6 +65,25 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
+const BANNER_STATUS: Record<string, { dot: string; label: string }> = {
+  queued:    { dot: "bg-amber-400",  label: "Queued" },
+  approved:  { dot: "bg-green-400",  label: "Approved" },
+  rejected:  { dot: "bg-red-400",    label: "Rejected" },
+  generated: { dot: "bg-indigo-400", label: "Generated" },
+};
+
+function BannerStatus({ status }: { status: string }) {
+  const s = BANNER_STATUS[status?.toLowerCase()];
+  if (!s) return null;
+  return (
+    <span className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-white"
+      style={{ backgroundColor: "rgba(0,0,0,0.20)" }}>
+      <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
+      {s.label}
+    </span>
+  );
+}
+
 export function KeywordCard({ row, domain, isEditing, defaultExpanded = false, canMoveUp, canMoveDown, onEdit, onMoveUp, onMoveDown }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const brandColor  = DOMAIN_LABELS[domain]?.brandColor ?? "#64748B";
@@ -123,6 +142,7 @@ export function KeywordCard({ row, domain, isEditing, defaultExpanded = false, c
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          <BannerStatus status={row.status ?? ""} />
           <span className="text-[11px] text-white/60 font-mono hidden sm:inline mr-1">#{row.source_sheet_row}</span>
           <div className="flex flex-col gap-0.5">
             <button

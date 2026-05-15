@@ -7,9 +7,10 @@ import type { Section } from "./Sidebar";
 type TabSummary = {
   name: string;
   total: number;
-  pending: number;
-  ok: number;
+  queued: number;
+  approved: number;
   rejected: number;
+  generated: number;
 };
 
 interface OverviewProps {
@@ -92,8 +93,14 @@ export function Overview({ domain, onNavigate }: OverviewProps) {
   }, [domain]);
 
   const totals = summary?.reduce(
-    (acc, t) => ({ total: acc.total + t.total, pending: acc.pending + t.pending, ok: acc.ok + t.ok, rejected: acc.rejected + t.rejected }),
-    { total: 0, pending: 0, ok: 0, rejected: 0 }
+    (acc, t) => ({
+      total: acc.total + t.total,
+      queued: acc.queued + t.queued,
+      approved: acc.approved + t.approved,
+      rejected: acc.rejected + t.rejected,
+      generated: acc.generated + t.generated,
+    }),
+    { total: 0, queued: 0, approved: 0, rejected: 0, generated: 0 }
   );
 
   return (
@@ -140,12 +147,12 @@ export function Overview({ domain, onNavigate }: OverviewProps) {
 
           {!loading && totals && (
             <>
-              <div className="grid grid-cols-3 gap-3">
-                <StatBox label="Pending" value={totals.pending}
+              <div className="grid grid-cols-4 gap-2">
+                <StatBox label="Queued" value={totals.queued}
                   valueColor="text-amber-600 dark:text-amber-400"
                   bgClass="bg-amber-50 dark:bg-slate-800/60"
                   labelColor="text-amber-500/80 dark:text-slate-400" />
-                <StatBox label="OK" value={totals.ok}
+                <StatBox label="Approved" value={totals.approved}
                   valueColor="text-green-700 dark:text-green-400"
                   bgClass="bg-green-50 dark:bg-slate-800/60"
                   labelColor="text-green-600/70 dark:text-slate-400" />
@@ -153,6 +160,10 @@ export function Overview({ domain, onNavigate }: OverviewProps) {
                   valueColor="text-red-600 dark:text-red-400"
                   bgClass="bg-red-50 dark:bg-slate-800/60"
                   labelColor="text-red-400/80 dark:text-slate-400" />
+                <StatBox label="Generated" value={totals.generated}
+                  valueColor="text-indigo-600 dark:text-indigo-400"
+                  bgClass="bg-indigo-50 dark:bg-slate-800/60"
+                  labelColor="text-indigo-400/80 dark:text-slate-400" />
               </div>
 
               {/* Product chips — horizontal, space-efficient */}
@@ -164,7 +175,7 @@ export function Overview({ domain, onNavigate }: OverviewProps) {
                   >
                     <span className="text-slate-600 dark:text-slate-300 font-medium">{tab.name}</span>
                     <span className="text-slate-300 dark:text-slate-600">·</span>
-                    <span className="text-green-600 dark:text-green-400 font-semibold">{tab.ok}</span>
+                    <span className="text-green-600 dark:text-green-400 font-semibold">{tab.approved}</span>
                     <span className="text-slate-300 dark:text-slate-600">/</span>
                     <span className="text-slate-400 dark:text-slate-500">{tab.total}</span>
                   </span>

@@ -16,8 +16,9 @@ interface Props {
 }
 
 export function CardGrid({ rows: initialRows, domain, tab }: Props) {
-  const [rows, setRows] = useState(initialRows);
-  const [originalOrder, setOriginalOrder] = useState(() => initialRows.map((r) => r._rowIndex));
+  const [rows, setRows] = useState(initialRows.filter((r) => (r.status ?? "").toLowerCase() !== "generated"));
+  const generatedCount = initialRows.filter((r) => (r.status ?? "").toLowerCase() === "generated").length;
+  const [originalOrder, setOriginalOrder] = useState(() => initialRows.filter((r) => (r.status ?? "").toLowerCase() !== "generated").map((r) => r._rowIndex));
   const [savingOrder, setSavingOrder] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
 
@@ -151,7 +152,14 @@ export function CardGrid({ rows: initialRows, domain, tab }: Props) {
 
       {/* Top bar */}
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-slate-500 dark:text-slate-400">{rows.length} entries</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-slate-500 dark:text-slate-400">{rows.length} entries</span>
+          {generatedCount > 0 && (
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-600 border border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800">
+              {generatedCount} generated
+            </span>
+          )}
+        </div>
 
         {isDirty && (
           <div className="flex items-center gap-2">

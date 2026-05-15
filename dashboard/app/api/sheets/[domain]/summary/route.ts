@@ -5,9 +5,10 @@ import { getCached, setCached } from "@/lib/cache";
 type TabSummary = {
   name: string;
   total: number;
-  pending: number;
-  ok: number;
+  queued: number;
+  approved: number;
   rejected: number;
+  generated: number;
 };
 
 const TTL = 10 * 60 * 1000;
@@ -33,12 +34,13 @@ export async function GET(
     const summaries: TabSummary[] = await Promise.all(
       productTabs.map(async (tab) => {
         const rows = await getSheetRows(decoded, tab);
-        const counts = { pending: 0, ok: 0, rejected: 0 };
+        const counts = { queued: 0, approved: 0, rejected: 0, generated: 0 };
         for (const row of rows) {
           const status = (row["Status"] ?? "").toLowerCase().trim();
-          if (status === "ok") counts.ok++;
+          if (status === "approved") counts.approved++;
           else if (status === "rejected") counts.rejected++;
-          else counts.pending++;
+          else if (status === "generated") counts.generated++;
+          else counts.queued++;
         }
         return { name: tab, total: rows.length, ...counts };
       })

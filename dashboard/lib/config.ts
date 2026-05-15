@@ -16,7 +16,7 @@ export const DOMAIN_LABELS: Record<string, { label: string; color: string; brand
   "blog.conholdate.cloud":  { label: "Conholdate Cloud",  color: "bg-purple-400", brandColor: "#7B3FBE", logo: "/logos/conholdate.png"  },
 };
 
-export const STATUS_OPTIONS = ["ok", "pending", "rejected"] as const;
+export const STATUS_OPTIONS = ["queued", "approved", "rejected", "generated"] as const;
 export type Status = (typeof STATUS_OPTIONS)[number];
 
 // Platform banner colors
