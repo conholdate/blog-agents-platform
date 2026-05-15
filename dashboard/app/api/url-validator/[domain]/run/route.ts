@@ -4,6 +4,7 @@ import { scanAll } from "@/lib/url-validator";
 import { writeToSheets } from "@/lib/url-validator-sheets";
 import { getUrlValidatorSheetId, getUrlValidatorContentDir } from "@/lib/url-validator-config";
 import { invalidateCache } from "@/lib/cache";
+import { logAgentRun, logAgentMetric, productName, type AgentLogEntry } from "@/lib/agent-logger";
 
 type Params = Promise<{ domain: string }>;
 
@@ -35,6 +36,9 @@ export async function POST(_req: NextRequest, { params }: { params: Params }) {
 
         send({ type: "start" });
 
+        const run_id = crypto.randomUUID();
+        const startTime = Date.now();
+
         const { issues, stats } = scanAll(contentDir, (product, postCount) => {
           send({ type: "progress", product, postCount });
         });
@@ -43,6 +47,66 @@ export async function POST(_req: NextRequest, { params }: { params: Params }) {
 
         await writeToSheets(issues, stats, spreadsheetId);
         invalidateCache(`urlresults:${decoded}`);
+
+        const run_duration_ms = Date.now() - startTime;
+        const website = decoded.replace(/^blog\./, "");
+        const timestamp = new Date().toISOString();
+        const isProd = process.env.NODE_ENV === "production";
+        const run_env = isProd ? "PROD" : "DEV";
+        const job_type = isProd ? "URL Validation" : "test";
+
+        const issuesByProduct: Record<string, number> = {};
+        for (const issue of issues) {
+          issuesByProduct[issue.product] = (issuesByProduct[issue.product] ?? 0) + 1;
+        }
+
+        const logEntries: AgentLogEntry[] = Object.entries(issuesByProduct).map(
+          ([dir, count]) => ({
+            timestamp,
+            agent_name: "Blog URL Validator",
+            agent_owner: "Shoaib Khan",
+            job_type,
+            run_id,
+            status: "success",
+            product: productName(decoded, dir),
+            platform: "All",
+            website,
+            website_section: "Blog",
+            item_name: "URL Issues",
+            items_discovered: count,
+            items_failed: 0,
+            items_succeeded: count,
+            run_duration_ms,
+            token_usage: 0,
+            api_calls_count: 0,
+            run_env,
+          })
+        );
+
+        const summaryEntry: AgentLogEntry = {
+          timestamp,
+          agent_name: "Blog URL Validator",
+          agent_owner: "Shoaib Khan",
+          job_type,
+          run_id,
+          status: "success",
+          product: productName(decoded, "total"),
+          platform: "All",
+          website,
+          website_section: "Blog",
+          item_name: "URL Issues",
+          items_discovered: issues.length,
+          items_failed: 0,
+          items_succeeded: issues.length,
+          run_duration_ms,
+          token_usage: 0,
+          api_calls_count: 0,
+          run_env,
+        };
+
+        const loggedOk = await logAgentRun(logEntries);
+        await logAgentMetric(summaryEntry);
+        send({ type: "log_status", success: loggedOk, count: logEntries.length });
 
         send({ type: "done", spreadsheetId, issueCount: issues.length });
       } catch (e) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Play, Loader2, ExternalLink, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
+import { Play, Loader2, ExternalLink, CheckCircle2, AlertCircle, RefreshCw, BarChart2 } from "lucide-react";
 
 type ScanPhase = "idle" | "running" | "done" | "error";
 
@@ -61,6 +61,7 @@ export function UrlValidator({ domain }: Props) {
   const [results, setResults] = useState<Results | null>(null);
   const [resultsLoading, setResultsLoading] = useState(false);
   const [filterType, setFilterType] = useState<string>("all");
+  const [logStatus, setLogStatus] = useState<{ success: boolean; count: number } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const base = `/api/url-validator/${encodeURIComponent(domain)}`;
@@ -70,6 +71,7 @@ export function UrlValidator({ domain }: Props) {
     setProgress({ scanned: [], issueCount: null, stats: null, errorMsg: null });
     setResults(null);
     setFilterType("all");
+    setLogStatus(null);
 
     fetch(`${base}/status`)
       .then((r) => r.json())
@@ -121,6 +123,8 @@ export function UrlValidator({ domain }: Props) {
             setProgress((p) => ({ ...p, scanned: [...p.scanned, event.product] }));
           } else if (event.type === "scan_complete") {
             setProgress((p) => ({ ...p, stats: event.stats, issueCount: event.issueCount }));
+          } else if (event.type === "log_status") {
+            setLogStatus({ success: event.success, count: event.count });
           } else if (event.type === "done") {
             setPhase("done");
             loadResults(true);
@@ -181,6 +185,14 @@ export function UrlValidator({ domain }: Props) {
           {phase === "done" && (
             <span className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
               <CheckCircle2 className="h-4 w-4" /> Scan complete
+            </span>
+          )}
+          {logStatus && (
+            <span className={`flex items-center gap-1.5 text-sm ${logStatus.success ? "text-indigo-600 dark:text-indigo-400" : "text-red-500 dark:text-red-400"}`}>
+              <BarChart2 className="h-4 w-4" />
+              {logStatus.success
+                ? `Metrics logged (${logStatus.count} product${logStatus.count !== 1 ? "s" : ""})`
+                : "Metrics logging failed"}
             </span>
           )}
           {phase === "error" && (
