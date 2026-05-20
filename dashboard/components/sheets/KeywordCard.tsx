@@ -12,6 +12,7 @@ interface Props {
   isEditing: boolean;
   defaultExpanded?: boolean;
   onEdit: () => void;
+  readOnly?: boolean;
 }
 
 const KW_STYLES = {
@@ -96,7 +97,7 @@ function BannerStatus({ status }: { status: string }) {
   );
 }
 
-export function KeywordCard({ row, domain, isEditing, defaultExpanded = false, onEdit }: Props) {
+export function KeywordCard({ row, domain, isEditing, defaultExpanded = false, onEdit, readOnly = false }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [showMoreKws, setShowMoreKws] = useState(false);
   const brandColor  = DOMAIN_LABELS[domain]?.brandColor ?? "#64748B";
@@ -174,13 +175,15 @@ export function KeywordCard({ row, domain, isEditing, defaultExpanded = false, o
           <BannerScore label="AEO" value={row.primary_keyword_aeo_score ?? ""} />
           <BannerStatus status={row.status ?? ""} />
           <span className="text-[11px] text-white/60 font-mono hidden sm:inline mr-1">#{row.source_sheet_row}</span>
-          <button
-            onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            className="h-7 w-7 flex items-center justify-center rounded-lg transition-colors"
-            style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
-          >
-            <Pencil className="h-3.5 w-3.5 text-white" />
-          </button>
+          {!readOnly && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              className="h-7 w-7 flex items-center justify-center rounded-lg transition-colors"
+              style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+            >
+              <Pencil className="h-3.5 w-3.5 text-white" />
+            </button>
+          )}
           <div className="h-7 w-7 flex items-center justify-center rounded-lg"
             style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
             {expanded

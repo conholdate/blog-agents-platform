@@ -13,6 +13,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 
 const DOMAIN_LIST = Object.keys(DOMAINS);
 const ALL_MISSING_TAB = "All Missing Topics";
+const GENERATED_POSTS_TAB = "Generated Blog Posts";
 
 export function AppShell() {
   const [activeSection, setActiveSection] = useState<Section>("overview");
@@ -66,7 +67,11 @@ export function AppShell() {
     setRowsLoading(true);
     setError(null);
 
-    fetch(`/api/sheets/${encodeURIComponent(activeDomain)}/${encodeURIComponent(activeTab)}`)
+    const rowUrl = activeTab === GENERATED_POSTS_TAB
+      ? `/api/sheets/${encodeURIComponent(activeDomain)}/generated`
+      : `/api/sheets/${encodeURIComponent(activeDomain)}/${encodeURIComponent(activeTab)}`;
+
+    fetch(rowUrl)
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
@@ -84,7 +89,10 @@ export function AppShell() {
     setRows(null);
     setRowsLoading(true);
     setError(null);
-    fetch(`/api/sheets/${encodeURIComponent(activeDomain)}/${encodeURIComponent(activeTab)}?refresh=1`)
+    const refreshUrl = activeTab === GENERATED_POSTS_TAB
+      ? `/api/sheets/${encodeURIComponent(activeDomain)}/generated?refresh=1`
+      : `/api/sheets/${encodeURIComponent(activeDomain)}/${encodeURIComponent(activeTab)}?refresh=1`;
+    fetch(refreshUrl)
       .then((r) => r.json())
       .then((data) => {
         if (data.error) throw new Error(data.error);
@@ -236,17 +244,33 @@ export function AppShell() {
                 </>
               )}
 
+              {tabs.length > 0 && (
+                <>
+                  <div className="mx-3 self-stretch w-px bg-slate-200 dark:bg-slate-600 my-1.5" />
+                  <button
+                    onClick={() => setActiveTab(GENERATED_POSTS_TAB)}
+                    className={`px-4 py-2 text-[13px] font-medium border-b-2 transition-colors whitespace-nowrap ${
+                      activeTab === GENERATED_POSTS_TAB
+                        ? "border-indigo-600 text-indigo-700 dark:border-indigo-400 dark:text-indigo-400"
+                        : "border-transparent text-indigo-500/70 hover:text-indigo-600 hover:border-indigo-400 dark:text-indigo-500/60 dark:hover:text-indigo-400 dark:hover:border-indigo-500"
+                    }`}
+                  >
+                    {GENERATED_POSTS_TAB}
+                  </button>
+                </>
+              )}
+
               <div className="ml-auto flex items-center gap-1">
                 {activeTab && activeTab !== ALL_MISSING_TAB && (
-                  <button
-                    onClick={refreshKeywords}
-                    disabled={rowsLoading || tabsLoading}
-                    title="Refresh"
-                    className="h-7 w-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${rowsLoading ? "animate-spin" : ""}`} />
-                  </button>
-                )}
+                <button
+                  onClick={refreshKeywords}
+                  disabled={rowsLoading || tabsLoading}
+                  title="Refresh"
+                  className="h-7 w-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${rowsLoading ? "animate-spin" : ""}`} />
+                </button>
+              )}
                 {sheetUrl && (
                   <a
                     href={sheetUrl}
@@ -300,7 +324,12 @@ export function AppShell() {
               )}
 
               {!tabsLoading && !rowsLoading && rows !== null && activeTab && activeTab !== ALL_MISSING_TAB && (
-                <CardGrid rows={rows} domain={activeDomain} tab={activeTab} />
+                <CardGrid
+                  rows={rows}
+                  domain={activeDomain}
+                  tab={activeTab}
+                  generatedMode={activeTab === GENERATED_POSTS_TAB}
+                />
               )}
 
               {!tabsLoading && !rowsLoading && tabs.length === 0 && !error && (

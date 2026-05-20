@@ -17,15 +17,21 @@ interface Props {
   rows: Record<string, string>[];
   domain: string;
   tab: string;
+  generatedMode?: boolean;
 }
 
-export function CardGrid({ rows: initialRows, domain, tab }: Props) {
-  const activeRows = initialRows
-    .filter((r) => (r.status ?? "").toLowerCase() !== "generated")
-    .sort((a, b) => combinedScore(b) - combinedScore(a));
+export function CardGrid({ rows: initialRows, domain, tab, generatedMode = false }: Props) {
+  const activeRows = generatedMode
+    ? [...initialRows].sort((a, b) =>
+        (b.generated_at_utc ?? "").localeCompare(a.generated_at_utc ?? ""))
+    : initialRows
+        .filter((r) => (r.status ?? "").toLowerCase() !== "generated")
+        .sort((a, b) => combinedScore(b) - combinedScore(a));
 
   const [rows, setRows] = useState(activeRows);
-  const generatedCount = initialRows.filter((r) => (r.status ?? "").toLowerCase() === "generated").length;
+  const generatedCount = generatedMode
+    ? 0
+    : initialRows.filter((r) => (r.status ?? "").toLowerCase() === "generated").length;
 
   const [editingRow, setEditingRow] = useState<Record<string, string> | null>(null);
   const [authorized, setAuthorized] = useState(false);
@@ -127,6 +133,7 @@ export function CardGrid({ rows: initialRows, domain, tab }: Props) {
             isEditing={editingRow?._rowIndex === row._rowIndex}
             defaultExpanded={index === 0}
             onEdit={() => requestEdit(row)}
+            readOnly={generatedMode}
           />
         ))}
       </div>
