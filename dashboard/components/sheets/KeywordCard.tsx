@@ -4,18 +4,14 @@ import { useState } from "react";
 import { parseItems } from "@/lib/columns";
 import { DOMAIN_LABELS, getPlatformColor } from "@/lib/config";
 import { StatusBadge } from "./StatusBadge";
-import { Pencil, ChevronDown, ChevronUp, ArrowUp, ArrowDown } from "lucide-react";
+import { Pencil, ChevronDown, ChevronUp } from "lucide-react";
 
 interface Props {
   row: Record<string, string>;
   domain: string;
   isEditing: boolean;
   defaultExpanded?: boolean;
-  canMoveUp: boolean;
-  canMoveDown: boolean;
   onEdit: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
 }
 
 const KW_STYLES = {
@@ -100,7 +96,7 @@ function BannerStatus({ status }: { status: string }) {
   );
 }
 
-export function KeywordCard({ row, domain, isEditing, defaultExpanded = false, canMoveUp, canMoveDown, onEdit, onMoveUp, onMoveDown }: Props) {
+export function KeywordCard({ row, domain, isEditing, defaultExpanded = false, onEdit }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [showMoreKws, setShowMoreKws] = useState(false);
   const brandColor  = DOMAIN_LABELS[domain]?.brandColor ?? "#64748B";
@@ -178,24 +174,6 @@ export function KeywordCard({ row, domain, isEditing, defaultExpanded = false, c
           <BannerScore label="AEO" value={row.primary_keyword_aeo_score ?? ""} />
           <BannerStatus status={row.status ?? ""} />
           <span className="text-[11px] text-white/60 font-mono hidden sm:inline mr-1">#{row.source_sheet_row}</span>
-          <div className="flex flex-col gap-0.5">
-            <button
-              onClick={(e) => { e.stopPropagation(); onMoveUp(); }}
-              disabled={!canMoveUp}
-              className="h-3.5 w-6 flex items-center justify-center rounded transition-colors disabled:opacity-20"
-              style={{ backgroundColor: "rgba(255,255,255,0.12)" }}
-            >
-              <ArrowUp className="h-2.5 w-2.5 text-white" />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onMoveDown(); }}
-              disabled={!canMoveDown}
-              className="h-3.5 w-6 flex items-center justify-center rounded transition-colors disabled:opacity-20"
-              style={{ backgroundColor: "rgba(255,255,255,0.12)" }}
-            >
-              <ArrowDown className="h-2.5 w-2.5 text-white" />
-            </button>
-          </div>
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
             className="h-7 w-7 flex items-center justify-center rounded-lg transition-colors"
