@@ -38,7 +38,7 @@ export async function getSheetRows(
   const sheets = google.sheets({ version: "v4", auth });
   const spreadsheetId = getSheetId(domain);
 
-  const range = `'${tab}'!A1:Z`;
+  const range = `'${tab}'!A1:AZ`;
   const res = await sheets.spreadsheets.values.get({ spreadsheetId, range });
   const values = res.data.values ?? [];
   if (values.length < 2) return [];

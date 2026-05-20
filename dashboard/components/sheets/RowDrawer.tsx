@@ -25,16 +25,22 @@ interface Props {
 }
 
 const READONLY_FIELDS = [
-  { key: "source_sheet_row", label: "Sheet Row" },
-  { key: "run_id", label: "Run ID" },
-  { key: "generated_at_utc", label: "Generated At" },
-  { key: "brand", label: "Brand" },
-  { key: "product", label: "Product" },
-  { key: "baseline_platform", label: "Platform" },
-  { key: "category", label: "Category" },
-  { key: "sub_category", label: "Sub Category" },
-  { key: "seed_topic", label: "Seed Topic" },
-  { key: "markdown_path", label: "Markdown Path" },
+  { key: "source_sheet_row",          label: "Sheet Row"    },
+  { key: "run_id",                    label: "Run ID"       },
+  { key: "generated_at_utc",          label: "Generated At" },
+  { key: "brand",                     label: "Brand"        },
+  { key: "product",                   label: "Product"      },
+  { key: "baseline_platform",         label: "Platform"     },
+  { key: "category",                  label: "Category"     },
+  { key: "sub_category",              label: "Sub Category" },
+  { key: "seed_topic",                label: "Seed Topic"   },
+  { key: "primary_keyword_intent",    label: "KW Intent"    },
+  { key: "primary_keyword_score",     label: "SEO Score"    },
+  { key: "primary_keyword_aeo_score", label: "AEO Score"    },
+  { key: "primary_keyword_placement", label: "KW Placement" },
+  { key: "keyword_clusters",          label: "KW Clusters"  },
+  { key: "rejected_keywords",         label: "Rejected KWs" },
+  { key: "markdown_path",             label: "Markdown Path"},
 ];
 
 const EDITABLE_FIELDS = COLUMNS.filter((c) =>
