@@ -13,6 +13,8 @@ interface Props {
   defaultExpanded?: boolean;
   onEdit: () => void;
   readOnly?: boolean;
+  compact?: boolean;
+  narrow?: boolean;
 }
 
 const KW_STYLES = {
@@ -97,7 +99,7 @@ function BannerStatus({ status }: { status: string }) {
   );
 }
 
-export function KeywordCard({ row, domain, isEditing, defaultExpanded = false, onEdit, readOnly = false }: Props) {
+export function KeywordCard({ row, domain, isEditing, defaultExpanded = false, onEdit, readOnly = false, compact = false, narrow = false }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [showMoreKws, setShowMoreKws] = useState(false);
   const brandColor  = DOMAIN_LABELS[domain]?.brandColor ?? "#64748B";
@@ -115,84 +117,121 @@ export function KeywordCard({ row, domain, isEditing, defaultExpanded = false, o
   const editorialNotes = parseItems(row.editorial_notes           ?? "");
 
   return (
-    <div className={`rounded-2xl overflow-hidden transition-all duration-150 ${
-      isEditing
-        ? "ring-2 ring-white/50 shadow-2xl"
-        : "shadow-md hover:shadow-lg dark:shadow-lg dark:hover:shadow-xl"
-    }`}>
+    <div
+      className={`rounded-2xl overflow-hidden transition-all duration-150 ${
+        isEditing
+          ? "ring-2 ring-white/50 shadow-2xl"
+          : "shadow-md hover:shadow-lg dark:shadow-lg dark:hover:shadow-xl"
+      }`}
+      style={compact && expanded ? { gridColumn: "1 / -1" } : undefined}
+    >
 
-      {/* ── Banner (always visible) ─────────────────────── */}
-      <div
-        className="px-4 md:px-5 py-3 flex items-center gap-3 cursor-pointer select-none"
-        style={{ backgroundColor: bannerColor }}
-        onClick={() => setExpanded((v) => !v)}
-      >
-        <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
-          {!expanded && row.generated_title ? (
-            <>
-              <span className="text-[13px] font-semibold text-white truncate shrink min-w-0">
-                {row.generated_title}
-              </span>
+      {/* ── Collapsed header ───────────────────────────── */}
+      {compact && !expanded ? (
+        /* Compact tile (left column) */
+        <div
+          className="bg-white dark:bg-slate-800 cursor-pointer select-none"
+          onClick={() => setExpanded(true)}
+        >
+          <div className="h-1 rounded-t-2xl" style={{ backgroundColor: bannerColor }} />
+          <div className="px-3 pt-3 pb-3 flex flex-col gap-2">
+            <div className="flex items-start gap-2">
+              {BANNER_STATUS[row.status?.toLowerCase() ?? ""] && (
+                <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${BANNER_STATUS[row.status.toLowerCase()].dot}`} />
+              )}
+              <p className="text-[13px] font-semibold text-slate-900 dark:text-slate-100 leading-snug">
+                {row.generated_title || <span className="italic font-normal text-slate-400">No title</span>}
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
               {row.selected_platform && (
-                <span className="px-2.5 py-0.5 text-[12px] rounded-full text-white/70 shrink-0"
-                  style={{ backgroundColor: "rgba(0,0,0,0.15)" }}>
+                <span className="px-2 py-0.5 text-[11px] rounded-full bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                   {row.selected_platform}
                 </span>
               )}
-            </>
-          ) : (
-            <>
-              {row.product && (
-                <span className="px-2.5 py-0.5 text-[12px] font-semibold rounded-full text-white shrink-0"
-                  style={{ backgroundColor: "rgba(255,255,255,0.2)" }}>
-                  {row.product}
+              {row.primary_keyword_score && !isNaN(parseFloat(row.primary_keyword_score)) && (
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                  SEO {parseFloat(row.primary_keyword_score).toFixed(1)}
                 </span>
               )}
-              {row.category && (
-                <span className="px-2.5 py-0.5 text-[12px] rounded-full text-white/90 shrink-0"
-                  style={{ backgroundColor: "rgba(255,255,255,0.13)" }}>
-                  {row.category}
+              {row.primary_keyword_aeo_score && !isNaN(parseFloat(row.primary_keyword_aeo_score)) && (
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                  AEO {parseFloat(row.primary_keyword_aeo_score).toFixed(1)}
                 </span>
               )}
-              {row.sub_category && (
-                <span className="px-2.5 py-0.5 text-[12px] rounded-full text-white/80 shrink-0"
-                  style={{ backgroundColor: "rgba(255,255,255,0.10)" }}>
-                  {row.sub_category}
-                </span>
-              )}
-              {row.selected_platform && (
-                <span className="px-2.5 py-0.5 text-[12px] rounded-full text-white/70 shrink-0"
-                  style={{ backgroundColor: "rgba(0,0,0,0.15)" }}>
-                  {row.selected_platform}
-                </span>
-              )}
-            </>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1.5 shrink-0">
-          <BannerScore label="SEO" value={row.primary_keyword_score     ?? ""} />
-          <BannerScore label="AEO" value={row.primary_keyword_aeo_score ?? ""} />
-          <BannerStatus status={row.status ?? ""} />
-          <span className="text-[11px] text-white/60 font-mono hidden sm:inline mr-1">#{row.source_sheet_row}</span>
-          {!readOnly && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit(); }}
-              className="h-7 w-7 flex items-center justify-center rounded-lg transition-colors"
-              style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
-            >
-              <Pencil className="h-3.5 w-3.5 text-white" />
-            </button>
-          )}
-          <div className="h-7 w-7 flex items-center justify-center rounded-lg"
-            style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
-            {expanded
-              ? <ChevronUp className="h-4 w-4 text-white/80" />
-              : <ChevronDown className="h-4 w-4 text-white/80" />
-            }
+            </div>
+            <div className="flex items-center justify-between">
+              <StatusBadge status={row.status ?? ""} />
+              <div className="flex items-center gap-1">
+                {!readOnly && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                    className="h-6 w-6 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                )}
+                <ChevronDown className="h-4 w-4 text-slate-300 dark:text-slate-600" />
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        /* Normal banner */
+        <div
+          className="px-4 md:px-5 py-3 flex items-center gap-3 cursor-pointer select-none"
+          style={{ backgroundColor: bannerColor }}
+          onClick={() => setExpanded((v) => !v)}
+        >
+          <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
+            {!expanded && row.generated_title ? (
+              <>
+                <span className="text-[13px] font-semibold text-white truncate shrink min-w-0">
+                  {row.generated_title}
+                </span>
+                {row.selected_platform && (
+                  <span className="px-2.5 py-0.5 text-[12px] rounded-full text-white/70 shrink-0"
+                    style={{ backgroundColor: "rgba(0,0,0,0.15)" }}>
+                    {row.selected_platform}
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                {row.product && (
+                  <span className="px-2.5 py-0.5 text-[12px] font-semibold rounded-full text-white shrink-0"
+                    style={{ backgroundColor: "rgba(255,255,255,0.2)" }}>
+                    {row.product}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {!(narrow && expanded) && <BannerScore label="SEO" value={row.primary_keyword_score     ?? ""} />}
+            {!(narrow && expanded) && <BannerScore label="AEO" value={row.primary_keyword_aeo_score ?? ""} />}
+            <BannerStatus status={row.status ?? ""} />
+            <span className="text-[11px] text-white/60 font-mono hidden sm:inline mr-1">#{row.source_sheet_row}</span>
+            {!readOnly && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                className="h-7 w-7 flex items-center justify-center rounded-lg transition-colors"
+                style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+              >
+                <Pencil className="h-3.5 w-3.5 text-white" />
+              </button>
+            )}
+            <div className="h-7 w-7 flex items-center justify-center rounded-lg"
+              style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
+              {expanded
+                ? <ChevronUp className="h-4 w-4 text-white/80" />
+                : <ChevronDown className="h-4 w-4 text-white/80" />
+              }
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Expanded body ──────────────────────────────── */}
       {expanded && (
@@ -208,14 +247,46 @@ export function KeywordCard({ row, domain, isEditing, defaultExpanded = false, o
                 {row.generated_title || <span className="text-slate-300 dark:text-slate-600 italic font-normal">No title yet</span>}
               </h2>
             </div>
+            {(row.selected_platform || row.category || row.sub_category || (narrow && row.primary_keyword_score) || (narrow && row.primary_keyword_aeo_score)) && (
+              <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                {row.selected_platform && (
+                  <span className="px-2 py-0.5 text-[11px] rounded-full font-medium text-white" style={{ backgroundColor: bannerColor }}>
+                    {row.selected_platform}
+                  </span>
+                )}
+                {row.category && (
+                  <span className="px-2 py-0.5 text-[11px] rounded-full bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                    {row.category}
+                  </span>
+                )}
+                {row.sub_category && (
+                  <span className="px-2 py-0.5 text-[11px] rounded-full bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+                    {row.sub_category}
+                  </span>
+                )}
+                {narrow && row.primary_keyword_score && !isNaN(parseFloat(row.primary_keyword_score)) && (
+                  <span className="px-2 py-0.5 text-[11px] rounded-full bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 font-mono">
+                    SEO {parseFloat(row.primary_keyword_score).toFixed(1)}
+                  </span>
+                )}
+                {narrow && row.primary_keyword_aeo_score && !isNaN(parseFloat(row.primary_keyword_aeo_score)) && (
+                  <span className="px-2 py-0.5 text-[11px] rounded-full bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 font-mono">
+                    AEO {parseFloat(row.primary_keyword_aeo_score).toFixed(1)}
+                  </span>
+                )}
+              </div>
+            )}
             {row.seed_topic && (
               <p className="text-[12px] text-slate-400 dark:text-slate-500 mt-1.5">Seed: {row.seed_topic}</p>
             )}
           </div>
 
           {/* Keywords + Content Brief */}
-          <div className="flex flex-col md:grid md:grid-cols-5 md:divide-x divide-slate-100 dark:divide-slate-700 border-b border-slate-100 dark:border-slate-700">
-            <div className="md:col-span-3 px-4 md:px-5 py-3 space-y-2 border-b md:border-b-0 border-slate-100 dark:border-slate-700">
+          <div className={narrow
+            ? "flex flex-col divide-y divide-slate-100 dark:divide-slate-700 border-b border-slate-100 dark:border-slate-700"
+            : "flex flex-col md:grid md:grid-cols-5 md:divide-x divide-slate-100 dark:divide-slate-700 border-b border-slate-100 dark:border-slate-700"
+          }>
+            <div className={`px-4 md:px-5 py-3 space-y-2 ${!narrow ? "md:col-span-3 border-b md:border-b-0 border-slate-100 dark:border-slate-700" : ""}`}>
               <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Keywords</p>
               {row.primary_keyword && (
                 <div className="flex items-center gap-2">
@@ -226,11 +297,11 @@ export function KeywordCard({ row, domain, isEditing, defaultExpanded = false, o
                 </div>
               )}
               <KwRow label="Secondary" items={secondaryKws} max={5} type="secondary" />
-              <KwRow label="Long Tail" items={longTailKws}  max={4} type="longTail"  />
+              <KwRow label="Long Tail" items={longTailKws}  max={longTailKws.length} type="longTail"  />
               <KwRow label="Semantic"  items={semanticKws}  max={5} type="semantic"  />
             </div>
 
-            <div className="md:col-span-2 px-4 md:px-5 py-3 space-y-3">
+            <div className={`px-4 md:px-5 py-3 space-y-3 ${!narrow ? "md:col-span-2" : ""}`}>
               <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Content Brief</p>
               <Field label="Target Persona" value={persona.join(" · ")} />
               <Field label="Angle" value={row.angle ?? ""} />
@@ -239,9 +310,12 @@ export function KeywordCard({ row, domain, isEditing, defaultExpanded = false, o
 
           {/* Outline + Editorial Notes */}
           {(outline.length > 0 || editorialNotes.length > 0) && (
-            <div className="flex flex-col md:grid md:grid-cols-5 md:divide-x divide-slate-100 dark:divide-slate-700 border-b border-slate-100 dark:border-slate-700">
+            <div className={narrow
+              ? "flex flex-col divide-y divide-slate-100 dark:divide-slate-700 border-b border-slate-100 dark:border-slate-700"
+              : "flex flex-col md:grid md:grid-cols-5 md:divide-x divide-slate-100 dark:divide-slate-700 border-b border-slate-100 dark:border-slate-700"
+            }>
               {outline.length > 0 && (
-                <div className={`px-4 md:px-5 py-3 border-b md:border-b-0 border-slate-100 dark:border-slate-700 ${editorialNotes.length > 0 ? "md:col-span-2" : "md:col-span-5"}`}>
+                <div className={`px-4 md:px-5 py-3 ${!narrow ? `border-b md:border-b-0 border-slate-100 dark:border-slate-700 ${editorialNotes.length > 0 ? "md:col-span-2" : "md:col-span-5"}` : ""}`}>
                   <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Outline</p>
                   <ol className="space-y-1">
                     {outline.map((item, i) => (
@@ -254,7 +328,7 @@ export function KeywordCard({ row, domain, isEditing, defaultExpanded = false, o
                 </div>
               )}
               {editorialNotes.length > 0 && (
-                <div className={`px-4 md:px-5 py-3 bg-amber-50/60 dark:bg-amber-900/10 ${outline.length > 0 ? "md:col-span-3" : "md:col-span-5"}`}>
+                <div className={`px-4 md:px-5 py-3 bg-amber-50/60 dark:bg-amber-900/10 ${!narrow ? (outline.length > 0 ? "md:col-span-3" : "md:col-span-5") : ""}`}>
                   <p className="text-[11px] font-semibold text-amber-500 uppercase tracking-wider mb-2">Editorial Notes</p>
                   <ul className="space-y-1.5">
                     {editorialNotes.map((note, i) => (

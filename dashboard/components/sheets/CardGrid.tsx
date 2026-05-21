@@ -124,19 +124,99 @@ export function CardGrid({ rows: initialRows, domain, tab, generatedMode = false
         <div className="py-16 text-center text-slate-400 text-sm">No rows found.</div>
       )}
 
-      <div className="grid grid-cols-1 gap-5">
-        {rows.map((row, index) => (
-          <KeywordCard
-            key={row._rowIndex}
-            row={row}
-            domain={domain}
-            isEditing={editingRow?._rowIndex === row._rowIndex}
-            defaultExpanded={index === 0}
-            onEdit={() => requestEdit(row)}
-            readOnly={generatedMode}
-          />
-        ))}
-      </div>
+      {generatedMode ? (
+        <div className="grid grid-cols-1 gap-5">
+          {rows.map((row) => (
+            <KeywordCard
+              key={row._rowIndex}
+              row={row}
+              domain={domain}
+              isEditing={editingRow?._rowIndex === row._rowIndex}
+              onEdit={() => requestEdit(row)}
+              readOnly
+            />
+          ))}
+        </div>
+      ) : (() => {
+          const queuedRows   = rows.filter(r => (r.status ?? "").toLowerCase() === "queued");
+          const approvedRows = rows.filter(r => (r.status ?? "").toLowerCase() === "approved");
+          const rejectedRows = rows.filter(r => (r.status ?? "").toLowerCase() === "rejected");
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+
+              {/* Left: Queued + Rejected (2 compact cards per row) — 2/3 width */}
+              <div className="md:col-span-2 flex flex-col gap-3">
+                {queuedRows.length > 0 && (
+                  <span className="self-start px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-700">
+                    Queued · {queuedRows.length}
+                  </span>
+                )}
+                <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
+                  {queuedRows.map((row) => (
+                    <KeywordCard
+                      key={row._rowIndex}
+                      row={row}
+                      domain={domain}
+                      isEditing={editingRow?._rowIndex === row._rowIndex}
+                      onEdit={() => requestEdit(row)}
+                      compact
+                    />
+                  ))}
+                </div>
+
+                {rejectedRows.length > 0 && (
+                  <span className={`self-start px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-600 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-700 ${queuedRows.length > 0 ? "mt-2" : ""}`}>
+                    Rejected · {rejectedRows.length}
+                  </span>
+                )}
+                <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
+                  {rejectedRows.map((row) => (
+                    <KeywordCard
+                      key={row._rowIndex}
+                      row={row}
+                      domain={domain}
+                      isEditing={editingRow?._rowIndex === row._rowIndex}
+                      onEdit={() => requestEdit(row)}
+                      compact
+                    />
+                  ))}
+                </div>
+
+                {queuedRows.length === 0 && rejectedRows.length === 0 && (
+                  <div className="py-10 text-center text-slate-400 dark:text-slate-500 text-sm">No queued or rejected rows.</div>
+                )}
+              </div>
+
+              {/* Right: Approved */}
+              <div className="flex flex-col gap-3">
+                {approvedRows.length > 0 && (
+                  <span className="self-start px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-700">
+                    Approved · {approvedRows.length}
+                  </span>
+                )}
+                <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
+                  {approvedRows.map((row) => (
+                    <KeywordCard
+                      key={row._rowIndex}
+                      row={row}
+                      domain={domain}
+                      isEditing={editingRow?._rowIndex === row._rowIndex}
+                      onEdit={() => requestEdit(row)}
+                      compact
+                      narrow
+                    />
+                  ))}
+                </div>
+
+                {approvedRows.length === 0 && (
+                  <div className="py-10 text-center text-slate-400 dark:text-slate-500 text-sm">No approved rows.</div>
+                )}
+              </div>
+
+            </div>
+          );
+        })()
+      }
 
       {editingRow && (
         <RowDrawer
