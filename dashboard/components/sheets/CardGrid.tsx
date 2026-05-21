@@ -188,7 +188,7 @@ export function CardGrid({ rows: initialRows, domain, tab, generatedMode = false
               </div>
 
               {/* Right: Approved */}
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3 md:border-l md:border-slate-200 md:dark:border-slate-700 md:pl-6">
                 {approvedRows.length > 0 && (
                   <span className="self-start px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-700">
                     Approved · {approvedRows.length}

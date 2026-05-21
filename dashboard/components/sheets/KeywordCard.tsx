@@ -58,6 +58,14 @@ function KwRow({ label, items, max, type }: { label: string; items: string[]; ma
   );
 }
 
+function scoreColorClass(value: string): string {
+  const n = parseFloat(value);
+  if (isNaN(n)) return "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
+  if (n >= 7.5) return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+  if (n >= 5.0) return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+  return               "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400";
+}
+
 function BannerScore({ label, value }: { label: string; value: string }) {
   const num = parseFloat(value);
   if (!value || isNaN(num)) return null;
@@ -145,17 +153,17 @@ export function KeywordCard({ row, domain, isEditing, defaultExpanded = false, o
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
               {row.selected_platform && (
-                <span className="px-2 py-0.5 text-[11px] rounded-full bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                <span className="px-2 py-0.5 text-[11px] rounded-full font-medium text-white" style={{ backgroundColor: bannerColor }}>
                   {row.selected_platform}
                 </span>
               )}
               {row.primary_keyword_score && !isNaN(parseFloat(row.primary_keyword_score)) && (
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                <span className={`px-2 py-0.5 text-[11px] rounded-full font-mono ${scoreColorClass(row.primary_keyword_score)}`}>
                   SEO {parseFloat(row.primary_keyword_score).toFixed(1)}
                 </span>
               )}
               {row.primary_keyword_aeo_score && !isNaN(parseFloat(row.primary_keyword_aeo_score)) && (
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                <span className={`px-2 py-0.5 text-[11px] rounded-full font-mono ${scoreColorClass(row.primary_keyword_aeo_score)}`}>
                   AEO {parseFloat(row.primary_keyword_aeo_score).toFixed(1)}
                 </span>
               )}
@@ -265,12 +273,12 @@ export function KeywordCard({ row, domain, isEditing, defaultExpanded = false, o
                   </span>
                 )}
                 {narrow && row.primary_keyword_score && !isNaN(parseFloat(row.primary_keyword_score)) && (
-                  <span className="px-2 py-0.5 text-[11px] rounded-full bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 font-mono">
+                  <span className={`px-2 py-0.5 text-[11px] rounded-full font-mono ${scoreColorClass(row.primary_keyword_score)}`}>
                     SEO {parseFloat(row.primary_keyword_score).toFixed(1)}
                   </span>
                 )}
                 {narrow && row.primary_keyword_aeo_score && !isNaN(parseFloat(row.primary_keyword_aeo_score)) && (
-                  <span className="px-2 py-0.5 text-[11px] rounded-full bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 font-mono">
+                  <span className={`px-2 py-0.5 text-[11px] rounded-full font-mono ${scoreColorClass(row.primary_keyword_aeo_score)}`}>
                     AEO {parseFloat(row.primary_keyword_aeo_score).toFixed(1)}
                   </span>
                 )}
