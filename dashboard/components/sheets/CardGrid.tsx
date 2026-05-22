@@ -125,7 +125,7 @@ export function CardGrid({ rows: initialRows, domain, tab, generatedMode = false
       )}
 
       {generatedMode ? (
-        <div className="grid grid-cols-1 gap-5">
+        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
           {rows.map((row) => (
             <KeywordCard
               key={row._rowIndex}
@@ -133,6 +133,7 @@ export function CardGrid({ rows: initialRows, domain, tab, generatedMode = false
               domain={domain}
               isEditing={editingRow?._rowIndex === row._rowIndex}
               onEdit={() => requestEdit(row)}
+              compact
               readOnly
             />
           ))}

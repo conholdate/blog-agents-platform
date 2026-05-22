@@ -15,7 +15,7 @@ A multi-tool web dashboard for the blog team across all 6 brand domains. Each to
 | Section | Status | Description |
 |---|---|---|
 | **Overview** | Live | Progress summary for the active domain — keyword stats, quick navigation to each tool |
-| **Keyword Agent** | Live | Review and edit AI-generated keyword briefs; save to Google Sheets; auto-sorted by SEO/AEO score; PIN-protected editing; Generated Blog Posts tab |
+| **Keyword Agent** | Live | Review and edit AI-generated keyword briefs; 3-column layout (queued/rejected/approved); adaptive card grid; colour-coded SEO/AEO scores; PIN-protected editing; Generated Blog Posts tab |
 | **URL Validator** | Live | Run URL validation scans and view colour-coded results; per-domain Google Sheets output |
 | **Translation Agent** | Coming Soon | Track translation status per product and language |
 | **Optimization Agent** | Coming Soon | Queue and track SEO optimization of existing posts |

@@ -12,14 +12,24 @@ A multi-tool web dashboard for the blog team at Aspose, GroupDocs, and Conholdat
 Landing page for the active domain. Shows a Keyword Agent progress card (queued / approved / rejected / generated counts with per-product chips) and summary cards for all other tools. Click **View →** on any live card to jump to that section.
 
 ### Keyword Agent
-Review and edit AI-generated keyword briefs pulled from Google Sheets. Each brief is displayed as a collapsible card showing:
+Review and edit AI-generated keyword briefs pulled from Google Sheets. Cards are sorted highest combined SEO + AEO score first.
 
-- **Title** — the AI-generated blog post title (shown prominently in the collapsed banner)
-- **Status** — `queued`, `approved`, `rejected`, or `generated`
-- **SEO Score / AEO Score** — visible as chips on the card banner; cards are sorted highest-score-first
-- **Keywords** — primary, secondary, long-tail, semantic, question, and entity keywords (colour-coded by type); question/entity/clusters/rejected keywords are hidden behind a "Show additional keywords" toggle
-- **Content Brief** — target persona and editorial angle
-- **Outline** and **Editorial Notes** — side by side for quick review
+**Layout** — three-column view per product tab:
+- **Left (2/3)** — Queued and Rejected cards as compact tiles, adaptive grid (fits as many cards as the width allows)
+- **Right (1/3)** — Approved cards as compact tiles, same adaptive grid; separated by a vertical divider
+
+**Compact tile** (collapsed) shows:
+- Status-coloured dot + title (never truncated)
+- Platform chip (coloured by platform), SEO and AEO score chips (colour-coded: green ≥ 7.5, amber ≥ 5.0, red < 5.0)
+- Status badge
+
+**Expanded card** shows:
+- Platform, category, sub_category, SEO score, AEO score as chips below the title
+- Keywords — primary, secondary, long-tail (all shown), semantic; question / entity / clusters / rejected hidden behind **Show additional keywords**
+- Content Brief — target persona and editorial angle
+- Outline and Editorial Notes
+
+When expanded, the card spans the full column width. In the narrow approved column, sections stack vertically instead of side by side.
 
 Card banners are colour-coded by publishing platform (.NET, Java, Python, C++, Node.js) and fall back to the brand colour when no platform is set.
 
