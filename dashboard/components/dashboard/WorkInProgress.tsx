@@ -1,4 +1,4 @@
-import { Languages, TrendingUp, Link, Bot } from "lucide-react";
+import { Languages, Link, Bot } from "lucide-react";
 import type { Section } from "./Sidebar";
 
 const WIP_META: Record<string, {
@@ -8,10 +8,6 @@ const WIP_META: Record<string, {
   translations: {
     icon: Languages,
     description: "Track translation status (pending / done) per product and language",
-  },
-  optimization: {
-    icon: TrendingUp,
-    description: "See which articles are queued for SEO optimization and which are complete",
   },
   "url-validator": {
     icon: Link,
@@ -25,7 +21,6 @@ const WIP_META: Record<string, {
 
 const SECTION_LABELS: Record<string, string> = {
   translations:      "Translation Agent",
-  optimization:      "Optimization Agent",
   "url-validator":   "URL Validator",
   "post-generation": "Post Generation Agent",
 };

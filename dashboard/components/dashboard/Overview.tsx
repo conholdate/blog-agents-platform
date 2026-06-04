@@ -26,6 +26,7 @@ const WIP_CARDS: {
   accentLight: string;
   iconBg: string;
   iconColor: string;
+  viewColor?: string;
   ready?: boolean;
 }[] = [
   {
@@ -41,10 +42,12 @@ const WIP_CARDS: {
     section: "optimization",
     label: "Optimization Agent",
     icon: TrendingUp,
-    description: "See which articles are queued for SEO optimization",
+    description: "SEO optimization queue with priority scoring; track pending and optimized posts per domain",
     accentLight: "border-l-emerald-500",
     iconBg: "bg-emerald-50 dark:bg-slate-600/70",
     iconColor: "text-emerald-600 dark:text-slate-300",
+    viewColor: "text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300",
+    ready: true,
   },
   {
     section: "post-generation",
@@ -63,25 +66,55 @@ const WIP_CARDS: {
     accentLight: "border-l-orange-500",
     iconBg: "bg-orange-50 dark:bg-slate-600/70",
     iconColor: "text-orange-600 dark:text-slate-300",
+    viewColor: "text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300",
     ready: true,
   },
 ];
 
+interface OptimizationSummary {
+  pending: number;
+  high: number;
+  medium: number;
+  optimized: number;
+  page2: number;
+  avgPosition: number;
+  avgImpressions: number;
+  avgCtr: number;
+}
+
+interface UrlValidatorSummary {
+  totalIssues: number;
+  productsAffected: number;
+  topErrors: { type: string; count: number }[];
+  latestScan: string | null;
+  scansAvailable: number;
+}
+
 export function Overview({ domain, onNavigate }: OverviewProps) {
-  const [summary, setSummary] = useState<TabSummary[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [summary, setSummary]         = useState<TabSummary[] | null>(null);
+  const [optSummary, setOptSummary]   = useState<OptimizationSummary | null>(null);
+  const [urlSummary, setUrlSummary]   = useState<UrlValidatorSummary | null>(null);
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState<string | null>(null);
 
   function loadSummary(forceRefresh = false) {
     setLoading(true);
     setSummary(null);
+    setOptSummary(null);
+    setUrlSummary(null);
     setError(null);
-    const url = `/api/sheets/${encodeURIComponent(domain)}/summary${forceRefresh ? "?refresh=1" : ""}`;
-    fetch(url)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.error) throw new Error(data.error);
-        setSummary(data.tabs);
+    const qs = forceRefresh ? "?refresh=1" : "";
+    const enc = encodeURIComponent(domain);
+    Promise.all([
+      fetch(`/api/sheets/${enc}/summary${qs}`).then((r) => r.json()),
+      fetch(`/api/optimization/${enc}/summary${qs}`).then((r) => r.json()),
+      fetch(`/api/url-validator/${enc}/summary${qs}`).then((r) => r.json()),
+    ])
+      .then(([kwData, optData, urlData]) => {
+        if (kwData.error) throw new Error(kwData.error);
+        setSummary(kwData.tabs);
+        if (!optData.error && !optData.notConfigured) setOptSummary(optData);
+        if (!urlData.error && !urlData.notConfigured) setUrlSummary(urlData);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -186,7 +219,7 @@ export function Overview({ domain, onNavigate }: OverviewProps) {
         </div>
 
         {/* WIP cards */}
-        {WIP_CARDS.map(({ section, label, icon: Icon, description, accentLight, iconBg, iconColor, ready }) => (
+        {WIP_CARDS.map(({ section, label, icon: Icon, description, accentLight, iconBg, iconColor, viewColor, ready }) => (
           <div
             key={section}
             className={`bg-white border border-slate-200 border-l-4 ${accentLight} dark:bg-slate-700/30 dark:border-slate-600/60 rounded-xl p-5 flex flex-col gap-3 shadow-sm dark:shadow-none ${ready ? "" : "opacity-80"}`}
@@ -199,7 +232,7 @@ export function Overview({ domain, onNavigate }: OverviewProps) {
               {ready ? (
                 <button
                   onClick={() => onNavigate(section)}
-                  className="ml-auto text-[12px] text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 transition-colors font-medium"
+                  className={`ml-auto text-[12px] transition-colors font-medium ${viewColor ?? "text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"}`}
                 >
                   View →
                 </button>
@@ -209,7 +242,54 @@ export function Overview({ domain, onNavigate }: OverviewProps) {
                 </span>
               )}
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{description}</p>
+            {section === "url-validator" && urlSummary ? (
+              <div className="flex flex-col gap-2">
+                {/* Row 1: Total · Products · Scans · Last Scan */}
+                <div className="grid grid-cols-4 gap-2">
+                  <StatBox label="Total Issues"  value={urlSummary.totalIssues}      valueColor="text-amber-600 dark:text-amber-400"   bgClass="bg-amber-50 dark:bg-slate-800/60"   labelColor="text-amber-500/80 dark:text-slate-400" />
+                  <StatBox label="Products"      value={urlSummary.productsAffected} valueColor="text-indigo-600 dark:text-indigo-400" bgClass="bg-indigo-50 dark:bg-slate-800/60"  labelColor="text-indigo-400/80 dark:text-slate-400" />
+                  <StatBox label="Scans Run"     value={urlSummary.scansAvailable}   valueColor="text-slate-700 dark:text-slate-300"   bgClass="bg-slate-50 dark:bg-slate-800/60"   labelColor="text-slate-400 dark:text-slate-500" />
+                  <div className="bg-slate-50 dark:bg-slate-800/60 rounded-lg p-3 text-center">
+                    <div className="text-[13px] font-bold text-slate-700 dark:text-slate-300 leading-tight">{urlSummary.latestScan ?? "—"}</div>
+                    <div className="text-[11px] mt-0.5 font-medium text-slate-400 dark:text-slate-500">Last Scan</div>
+                  </div>
+                </div>
+                {/* Top errors */}
+                {urlSummary.topErrors.length > 0 && (
+                  <div className="flex flex-col gap-1">
+                    {urlSummary.topErrors.map(({ type, count }) => (
+                      <div key={type} className="flex items-center gap-2">
+                        <div className="flex-1 bg-slate-100 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                          <div className="bg-orange-400 dark:bg-orange-500 h-1.5 rounded-full"
+                            style={{ width: `${Math.round((count / urlSummary.totalIssues) * 100)}%` }} />
+                        </div>
+                        <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 shrink-0 w-8 text-right">{count}</span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 shrink-0 truncate max-w-[140px]">{type}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : section === "optimization" && optSummary ? (
+              <div className="flex flex-col gap-2">
+                {/* Row 1: Pending · High · Medium · Optimized */}
+                <div className="grid grid-cols-4 gap-2">
+                  <StatBox label="Pending"   value={optSummary.pending}   valueColor="text-amber-600 dark:text-amber-400"   bgClass="bg-amber-50 dark:bg-slate-800/60"   labelColor="text-amber-500/80 dark:text-slate-400" />
+                  <StatBox label="High"      value={optSummary.high}      valueColor="text-red-600 dark:text-red-400"       bgClass="bg-red-50 dark:bg-slate-800/60"      labelColor="text-red-400/80 dark:text-slate-400" />
+                  <StatBox label="Medium"    value={optSummary.medium}    valueColor="text-orange-600 dark:text-orange-400" bgClass="bg-orange-50 dark:bg-slate-800/60"   labelColor="text-orange-400/80 dark:text-slate-400" />
+                  <StatBox label="Optimized" value={optSummary.optimized} valueColor="text-green-700 dark:text-green-400"   bgClass="bg-green-50 dark:bg-slate-800/60"   labelColor="text-green-600/70 dark:text-slate-400" />
+                </div>
+                {/* Row 2: Page 2 · Avg Position · Avg Impressions · Avg CTR */}
+                <div className="grid grid-cols-4 gap-2">
+                  <StatBox label="Page 2"    value={optSummary.page2}         valueColor="text-indigo-600 dark:text-indigo-400" bgClass="bg-indigo-50 dark:bg-slate-800/60"  labelColor="text-indigo-400/80 dark:text-slate-400" />
+                  <StatBox label="Avg Pos"   value={optSummary.avgPosition}   valueColor="text-slate-700 dark:text-slate-300"   bgClass="bg-slate-50 dark:bg-slate-800/60"   labelColor="text-slate-400 dark:text-slate-500" />
+                  <StatBox label="Avg Imp"   value={optSummary.avgImpressions >= 1000 ? parseFloat((optSummary.avgImpressions / 1000).toFixed(1)) : optSummary.avgImpressions} valueColor="text-slate-700 dark:text-slate-300" bgClass="bg-slate-50 dark:bg-slate-800/60" labelColor="text-slate-400 dark:text-slate-500" suffix={optSummary.avgImpressions >= 1000 ? "k" : ""} />
+                  <StatBox label="Avg CTR"   value={optSummary.avgCtr}        valueColor="text-slate-700 dark:text-slate-300"   bgClass="bg-slate-50 dark:bg-slate-800/60"   labelColor="text-slate-400 dark:text-slate-500" suffix="%" />
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500 dark:text-slate-400">{description}</p>
+            )}
           </div>
         ))}
 
@@ -219,13 +299,13 @@ export function Overview({ domain, onNavigate }: OverviewProps) {
 }
 
 function StatBox({
-  label, value, valueColor, bgClass, labelColor,
+  label, value, valueColor, bgClass, labelColor, suffix = "",
 }: {
-  label: string; value: number; valueColor: string; bgClass: string; labelColor: string;
+  label: string; value: number; valueColor: string; bgClass: string; labelColor: string; suffix?: string;
 }) {
   return (
     <div className={`${bgClass} rounded-lg p-3 text-center`}>
-      <div className={`text-2xl font-bold ${valueColor}`}>{value}</div>
+      <div className={`text-2xl font-bold ${valueColor}`}>{value}{suffix}</div>
       <div className={`text-[11px] mt-0.5 font-medium ${labelColor}`}>{label}</div>
     </div>
   );

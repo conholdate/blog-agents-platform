@@ -14,11 +14,11 @@ A multi-tool web dashboard for the blog team across all 6 brand domains. Each to
 
 | Section | Status | Description |
 |---|---|---|
-| **Overview** | Live | Progress summary for the active domain — keyword stats, quick navigation to each tool |
+| **Overview** | Live | Live stats per tool (Keyword Agent counts, Optimization Agent priority breakdown, URL Validator issue summary) — click View → to jump to any section |
 | **Keyword Agent** | Live | Review and edit AI-generated keyword briefs; 3-column layout (queued/rejected/approved); adaptive card grid; colour-coded SEO/AEO scores; PIN-protected editing; Generated Blog Posts tab |
 | **URL Validator** | Live | Run URL validation scans and view colour-coded results; per-domain Google Sheets output |
 | **Translation Agent** | Coming Soon | Track translation status per product and language |
-| **Optimization Agent** | Coming Soon | Queue and track SEO optimization of existing posts |
+| **Optimization Agent** | Live | SEO optimization queue with priority scoring; optimized posts log; product + URL filters |
 | **Post Generation Agent** | Coming Soon | Generate full blog post drafts from keyword briefs using AI agents |
 
 Built with Next.js · Tailwind CSS · Google Sheets API · Deployed on Vercel

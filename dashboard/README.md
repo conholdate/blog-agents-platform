@@ -9,7 +9,12 @@ A multi-tool web dashboard for the blog team at Aspose, GroupDocs, and Conholdat
 ## Sections
 
 ### Overview
-Landing page for the active domain. Shows a Keyword Agent progress card (queued / approved / rejected / generated counts with per-product chips) and summary cards for all other tools. Click **View →** on any live card to jump to that section.
+Landing page for the active domain. Shows live stats for each active tool and click **View →** to jump directly to any section.
+
+- **Keyword Agent card** — queued / approved / rejected / generated counts + per-product approved/total chips
+- **Optimization Agent card** — Pending / High / Medium / Optimized counts + Page 2 Posts / Avg Position / Avg Impressions / Avg CTR
+- **URL Validator card** — Total Issues / Products Affected / Scans Run / Last Scan date + top 3 error types with proportional bars
+- Coming-soon tools show their description until they go live
 
 ### Keyword Agent
 Review and edit AI-generated keyword briefs pulled from Google Sheets. Cards are sorted highest combined SEO + AEO score first.
@@ -55,7 +60,30 @@ Error types detected:
 | `URL_MISMATCH_WITH_ENGLISH` | Translated URL slug differs from the English base URL |
 | `NO_ENGLISH_BASE` | Translated file exists but `index.md` is missing |
 
-### Translation Agent / Optimization Agent / Post Generation Agent
+### Optimization Agent
+Tracks SEO optimization progress for blog posts across all domains. Powered by two Google Sheets: a queue of posts to optimize (with Search Console metrics) and a log of already-optimized posts.
+
+**Two tabs, each shown as a sortable table (one row = one post):**
+
+- **Pending Optimization** — posts from the queue not yet optimized; default order matches the source sheet; click any column header to sort
+- **Optimized Posts** — posts recorded in the optimization log, default sorted by last-optimized date descending
+
+**Table columns (Pending):** `#` (original sheet order) · Priority · Product · Post URL · Impressions · CTR · Position · Clicks · Age (days)
+
+**Priority score formula (SEO expert ranking):**
+> `impressions × CTR-gap × position-opportunity × age-factor`
+>
+> - *CTR gap*: how far below the expected CTR for the post's position
+> - *Position opportunity*: 3× for pos 11–20 (page 2), 2× for 21–30, 1.5× for 5–10
+> - *Age factor*: older posts score up to 2× (stale content has more improvement potential)
+
+Priority tiers: 🔴 High (score ≥ 300) · 🟡 Medium (80–299) · ⚪ Low (< 80) — displayed inline in the priority cell
+
+**Colour coding:** CTR (green ≥ 3%, amber ≥ 1%, red < 1%) · Position (green ≤ 10, amber ≤ 20, grey > 20)
+
+**Filters:** product filter chips (product extracted from URL path) + URL search box · click `#` to restore original sheet order
+
+### Translation Agent / Post Generation Agent
 Coming soon.
 
 ---
@@ -96,6 +124,15 @@ Switch between domains using the domain pills in the top navigation bar. All sec
 
 ### Keywords — Generated Blog Posts Tab
 A virtual tab at the end of the tab bar aggregates all rows with `status=generated` across every product tab for the active domain, sorted latest-first by generation date. Cards in this tab are read-only (no edit button).
+
+### Optimization Agent — Browsing
+1. Select a **domain** from the top nav
+2. Click **Optimization Agent** in the sidebar
+3. **Pending Optimization** tab shows posts not yet optimized, sorted by original sheet order — click any column header to sort
+4. **Optimized Posts** tab shows posts already optimized with their last-optimized date
+5. Use product filter chips or the URL search box to narrow results
+6. Click **#** column header at any time to restore original sheet order
+7. Click the external link icon on any row to open the post in a new tab
 
 ### URL Validator — Running a Scan
 1. Select a **domain** from the top nav
@@ -161,6 +198,10 @@ URL_VALIDATOR_SHEET_ID_GROUPDOCS_CLOUD=
 URL_VALIDATOR_SHEET_ID_CONHOLDATE_COM=
 URL_VALIDATOR_SHEET_ID_CONHOLDATE_CLOUD=
 
+# Optimization Agent — shared sheets (tabs named after domains)
+SHEET_ID_TO_BE_OPTIMIZED=
+SHEET_ID_OPTIMIZATION_LOG=
+
 # Content dirs — absolute path to each blog's Hugo content folder
 # Required to run scans locally; viewing previous results works without these
 URL_VALIDATOR_CONTENT_DIR_ASPOSE_COM=
@@ -209,6 +250,30 @@ Status values: `queued` · `approved` · `rejected` · `generated`
 Multi-value fields (keywords, outline, notes) support:
 - Pipe-separated: `value1 | value2 | value3`
 - Newline-separated (Alt+Enter in Sheets)
+
+### Optimization Agent sheets
+
+Two shared sheets (each has one tab per domain, named exactly as the domain e.g. `blog.aspose.com`):
+
+**`SHEET_ID_TO_BE_OPTIMIZED`** — posts queued for optimization (populated by the AI agent)
+
+| Column | Description |
+|---|---|
+| `Page` | Full post URL |
+| `Clicks` | Search Console clicks |
+| `Impressions` | Search Console impressions |
+| `CTR` | Click-through rate (e.g. `1.76%`) |
+| `Position` | Average search position |
+| `Days Since Published` | Days since the post was published |
+
+**`SHEET_ID_OPTIMIZATION_LOG`** — log of completed optimizations (written by the AI agent)
+
+| Column | Description |
+|---|---|
+| `URL` | Full post URL |
+| `Last Optimized` | Date of last optimization (`YYYY-MM-DD`) |
+
+The `Consolidated` tab in the log sheet also includes a `Domain` column and aggregates all domains.
 
 ### URL Validator sheets
 

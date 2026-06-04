@@ -7,6 +7,26 @@ export const DOMAINS: Record<string, string> = {
   "blog.conholdate.cloud": process.env.KEYWORD_AGENT_SHEET_ID_CONHOLDATE_CLOUD ?? "",
 };
 
+export const OPTIMIZATION_SHEET_ID_QUEUE = process.env.SHEET_ID_TO_BE_OPTIMIZED ?? "";
+export const OPTIMIZATION_SHEET_ID_LOG   = process.env.SHEET_ID_OPTIMIZATION_LOG ?? "";
+
+// Maps URL path segment (lowercase) → display name
+export const PRODUCT_LABELS: Record<string, string> = {
+  "3d":        "3D",
+  "barcode":   "BarCode",
+  "cad":       "CAD",
+  "gis":       "GIS",
+  "html":      "HTML",
+  "ocr":       "OCR",
+  "omr":       "OMR",
+  "pdf":       "PDF",
+  "psd":       "PSD",
+  "pub":       "PUB",
+  "svg":       "SVG",
+  "tex":       "TeX",
+  "zip":       "ZIP",
+};
+
 export const DOMAIN_LABELS: Record<string, { label: string; color: string; brandColor: string; logo: string }> = {
   "blog.aspose.com":        { label: "Aspose",            color: "bg-blue-600",   brandColor: "#3387CC", logo: "/logos/aspose.png"      },
   "blog.aspose.cloud":      { label: "Aspose Cloud",      color: "bg-blue-400",   brandColor: "#5BA3DC", logo: "/logos/aspose.png"      },

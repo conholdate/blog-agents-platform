@@ -9,6 +9,7 @@ import { Sidebar, type Section } from "@/components/dashboard/Sidebar";
 import { Overview } from "@/components/dashboard/Overview";
 import { WorkInProgress } from "@/components/dashboard/WorkInProgress";
 import { UrlValidator } from "@/components/dashboard/UrlValidator";
+import { OptimizationAgent } from "@/components/dashboard/OptimizationAgent";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const DOMAIN_LIST = Object.keys(DOMAINS);
@@ -344,7 +345,11 @@ export function AppShell() {
             <UrlValidator domain={activeDomain} />
           )}
 
-          {activeSection !== "overview" && activeSection !== "keywords" && activeSection !== "url-validator" && (
+          {activeSection === "optimization" && (
+            <OptimizationAgent domain={activeDomain} />
+          )}
+
+          {activeSection !== "overview" && activeSection !== "keywords" && activeSection !== "url-validator" && activeSection !== "optimization" && (
             <WorkInProgress section={activeSection} domain={activeDomain} />
           )}
         </main>
