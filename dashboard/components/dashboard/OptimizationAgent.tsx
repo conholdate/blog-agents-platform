@@ -81,7 +81,7 @@ export function OptimizationAgent({ domain }: Props) {
 
   useEffect(() => {
     setData(null); setPage(1); setProductFilter("All"); setSearch("");
-    setSortKey("priorityScore"); setSortDir("desc");
+    setSortKey("originalIndex"); setSortDir("asc");
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [domain]);
