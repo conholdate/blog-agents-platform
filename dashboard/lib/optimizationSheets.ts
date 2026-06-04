@@ -47,32 +47,36 @@ function extractProduct(url: string): string {
 }
 
 // SEO priority score — multi-factor:
-//  1. Impressions × CTR-gap: posts getting views but underperforming on CTR
-//  2. Position band: page-2 posts (11–20) have highest jump potential (3×)
-//  3. Age factor: older posts are more stale
+//  1. Impressions × CTR efficiency: rewards content outperforming expected CTR for its position.
+//     A post at pos 55 with 2.3% CTR (5× above expected 0.5%) signals great content that's buried —
+//     exactly the kind worth optimising. CTR efficiency capped at 5× to avoid extreme outliers.
+//  2. Position factor: page-2 (11–20) highest at 3×; deep positions (>30) also get 1.5× since
+//     high CTR efficiency there means strong content with easy room to climb.
+//  3. Age factor: older posts benefit most from a content refresh (1–2× over 10 years).
 function computePriority(impressions: number, ctrPct: number, position: number, days: number): number {
-  if (impressions < 10) return 0;
+  if (impressions < 5) return 0;
   const ctr = ctrPct / 100;
-  // Expected CTR benchmarks by position
-  const expected =
+  const expectedCtr =
     position <= 1  ? 0.27 :
     position <= 2  ? 0.15 :
     position <= 3  ? 0.11 :
     position <= 5  ? 0.08 :
     position <= 10 ? 0.04 :
-    position <= 20 ? 0.02 : 0.01;
-  const ctrGap = Math.max(0, expected - ctr) / expected; // 0–1
+    position <= 20 ? 0.02 :
+    position <= 50 ? 0.01 : 0.005;
+  const ctrEfficiency = Math.min(ctr / expectedCtr, 5);
   const posFactor =
-    position >= 11 && position <= 20 ? 3 :
-    position >= 21 && position <= 30 ? 2 :
-    position >= 5  && position <= 10 ? 1.5 : 1;
-  const ageFactor = 1 + Math.min(days / 3650, 1); // 1–2× over 10 years
-  return impressions * ctrGap * posFactor * ageFactor;
+    position >= 11 && position <= 20 ? 3   :
+    position >= 21 && position <= 30 ? 2   :
+    position >= 5  && position <= 10 ? 1.5 :
+    position > 30                    ? 1.5 : 1;
+  const ageFactor = 1 + Math.min(days / 3650, 1);
+  return impressions * ctrEfficiency * posFactor * ageFactor;
 }
 
 function priorityTier(score: number): "high" | "medium" | "low" {
-  if (score >= 300) return "high";
-  if (score >= 80)  return "medium";
+  if (score >= 400) return "high";
+  if (score >= 100) return "medium";
   return "low";
 }
 
@@ -121,12 +125,13 @@ export async function getOptimizationData(domain: string): Promise<OptimizationD
   for (const row of queueRaw.slice(1)) {
     const url        = (row[iPage] ?? "").trim();
     if (!url) continue;
-    const clicks      = parseInt(row[iClk]  ?? "0") || 0;
-    const impressions = parseInt(row[iImp] ?? "0") || 0;
+    const clean       = (s: string) => s.replace(/,/g, "");
+    const clicks      = parseInt(clean(row[iClk]  ?? "0")) || 0;
+    const impressions = parseInt(clean(row[iImp]  ?? "0")) || 0;
     const ctrStr      = (row[iCtr] ?? "").replace("%", "");
     const ctr         = parseFloat(ctrStr) || 0;
     const position    = parseFloat(row[iPos]  ?? "0") || 0;
-    const days        = parseInt(row[iDays] ?? "0") || 0;
+    const days        = parseInt(clean(row[iDays] ?? "0")) || 0;
     const product     = extractProduct(url);
     const score       = computePriority(impressions, ctr, position, days);
 

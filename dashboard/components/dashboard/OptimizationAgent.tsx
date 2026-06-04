@@ -208,6 +208,23 @@ export function OptimizationAgent({ domain }: Props) {
           <span className="ml-auto text-[11px] text-slate-400 dark:text-slate-500">{sorted.length} posts</span>
         </div>
 
+        {/* Priority legend */}
+        {section === "queue" && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+            <span className="font-medium text-slate-600 dark:text-slate-300">Priority score:</span>
+            {(["high", "medium", "low"] as const).map((t) => (
+              <span key={t} className="flex items-center gap-1">
+                <span className={`h-2 w-2 rounded-full ${TIER_STYLES[t].dot}`} />
+                <span>{t === "high" ? "High" : t === "medium" ? "Med" : "Low"}</span>
+                <span className="text-slate-400">
+                  {t === "high" ? "(≥ 400)" : t === "medium" ? "(100–399)" : "(< 100)"}
+                </span>
+              </span>
+            ))}
+            <span className="text-slate-400">· impressions × CTR efficiency × position opportunity × age</span>
+          </div>
+        )}
+
         {/* Table */}
         {sorted.length === 0 ? (
           <div className="py-16 text-center text-slate-400 text-sm">No posts found.</div>

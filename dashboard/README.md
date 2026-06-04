@@ -71,13 +71,13 @@ Tracks SEO optimization progress for blog posts across all domains. Powered by t
 **Table columns (Pending):** `#` (original sheet order) · Priority · Product · Post URL · Impressions · CTR · Position · Clicks · Age (days)
 
 **Priority score formula (SEO expert ranking):**
-> `impressions × CTR-gap × position-opportunity × age-factor`
+> `impressions × CTR efficiency × position opportunity × age factor`
 >
-> - *CTR gap*: how far below the expected CTR for the post's position
-> - *Position opportunity*: 3× for pos 11–20 (page 2), 2× for 21–30, 1.5× for 5–10
-> - *Age factor*: older posts score up to 2× (stale content has more improvement potential)
+> - *CTR efficiency*: actual CTR ÷ expected CTR for the post's position (capped at 5×). A post at position 55 clicking at 2.3% is 4.6× above expected — strong relevance signal, good content just buried
+> - *Position opportunity*: 3× for pos 11–20 (page 2), 2× for 21–30, 1.5× for pos 5–10 and pos > 30
+> - *Age factor*: older posts score up to 2× (stale content benefits most from a refresh)
 
-Priority tiers: 🔴 High (score ≥ 300) · 🟡 Medium (80–299) · ⚪ Low (< 80) — displayed inline in the priority cell
+Priority tiers: 🔴 High (score ≥ 400) · 🟡 Medium (100–399) · ⚪ Low (< 100) — displayed inline in the priority cell
 
 **Colour coding:** CTR (green ≥ 3%, amber ≥ 1%, red < 1%) · Position (green ≤ 10, amber ≤ 20, grey > 20)
 
