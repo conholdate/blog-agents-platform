@@ -111,8 +111,8 @@ export function OptimizationAgent({ domain }: Props) {
   const sorted = useMemo(() => {
     const arr = [...filtered];
     arr.sort((a, b) => {
-      const av = (a as Record<string, unknown>)[sortKey];
-      const bv = (b as Record<string, unknown>)[sortKey];
+      const av = (a as unknown as Record<string, unknown>)[sortKey];
+      const bv = (b as unknown as Record<string, unknown>)[sortKey];
       const aStr = typeof av === "string" ? av : "";
       const bStr = typeof bv === "string" ? bv : "";
       const aNum = typeof av === "number" ? av : NaN;
