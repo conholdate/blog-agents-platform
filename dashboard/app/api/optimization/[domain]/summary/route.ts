@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOptimizationData } from "@/lib/optimizationSheets";
-import { getCached, setCached } from "@/lib/cache";
+import { getCached, setCached, TTL_OPTIMIZATION } from "@/lib/cache";
 
 type Params = Promise<{ domain: string }>;
 
-const TTL = 5 * 60 * 1000;
+const TTL = TTL_OPTIMIZATION;
 
 export async function GET(req: NextRequest, { params }: { params: Params }) {
   try {

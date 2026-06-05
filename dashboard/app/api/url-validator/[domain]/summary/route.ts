@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 import { getUrlValidatorSheetId } from "@/lib/url-validator-config";
-import { getCached, setCached } from "@/lib/cache";
+import { getCached, setCached, TTL_URL_VALIDATOR } from "@/lib/cache";
 
 type Params = Promise<{ domain: string }>;
 
@@ -14,7 +14,7 @@ function getAuth() {
   });
 }
 
-const TTL = 5 * 60 * 1000;
+const TTL = TTL_URL_VALIDATOR;
 
 export async function GET(req: NextRequest, { params }: { params: Params }) {
   const { domain } = await params;

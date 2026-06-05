@@ -291,7 +291,7 @@ export function AppShell() {
         {/* Section content */}
         <main className="flex-1">
           {activeSection === "overview" && (
-            <Overview domain={activeDomain} onNavigate={handleSectionSelect} />
+            <Overview domain={activeDomain} onNavigate={handleSectionSelect} onSelectDomain={setActiveDomain} />
           )}
 
           {activeSection === "keywords" && (

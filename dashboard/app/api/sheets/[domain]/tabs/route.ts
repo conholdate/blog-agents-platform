@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSheetTabs } from "@/lib/sheets";
 import { DOMAINS } from "@/lib/config";
-import { getCached, setCached } from "@/lib/cache";
+import { getCached, setCached, TTL_KEYWORDS } from "@/lib/cache";
 
-const TTL = 10 * 60 * 1000;
+const TTL = TTL_KEYWORDS;
 
 export async function GET(
   req: NextRequest,

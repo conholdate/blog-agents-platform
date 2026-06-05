@@ -60,7 +60,7 @@ function Th({ label, col, sortKey, sortDir, onSort, className = "" }: {
 }
 
 export function OptimizationAgent({ domain }: Props) {
-  const [data, setData]               = useState<{ queue: QueueRow[]; optimized: LogRow[] } | null>(null);
+  const [data, setData]               = useState<{ queue: QueueRow[]; optimized: LogRow[]; queueSheetUrl?: string | null; logSheetUrl?: string | null } | null>(null);
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState<string | null>(null);
   const [section, setSection]         = useState<"queue" | "optimized">("queue");
@@ -187,6 +187,24 @@ export function OptimizationAgent({ domain }: Props) {
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${countStyle}`}>{count}</span>
             </button>
           ))}
+
+          {/* Open Sheet link */}
+          <div className="ml-auto flex items-center">
+            {section === "queue" && data.queueSheetUrl && (
+              <a href={data.queueSheetUrl} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-slate-400 hover:text-green-600 dark:text-slate-500 dark:hover:text-green-400 whitespace-nowrap transition-colors">
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open Sheet
+              </a>
+            )}
+            {section === "optimized" && data.logSheetUrl && (
+              <a href={data.logSheetUrl} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-slate-400 hover:text-green-600 dark:text-slate-500 dark:hover:text-green-400 whitespace-nowrap transition-colors">
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open Sheet
+              </a>
+            )}
+          </div>
         </div>
 
         {/* Filters */}

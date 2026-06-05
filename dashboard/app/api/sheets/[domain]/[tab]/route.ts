@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSheetRows, saveSheetRows } from "@/lib/sheets";
-import { getCached, setCached, invalidateCache } from "@/lib/cache";
+import { getCached, setCached, invalidateCache, TTL_KEYWORDS } from "@/lib/cache";
 
 type Params = Promise<{ domain: string; tab: string }>;
 
-const TTL = 5 * 60 * 1000;
+const TTL = TTL_KEYWORDS;
 
 export async function GET(req: NextRequest, { params }: { params: Params }) {
   try {

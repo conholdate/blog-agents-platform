@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSheetTabs, getSheetRows } from "@/lib/sheets";
-import { getCached, setCached } from "@/lib/cache";
+import { getCached, setCached, TTL_KEYWORDS } from "@/lib/cache";
 
 type TabSummary = {
   name: string;
@@ -11,7 +11,7 @@ type TabSummary = {
   generated: number;
 };
 
-const TTL = 10 * 60 * 1000;
+const TTL = TTL_KEYWORDS;
 
 export async function GET(
   req: NextRequest,

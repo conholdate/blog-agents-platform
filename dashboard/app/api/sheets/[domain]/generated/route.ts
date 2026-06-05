@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSheetTabs, getSheetRows } from "@/lib/sheets";
-import { getCached, setCached } from "@/lib/cache";
+import { getCached, setCached, TTL_KEYWORDS } from "@/lib/cache";
 
 type Params = Promise<{ domain: string }>;
 
-const TTL = 5 * 60 * 1000;
+const TTL = TTL_KEYWORDS;
 const ALL_MISSING = "All Missing Topics";
 
 export async function GET(req: NextRequest, { params }: { params: Params }) {

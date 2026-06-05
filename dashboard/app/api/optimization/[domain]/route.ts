@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOptimizationData } from "@/lib/optimizationSheets";
-import { getCached, setCached } from "@/lib/cache";
+import { OPTIMIZATION_SHEET_ID_QUEUE, OPTIMIZATION_SHEET_ID_LOG } from "@/lib/config";
+import { getCached, setCached, TTL_OPTIMIZATION } from "@/lib/cache";
 
 type Params = Promise<{ domain: string }>;
 
-const TTL = 5 * 60 * 1000;
+const TTL = TTL_OPTIMIZATION;
 
 export async function GET(req: NextRequest, { params }: { params: Params }) {
   try {
@@ -19,8 +20,13 @@ export async function GET(req: NextRequest, { params }: { params: Params }) {
     }
 
     const data = await getOptimizationData(decoded);
-    setCached(key, data);
-    return NextResponse.json(data);
+    const result = {
+      ...data,
+      queueSheetUrl: OPTIMIZATION_SHEET_ID_QUEUE ? `https://docs.google.com/spreadsheets/d/${OPTIMIZATION_SHEET_ID_QUEUE}/edit` : null,
+      logSheetUrl:   OPTIMIZATION_SHEET_ID_LOG   ? `https://docs.google.com/spreadsheets/d/${OPTIMIZATION_SHEET_ID_LOG}/edit`   : null,
+    };
+    setCached(key, result);
+    return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
