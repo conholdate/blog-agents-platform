@@ -1,12 +1,12 @@
-# Blog Team Tools
+# Blog Agents Platform
 
-A monorepo of internal tools built for the Blog Team at Aspose, GroupDocs, and Conholdate.
+A monorepo of internal AI-powered tools built for the Blog Team at Aspose, GroupDocs, and Conholdate.
 
 ---
 
 ## Tools
 
-### [Blog Team Dashboard](./dashboard)
+### [Blog Agents Platform](./dashboard)
 
 **Live:** [blog-team-tools.vercel.app](https://blog-team-tools.vercel.app)
 
@@ -36,8 +36,8 @@ Use the CLI for scripted or offline runs; use the dashboard for interactive use.
 ## Repo Structure
 
 ```
-blog-team-tools/
-├── dashboard/       # Blog Team Dashboard — multi-tool web app (live on Vercel)
+blog-agents-platform/
+├── dashboard/       # Blog Agents Platform — multi-tool web app (live on Vercel)
 └── url-validator/   # URL Validator — standalone Python CLI (also integrated into dashboard)
 ```
 
@@ -60,5 +60,5 @@ blog-team-tools/
 
 | Remote | URL |
 |---|---|
-| GitHub | https://github.com/conholdate/blog-team-tools |
-| GitLab | https://gitlab.recruitize.ai/sialkot/lahore-aspose/lahore-blogs-team/blog-team-tools |
+| GitHub | https://github.com/conholdate/blog-agents-platform |
+| GitLab | https://gitlab.recruitize.ai/sialkot/lahore-aspose/lahore-blogs-team/blog-agents-platform |

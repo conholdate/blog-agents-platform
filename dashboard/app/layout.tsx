@@ -15,8 +15,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Blog Team Dashboard",
-  description: "Blog team tools: keywords, translations, optimization, URL validation",
+  title: "Blog Agents Platform",
+  description: "AI-powered blog team platform: keywords, translations, optimization, URL validation",
   robots: { index: false, follow: false },
 };
 

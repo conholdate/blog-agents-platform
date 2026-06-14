@@ -1,7 +1,7 @@
-# Blog Team Tools — Implementation Plan
+# Blog Agents Platform — Implementation Plan
 
 **Last updated:** 2026-04-29  
-**Monorepo:** [github.com/conholdate/blog-team-tools](https://github.com/conholdate/blog-team-tools)  
+**Monorepo:** [github.com/conholdate/blog-agents-platform](https://github.com/conholdate/blog-agents-platform)  
 **Maintained by:** Shoaib Khan
 
 ---
@@ -9,8 +9,8 @@
 ## Monorepo Overview
 
 ```
-blog-team-tools/
-├── dashboard/           # Blog Team Dashboard — multi-tool web app (Live)
+blog-agents-platform/
+├── dashboard/           # Blog Agents Platform — multi-tool web app (Live)
 └── url-validator/       # Python CLI — blog post URL linter (Dev phase)
 ```
 
@@ -18,7 +18,7 @@ Each tool is self-contained and deployed independently.
 
 ---
 
-## 1. Blog Team Dashboard
+## 1. Blog Agents Platform (Dashboard)
 
 **Folder:** `dashboard/`  
 **Live:** [blog-team-tools.vercel.app](https://blog-team-tools.vercel.app)  
@@ -27,7 +27,7 @@ Each tool is self-contained and deployed independently.
 
 ### What It Does
 
-A multi-tool web dashboard for the blog team across 6 brand domains (Aspose, GroupDocs, Conholdate + Cloud variants). Left sidebar navigation with agent sections: Overview, Keyword Agent, Translation Agent, Optimization Agent, Post Generation Agent, URL Validator. Keyword Agent is live; others are coming soon.
+A multi-tool web platform for the blog team across 6 brand domains (Aspose, GroupDocs, Conholdate + Cloud variants). Left sidebar navigation with agent sections: Overview, Keyword Agent, Translation Agent, Optimization Agent, Post Generation Agent, URL Validator. Keyword Agent is live; others are coming soon.
 
 ---
 
@@ -47,7 +47,7 @@ A multi-tool web dashboard for the blog team across 6 brand domains (Aspose, Gro
 - [x] Mobile sidebar as hamburger-toggled overlay drawer
 - [x] Domain switcher pills in sticky header — always visible across all sections
 - [x] Section switching resets keywords state (tabs, rows, errors)
-- [x] "Blog Team" branding in header
+- [x] "Blog Agents" branding in header
 
 #### Overview Section
 - [x] Keywords stats card — pending / ok / rejected counts + per-product progress bars (live data)

@@ -1,6 +1,6 @@
-# Blog Team Dashboard
+# Blog Agents Platform
 
-A multi-tool web dashboard for the blog team at Aspose, GroupDocs, and Conholdate. Manage keyword briefs, URL validation, translations, SEO optimization, and post generation — all from one place, across all 6 brand domains.
+A multi-tool AI-powered platform for the blog team at Aspose, GroupDocs, and Conholdate. Manage keyword briefs, URL validation, translations, SEO optimization, and post generation — all from one place, across all 6 brand domains.
 
 **Live:** [blog-team-tools.vercel.app](https://blog-team-tools.vercel.app)
 
@@ -159,8 +159,8 @@ A virtual tab at the end of the tab bar aggregates all rows with `status=generat
 1. Clone the repo and navigate to the project:
 
 ```bash
-git clone https://github.com/conholdate/blog-team-tools.git
-cd blog-team-tools/dashboard
+git clone https://github.com/conholdate/blog-agents-platform.git
+cd blog-agents-platform/dashboard
 ```
 
 2. Install dependencies:

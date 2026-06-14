@@ -172,7 +172,7 @@ export function AppShell() {
             </button>
 
             <span className="text-[15px] font-bold tracking-tight text-slate-900 dark:text-white shrink-0">
-              Blog Team
+              Blog Agents
             </span>
 
             {/* Domain pills */}

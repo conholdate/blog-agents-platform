@@ -1,0 +1,9 @@
+# Global owner — all files
+* @shoaibkhan-aspose
+
+# Sub-projects
+/dashboard/   @shoaibkhan-aspose
+/url-validator/ @shoaibkhan-aspose
+
+# Repo-level docs & config
+/.github/     @shoaibkhan-aspose

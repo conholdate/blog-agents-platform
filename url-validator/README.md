@@ -2,7 +2,7 @@
 
 Scans all blog post frontmatter for URL issues and reports findings to a Google Spreadsheet.
 
-The validation logic is also integrated into the **Blog Team Dashboard** UI — use the dashboard for interactive runs, or this CLI for scripted/offline use.
+The validation logic is also integrated into the **Blog Agents Platform** UI — use the dashboard for interactive runs, or this CLI for scripted/offline use.
 
 Currently covers **blog.aspose.com** only. Support for other blog domains (GroupDocs, Conholdate, etc.) is planned.
 
@@ -38,8 +38,8 @@ Create a `.env` file inside `url-validator/`:
 # Absolute path to the blog content directory
 BLOG_CONTENT_DIR=/path/to/aspose-blog/content/Aspose.Blog
 
-# Shared service account — same JSON used by the dashboard
-GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account","client_email":"...","private_key":"..."}
+# Shared service account — paste the full service account JSON value from Vercel env vars
+GOOGLE_SERVICE_ACCOUNT_JSON=<paste-service-account-json-here>
 
 # Google Spreadsheet ID for URL validation results
 URL_VALIDATOR_SHEET_ID=your-spreadsheet-id-here
@@ -49,7 +49,7 @@ The tool uses the same `GOOGLE_SERVICE_ACCOUNT_JSON` env var as the dashboard �
 
 As a fallback, credentials can still be placed in `credentials.json` (see `credentials.example.json`).
 
-If `BLOG_CONTENT_DIR` is not set, the script defaults to looking two levels up from its own directory (`url-validator/` → `blog-team-tools/` → repo root), then `aspose-blog/content/Aspose.Blog` relative to that root. This works if the blog content repo is checked out alongside `blog-team-tools/`.
+If `BLOG_CONTENT_DIR` is not set, the script defaults to looking two levels up from its own directory (`url-validator/` → `blog-agents-platform/` → repo root), then `aspose-blog/content/Aspose.Blog` relative to that root. This works if the blog content repo is checked out alongside `blog-agents-platform/`.
 
 ## Usage
 
