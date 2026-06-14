@@ -2,15 +2,17 @@
 
 This file provides guidance for AI coding agents (Claude, Codex, Cursor, etc.) working in this monorepo.
 
+**What this project is:** A control center for AI agents that automate blog content operations (keyword research, post generation, translation, SEO optimization) across 6 brand domains. AI agents run autonomously and write output to Google Sheets. The platform reads those Sheets and lets the blog team monitor, review, and act on the output.
+
 ## Repo Layout
 
 ```
 blog-agents-platform/
-├── dashboard/        # Next.js 16 web app — Blog Agents Platform UI (live on Vercel)
-└── url-validator/    # Python 3 CLI — blog post frontmatter URL linter
+├── dashboard/        # Web control center — Next.js 16 app (live on Vercel)
+└── url-validator/    # URL Validator — Python 3 CLI (also runs via the platform)
 ```
 
-Each tool is independently deployable and has its own dependencies. **Never cross-import between sub-projects.**
+Each sub-project is independently deployable and has its own dependencies. **Never cross-import between sub-projects.**
 
 ## Sub-project Agent Files
 

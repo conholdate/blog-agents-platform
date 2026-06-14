@@ -10,24 +10,24 @@
 
 ```
 blog-agents-platform/
-├── dashboard/           # Blog Agents Platform — multi-tool web app (Live)
-└── url-validator/       # Python CLI — blog post URL linter (Dev phase)
+├── dashboard/           # Web control center — Next.js app (Live on Vercel)
+└── url-validator/       # URL Validator — Python CLI (also runs via the platform)
 ```
 
-Each tool is self-contained and deployed independently.
+Each agent and tool is self-contained and deployed independently. Google Sheets is the shared data layer — agents write output to Sheets, the platform reads and displays it.
 
 ---
 
 ## 1. Blog Agents Platform (Dashboard)
 
 **Folder:** `dashboard/`  
-**Live:** [blog-team-tools.vercel.app](https://blog-team-tools.vercel.app)  
+**Live:** [Blog Agents Platform](https://blog-agents-platform.vercel.app)  
 **Stack:** Next.js 16 · Tailwind CSS v4 · Google Sheets API v4 · Vercel  
 **Status: Active / Production**
 
 ### What It Does
 
-A multi-tool web platform for the blog team across 6 brand domains (Aspose, GroupDocs, Conholdate + Cloud variants). Left sidebar navigation with agent sections: Overview, Keyword Agent, Translation Agent, Optimization Agent, Post Generation Agent, URL Validator. Keyword Agent is live; others are coming soon.
+The web control center for all blog agents. AI agents run autonomously and write output to Google Sheets — the platform reads those Sheets and lets the team monitor, review, and act on the output. Left sidebar navigation across 6 brand domains (Aspose, GroupDocs, Conholdate + Cloud variants) with sections for each agent: Overview, Keyword Agent, Post Generation Agent, Translation Agent, Optimization Agent, URL Validator.
 
 ---
 

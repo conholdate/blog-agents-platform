@@ -1,6 +1,6 @@
 # Contributing
 
-This is the internal **Blog Agents Platform** repo, maintained by the Blog Team at Aspose / GroupDocs / Conholdate.
+This is the internal **Blog Agents Platform** repo — the control center for AI agents that automate blog content operations across Aspose, GroupDocs, and Conholdate. Maintained by the Blog Team.
 
 ## Workflow
 
@@ -52,13 +52,13 @@ Use lowercase, present-tense verbs. No ticket numbers required.
 - No new comments unless the *why* is genuinely non-obvious
 - No unused imports or dead code
 
-## Adding a New Tool
+## Adding a New Agent or Tool
 
-1. Create a new folder at the repo root: `mkdir my-new-tool`
-2. Build the tool inside it with its own `README.md`, dependencies, and tests
-3. Add the tool to the root `README.md` table and `IMPLEMENTATION_PLAN.md`
-4. Deploy on Vercel — set **Root Directory** to `my-new-tool/` during import
-5. Add a sidebar entry in `dashboard/components/dashboard/Sidebar.tsx` if it has a dashboard view
+1. Create a new folder at the repo root: `mkdir my-new-agent`
+2. Build the agent or tool inside it with its own `README.md`, dependencies, and tests
+3. Add it to the root `README.md` agents table and `IMPLEMENTATION_PLAN.md`
+4. Deploy on Vercel — set **Root Directory** to `my-new-agent/` during import
+5. Add a sidebar entry in `dashboard/components/dashboard/Sidebar.tsx`
 6. Add env vars to Vercel dashboard
 
 ## Secrets & Credentials

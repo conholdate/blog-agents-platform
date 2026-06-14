@@ -2,19 +2,23 @@
 
 ## Overview
 
-**Blog Agents Platform** is a monorepo of internal AI-powered tools for the Blog Team at Aspose, GroupDocs, and Conholdate. Each tool is independently deployable. Tools share no runtime code — they communicate through shared Google Sheets.
+**Blog Agents Platform** is the control center for AI agents that automate blog content operations for the Blog Team at Aspose, GroupDocs, and Conholdate.
+
+AI agents run autonomously and produce output — keyword briefs, SEO priority rankings, post drafts, translations. The platform (web app) is where the team monitors, reviews, and acts on that output across 6 brand domains. **Google Sheets is the shared data layer** between agents and the platform; agents write to Sheets, the platform reads and displays the results.
+
+Each sub-project is independently deployable and shares no runtime code.
 
 ```
 blog-agents-platform/
-├── dashboard/        # Next.js 16 web app (live on Vercel)
-└── url-validator/    # Python 3 CLI
+├── dashboard/        # Web control center — Next.js 16 app (live on Vercel)
+└── url-validator/    # URL Validator — Python 3 CLI (also runs via the platform)
 ```
 
 ---
 
 ## 1. Blog Agents Platform (Dashboard)
 
-**Live:** [blog-team-tools.vercel.app](https://blog-team-tools.vercel.app)  
+**Live:** [Blog Agents Platform](https://blog-agents-platform.vercel.app)  
 **Stack:** Next.js 16 · App Router · React 19 · Tailwind CSS v4 · Google Sheets API v4 · Vercel
 
 ### Structure

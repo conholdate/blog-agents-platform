@@ -1,8 +1,10 @@
 # Blog Agents Platform
 
-A multi-tool AI-powered platform for the blog team at Aspose, GroupDocs, and Conholdate. Manage keyword briefs, URL validation, translations, SEO optimization, and post generation — all from one place, across all 6 brand domains.
+The web control center for AI agents that automate blog content operations at Aspose, GroupDocs, and Conholdate.
 
-**Live:** [blog-team-tools.vercel.app](https://blog-team-tools.vercel.app)
+AI agents run autonomously and produce output — keyword briefs, SEO priority rankings, post drafts, translations. This platform is where the blog team monitors, reviews, and acts on that output. All 6 brand domains. One place.
+
+**Live:** [Blog Agents Platform](https://blog-agents-platform.vercel.app)
 
 ---
 

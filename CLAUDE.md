@@ -5,12 +5,16 @@ This is the root-level CLAUDE.md for the monorepo. It covers repo-wide rules. Fo
 - [`dashboard/CLAUDE.md`](./dashboard/CLAUDE.md) — before touching anything in `dashboard/`
 - [`dashboard/AGENTS.md`](./dashboard/AGENTS.md) — Next.js-specific agent rules
 
+## What This Project Is
+
+The control center for AI agents that automate blog content operations (keyword research, post generation, translation, SEO optimization) across 6 brand domains. AI agents run autonomously and write output to Google Sheets. The platform reads those Sheets and lets the blog team monitor, review, and act on the output.
+
 ## Repo Structure
 
 ```
 blog-agents-platform/
-├── dashboard/        # Next.js 16 app (live on Vercel) — read dashboard/CLAUDE.md first
-└── url-validator/    # Python 3 CLI — blog post URL linter
+├── dashboard/        # Web control center — Next.js 16 app (live on Vercel) — read dashboard/CLAUDE.md first
+└── url-validator/    # URL Validator — Python 3 CLI (also runs via the platform)
 ```
 
 ## Critical: Secrets

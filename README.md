@@ -1,35 +1,37 @@
 # Blog Agents Platform
 
-A monorepo of internal AI-powered tools built for the Blog Team at Aspose, GroupDocs, and Conholdate.
+The control center for AI agents that automate blog content operations across Aspose, GroupDocs, and Conholdate.
+
+AI agents run autonomously and produce output — keyword briefs, SEO priorities, post drafts, translations. The platform is where the blog team monitors, reviews, and acts on that output across all 6 brand domains.
 
 ---
 
-## Tools
+## Agents & Tools
 
-### [Blog Agents Platform](./dashboard)
+### [Blog Agents Platform](./dashboard) — Web Control Center
 
-**Live:** [blog-team-tools.vercel.app](https://blog-team-tools.vercel.app)
+**Live:** [Blog Agents Platform](https://blog-agents-platform.vercel.app)
 
-A multi-tool web dashboard for the blog team across all 6 brand domains. Each tool is a dedicated section in the left sidebar.
+A unified web control center. Each agent has a dedicated section in the left sidebar. Google Sheets is the shared data layer between the agents and the platform.
 
-| Section | Status | Description |
+| Section | Status | What the agent does |
 |---|---|---|
-| **Overview** | Live | Live stats per tool (Keyword Agent counts, Optimization Agent priority breakdown, URL Validator issue summary) — click View → to jump to any section |
-| **Keyword Agent** | Live | Review and edit AI-generated keyword briefs; 3-column layout (queued/rejected/approved); adaptive card grid; colour-coded SEO/AEO scores; PIN-protected editing; Generated Blog Posts tab |
-| **URL Validator** | Live | Run URL validation scans and view colour-coded results; per-domain Google Sheets output |
-| **Translation Agent** | Coming Soon | Track translation status per product and language |
-| **Optimization Agent** | Live | SEO optimization queue with priority scoring; optimized posts log; product + URL filters |
-| **Post Generation Agent** | Coming Soon | Generate full blog post drafts from keyword briefs using AI agents |
+| **Overview** | Live | Live stats across all agents — Keyword Agent counts, Optimization Agent priority breakdown, URL Validator issue summary. Click View → to jump to any section |
+| **Keyword Agent** | Live | AI agent generates keyword briefs (SEO + AEO scored). Team reviews, approves, or rejects each brief. Approved briefs feed the Post Generation Agent |
+| **Post Generation Agent** | Coming Soon | AI agent drafts full blog posts from approved keyword briefs |
+| **Translation Agent** | Coming Soon | AI agent translates published posts across languages |
+| **Optimization Agent** | Live | AI agent surfaces posts with weak SEO using Search Console data and scores them by priority. Team uses this to decide which posts to refresh |
+| **URL Validator** | Live | Scans blog post frontmatter for URL issues. Not an AI agent — a deterministic scanner that catches structural URL errors across all posts |
 
 Built with Next.js · Tailwind CSS · Google Sheets API · Deployed on Vercel
 
 ---
 
-### [URL Validator](./url-validator)
+### [URL Validator](./url-validator) — Standalone CLI
 
-A standalone Python CLI that scans all blog post frontmatter for URL issues and writes colour-coded reports to Google Sheets. The same validation logic is also available directly from the Dashboard UI (URL Validator section).
+A Python CLI that runs the same URL scanning logic locally against a checked-out blog repo. Writes colour-coded results to Google Sheets.
 
-Use the CLI for scripted or offline runs; use the dashboard for interactive use.
+Use the CLI for scripted or scheduled runs; use the platform for interactive use.
 
 ---
 
@@ -37,20 +39,20 @@ Use the CLI for scripted or offline runs; use the dashboard for interactive use.
 
 ```
 blog-agents-platform/
-├── dashboard/       # Blog Agents Platform — multi-tool web app (live on Vercel)
-└── url-validator/   # URL Validator — standalone Python CLI (also integrated into dashboard)
+├── dashboard/       # Web control center — Next.js app (live on Vercel)
+└── url-validator/   # URL Validator — standalone Python CLI (also runs via the platform)
 ```
 
 ---
 
-## Adding a New Tool
+## Adding a New Agent or Tool
 
 1. Create a new folder at the repo root:
    ```bash
-   mkdir my-new-tool
+   mkdir my-new-agent
    ```
-2. Build the tool inside it
-3. Deploy on Vercel — set **Root Directory** to `my-new-tool/` during import
+2. Build the agent or tool inside it
+3. Deploy on Vercel — set **Root Directory** to `my-new-agent/` during import
 4. Add a sidebar entry in `dashboard/components/dashboard/Sidebar.tsx`
 5. Update this README
 
