@@ -1,8 +1,25 @@
 # Blog Agents Platform
 
-The control center for AI agents that automate blog content operations across Aspose, GroupDocs, and Conholdate.
+A Human-in-the-Loop (HITL) platform for AI agents that automate blog content operations across Aspose, GroupDocs, and Conholdate.
 
-AI agents run autonomously and produce output — keyword briefs, SEO priorities, post drafts, translations. The platform is where the blog team monitors, reviews, and acts on that output across all 6 brand domains.
+Each agent runs independently and writes its output to a Google Sheet. The platform lets the team view and edit those Sheets. The edited Sheet is what the next agent reads as its input.
+
+---
+
+## How It Works
+
+All 5 agents are independent. Each writes its output to a Google Sheet. The platform lets the team view and edit those Sheets. The edited Sheet is what the next agent reads as its input.
+
+```
+Agent runs  →  writes output to Google Sheet
+                        ↓
+              Platform: team views and edits the Sheet
+                        ↓
+              Next agent reads the edited Sheet as input
+```
+
+**One intentional gate in the system:** the Keyword Agent brief must be approved by a human before the Post Generation Agent picks it up. The keyword brief is the seed for all downstream content — title, outline, keywords, angle, persona — so human sign-off at this stage is by design. Approval happens in the platform by setting the brief status to `approved`. Every other stage is optional human review.
+
 
 ---
 
@@ -12,16 +29,16 @@ AI agents run autonomously and produce output — keyword briefs, SEO priorities
 
 **Live:** [Blog Agents Platform](https://blog-agents-platform.vercel.app)
 
-A unified web control center. Each agent has a dedicated section in the left sidebar. Google Sheets is the shared data layer between the agents and the platform.
+Each agent has a dedicated section in the left sidebar. The platform reads each agent's output Sheet and provides an interface to view, edit, and act on the data.
 
-| Section | Status | What the agent does |
+| Section | Status | Agent output / what the platform shows |
 |---|---|---|
-| **Overview** | Live | Live stats across all agents — Keyword Agent counts, Optimization Agent priority breakdown, URL Validator issue summary. Click View → to jump to any section |
-| **Keyword Agent** | Live | AI agent generates keyword briefs (SEO + AEO scored). Team reviews, approves, or rejects each brief. Approved briefs feed the Post Generation Agent |
-| **Post Generation Agent** | Coming Soon | AI agent drafts full blog posts from approved keyword briefs |
-| **Translation Agent** | Coming Soon | AI agent translates published posts across languages |
-| **Optimization Agent** | Live | AI agent surfaces posts with weak SEO using Search Console data and scores them by priority. Team uses this to decide which posts to refresh |
-| **URL Validator** | Live | Scans blog post frontmatter for URL issues. Not an AI agent — a deterministic scanner that catches structural URL errors across all posts |
+| **Overview** | Live | Live stats across all agents and all 6 domains — agent output counts, performance metrics, blog status at a glance |
+| **Keyword Agent** | Live | Keyword briefs (SEO + AEO scored). Team views and edits briefs — status, keywords, outline, angle. The edited Sheet is the input for the Post Generation Agent |
+| **Post Generation Agent** | Coming Soon | Blog post drafts generated from the Keyword Agent Sheet. Team can review and update before publishing |
+| **Translation Agent** | Coming Soon | Translated posts. Team can review translations per product and language |
+| **Optimization Agent** | Live | Posts surfaced for SEO refresh, scored by priority using Search Console data. Shows exactly why each post is flagged. A separate agent reads this Sheet to perform the optimization |
+| **URL Validator** | Live | URL error scan results across all posts. Run on demand or on a schedule. Not an AI agent — a deterministic scanner that writes findings to a Sheet |
 
 Built with Next.js · Tailwind CSS · Google Sheets API · Deployed on Vercel
 

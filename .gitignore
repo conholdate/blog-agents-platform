@@ -32,3 +32,6 @@ Thumbs.db
 **/*.pyc
 **/*.pyo
 **/.pytest_cache/
+
+# Internal announcements & drafts — not for version control
+/announcement/
