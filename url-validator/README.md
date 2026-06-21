@@ -85,6 +85,7 @@ Scan complete:
   ...
 ```
 
+## Running via GitHub Actions
 ## Tests
 
 ```bash

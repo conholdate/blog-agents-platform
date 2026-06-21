@@ -1,0 +1,86 @@
+name: URL Validator
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: "Run for a single domain only (default: all)"
+        required: false
+        type: choice
+        default: all
+        options:
+          - all
+          - blog.aspose.com
+          - blog.aspose.cloud
+          - blog.groupdocs.com
+          - blog.groupdocs.cloud
+          - blog.conholdate.com
+          - blog.conholdate.cloud
+
+jobs:
+  validate:
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.domain == 'all' || github.event.inputs.domain == matrix.domain }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - domain: blog.aspose.com
+            content_repo: aspose/aspose-blog
+            content_path: content/Aspose.Blog
+            sheet_secret: URL_VALIDATOR_SHEET_ID_ASPOSE_COM
+          - domain: blog.aspose.cloud
+            content_repo: aspose-cloud/aspose-cloud-blog
+            content_path: content/Aspose.Cloud
+            sheet_secret: URL_VALIDATOR_SHEET_ID_ASPOSE_CLOUD
+          - domain: blog.groupdocs.com
+            content_repo: groupdocs/groupdocs-blog
+            content_path: content/Groupdocs.Blog
+            sheet_secret: URL_VALIDATOR_SHEET_ID_GROUPDOCS_COM
+          - domain: blog.groupdocs.cloud
+            content_repo: groupdocs-cloud/groupdocs-cloud-blog
+            content_path: content/GroupDocs.Cloud
+            sheet_secret: URL_VALIDATOR_SHEET_ID_GROUPDOCS_CLOUD
+          - domain: blog.conholdate.com
+            content_repo: conholdate/conholdate-blog
+            content_path: content/Conholdate.Total
+            sheet_secret: URL_VALIDATOR_SHEET_ID_CONHOLDATE_COM
+          - domain: blog.conholdate.cloud
+            content_repo: conholdate-cloud/blog.conholdate.cloud
+            content_path: content/Conholdate.Cloud
+            sheet_secret: URL_VALIDATOR_SHEET_ID_CONHOLDATE_CLOUD
+    steps:
+      - name: Checkout blog-team-tools
+        uses: actions/checkout@v4
+        with:
+          path: blog-team-tools
+
+      - name: Checkout blog content (${{ matrix.content_repo }})
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.content_repo }}
+          token: ${{ secrets.CONTENT_REPOS_PAT }}
+          path: blog-content
+          sparse-checkout: ${{ matrix.content_path }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: blog-team-tools/url-validator/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+        working-directory: blog-team-tools/url-validator
+
+      - name: Run URL Validator — ${{ matrix.domain }}
+        working-directory: blog-team-tools/url-validator
+        env:
+          URL_VALIDATOR_CONTENT_DIR_OVERRIDE: ${{ github.workspace }}/blog-content/${{ matrix.content_path }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          URL_VALIDATOR_SPREADSHEET_ID: ${{ secrets.URL_VALIDATOR_SPREADSHEET_ID }}
+          URL_VALIDATOR_SHEET_ID: ${{ secrets[matrix.sheet_secret] }}
+        run: python3 main.py --domain ${{ matrix.domain }}
