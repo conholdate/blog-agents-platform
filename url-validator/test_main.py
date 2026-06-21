@@ -388,25 +388,29 @@ class TestValidateTranslated(unittest.TestCase):
         i = issue_of(issues, "LANG_CODE_MISMATCH")
         self.assertEqual(i["expected_url"], "/ar/words/convert-doc-to-pdf/")
 
-    # ── Language aliases (zh-hant → zh-tw) ────────────────────────────────────
+    # ── zh-hant URL prefix ──────────────────────────────────────────────────
+    # Real content was migrated from a /zh-tw/ URL prefix to /zh-hant/ (matching the
+    # lang code directly, no alias). Verified against production content: 2,166/2,356
+    # zh-hant files now use /zh-hant/, the remaining 168 still on /zh-tw/ are exactly
+    # the kind of drift this validator exists to catch.
 
-    def test_zh_hant_with_zh_tw_url_is_valid(self):
-        # zh-hant files use zh-tw in URLs — must NOT trigger LANG_CODE_MISMATCH
-        issues = self._validate("/zh-tw/words/convert-doc-to-pdf/", lang="zh-hant")
+    def test_zh_hant_with_zh_hant_url_is_valid(self):
+        # zh-hant files use the zh-hant URL prefix directly — must NOT trigger LANG_CODE_MISMATCH
+        issues = self._validate("/zh-hant/words/convert-doc-to-pdf/", lang="zh-hant")
         self.assertNotIn("LANG_CODE_MISMATCH", error_types(issues))
 
-    def test_zh_hant_with_zh_hant_url_triggers_mismatch(self):
-        # If someone put zh-hant in the URL (non-standard), it should be flagged
-        issues = self._validate("/zh-hant/words/convert-doc-to-pdf/", lang="zh-hant")
+    def test_zh_hant_with_zh_tw_url_triggers_mismatch(self):
+        # Legacy /zh-tw/ prefix is no longer correct for zh-hant files — should be flagged
+        issues = self._validate("/zh-tw/words/convert-doc-to-pdf/", lang="zh-hant")
         self.assertIn("LANG_CODE_MISMATCH", error_types(issues))
 
-    def test_zh_hant_mismatch_expected_uses_zh_tw(self):
-        issues = self._validate("/zh-hant/words/convert-doc-to-pdf/", lang="zh-hant")
+    def test_zh_hant_mismatch_expected_uses_zh_hant(self):
+        issues = self._validate("/zh-tw/words/convert-doc-to-pdf/", lang="zh-hant")
         i = issue_of(issues, "LANG_CODE_MISMATCH")
-        self.assertIn("/zh-tw/", i["expected_url"])
+        self.assertIn("/zh-hant/", i["expected_url"])
 
     def test_zh_hant_wrong_url_prefix_triggers_mismatch(self):
-        # /zh/ prefix instead of /zh-tw/ should also be flagged for zh-hant files
+        # /zh/ prefix instead of /zh-hant/ should also be flagged for zh-hant files
         issues = self._validate("/zh/words/convert-doc-to-pdf/", lang="zh-hant")
         self.assertIn("LANG_CODE_MISMATCH", error_types(issues))
 
@@ -522,11 +526,11 @@ class TestScanAll(unittest.TestCase):
     def test_lang_code_parsed_from_filename(self):
         self._post("words", "2024-01-01-post", {
             "index.md": "/words/post/",
-            "index.zh-hant.md": "/zh-tw/words/post/",
+            "index.zh-hant.md": "/zh-hant/words/post/",
         })
         issues, _ = main.scan_all()
         zh_issues = [i for i in issues if i["lang"] == "zh-hant"]
-        self.assertEqual(zh_issues, [])  # zh-tw URL is valid for zh-hant
+        self.assertEqual(zh_issues, [])  # zh-hant URL is valid for zh-hant lang
 
 
 if __name__ == "__main__":
