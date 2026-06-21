@@ -36,7 +36,7 @@ Each agent has a dedicated section in the left sidebar. The platform reads each 
 | **Overview** | Live | Live stats across all agents and all 6 domains — agent output counts, performance metrics, blog status at a glance |
 | **Keyword Agent** | Live | Keyword briefs (SEO + AEO scored). Team views and edits briefs — status, keywords, outline, angle. The edited Sheet is the input for the Post Generation Agent |
 | **Post Generation Agent** | Coming Soon | Blog post drafts generated from the Keyword Agent Sheet. Team can review and update before publishing |
-| **Translation Agent** | Coming Soon | Translated posts. Team can review translations per product and language |
+| **Translation Agent** | Live | Missing-translation scan results per domain (post, author, missing/extra languages) plus a history log tracking each post to completion |
 | **Optimization Agent** | Live | Posts surfaced for SEO refresh, scored by priority using Search Console data. Shows exactly why each post is flagged. A separate agent reads this Sheet to perform the optimization |
 | **URL Validator** | Live | URL error scan results across all posts. Run on demand or on a schedule. Not an AI agent — a deterministic scanner that writes findings to a Sheet |
 

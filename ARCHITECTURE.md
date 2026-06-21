@@ -38,6 +38,9 @@ dashboard/
 │       ├── optimization/[domain]/
 │       │   ├── route.ts        # GET — optimization queue rows
 │       │   └── summary/        # GET — priority breakdown counts
+│       ├── translation/[domain]/
+│       │   ├── route.ts        # GET — missing-translation scan + history rows
+│       │   └── summary/        # GET — missing/pending/partial/completed counts
 │       ├── url-validator/[domain]/
 │       │   ├── run/            # POST — trigger a scan
 │       │   ├── status/         # GET — scan status
@@ -47,7 +50,10 @@ dashboard/
 ├── components/
 │   └── dashboard/          # All UI components (Sidebar, sections, cards, drawers)
 └── lib/
-    ├── sheets.ts           # Google Sheets API wrappers
+    ├── sheets.ts           # Google Sheets API wrappers + getKeywordSummary
+    ├── optimizationSheets.ts  # Optimization queue/log parsing + getOptimizationSummary
+    ├── translationSheets.ts   # Translation scan/history parsing + getTranslationSummary
+    ├── url-validator-sheets.ts # URL Validator sheet I/O + getUrlValidatorSummary
     ├── config.ts           # Domain → Sheet ID map, brand colors, platform colors
     └── cache.ts            # Server-side in-memory cache with TTL
 ```
@@ -64,8 +70,10 @@ Next.js API Routes (server-side, /app/api/)
 Google Sheets (one spreadsheet per domain × agent)
     │  ↑ reads/writes via service account
     ▼
-lib/sheets.ts  ←→  lib/cache.ts (TTL: 5 min for lists, 2 min for rows)
+lib/sheets.ts  ←→  lib/cache.ts (per-tool TTL — see Caching below)
 ```
+
+`/api/overview/all` aggregates stats across every domain by calling each tool's `get*Summary()` lib function directly (in-process), never via HTTP to its own routes — a serverless function fetching its own deployment URL is unreliable (no guaranteed `localhost` listener, extra cold-start risk), so this pattern is intentional and should be followed for any future cross-agent aggregation.
 
 ### Authentication
 
@@ -90,7 +98,7 @@ Each domain maps to one or more Google Spreadsheet IDs, configured in `lib/confi
 
 ### Caching
 
-API routes use a server-side in-memory cache (`lib/cache.ts`) with a 5-minute TTL for tab lists and a 2-minute TTL for row data. Cache can be force-busted by the "Refresh" button in the UI, which sends `?refresh=true` on the next API call.
+API routes use a server-side in-memory cache (`lib/cache.ts`), with a TTL per tool matching its update cadence: Keyword Agent 2h, Optimization Agent 4h, Translation Agent 4h, URL Validator 6h. Cache can be force-busted by the "Refresh" button in the UI, which sends `?refresh=1` on the next API call. Because the cache is an in-memory `Map`, it does not persist across separate serverless invocations on Vercel — each cold-started function starts with an empty cache, refilled on first request.
 
 ### Deployment
 

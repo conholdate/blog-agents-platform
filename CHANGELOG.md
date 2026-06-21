@@ -9,6 +9,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Translation Agent** dashboard screen — reads the consolidated translation scan sheet (one tab per domain + a shared `history` tab): "Missing Translations" view (post, author, missing/extra language chips) and a "History" view (`pending`/`partial`/`completed` status per post), with product/language filters, search, and sortable columns
+- Translation Agent card on the Overview "This Domain" view and a Translations column group on the "All Domains" table
 - GitHub Actions workflow (`.github/workflows/url-validator.yml`) to run URL Validator on a daily schedule or on demand, across all 6 domains via a matrix job that checks out each domain's content repo
 - `--domain` flag on the url-validator CLI to select one of the 6 supported domains, resolving content dir and sheet ID from per-domain env vars instead of manual swapping
 - Consolidated spreadsheet mode (`URL_VALIDATOR_SPREADSHEET_ID`): one persistent tab per domain, updated in place each run instead of creating new dated tabs, plus a shared `History` tab with one summary row per run
@@ -19,6 +21,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Retry with exponential backoff on Sheets writes (Python CLI and TS dashboard), and server-side validation of keyword brief `status` values against `STATUS_OPTIONS`
 
 ### Fixed
+- Overview "All Domains" view showing no data in production — `/api/overview/all` was self-fetching its own API routes via `NEXT_PUBLIC_BASE_URL`, which falls back to `http://localhost:3000` when unset; that fallback doesn't exist inside a Vercel serverless function, so every sub-fetch failed silently and every domain rendered blank. Each tool's summary logic was extracted into a shared `lib` function (`getKeywordSummary`, `getOptimizationSummary`, `getUrlValidatorSummary`, `getTranslationSummary`) and `/api/overview/all` now calls them in-process instead — no HTTP round trip, works identically in dev and production
 - 4 stale url-validator tests asserting the old `/zh-tw/` URL prefix for zh-hant content, instead of the current `/zh-hant/` prefix the site actually uses
 - All 7 dashboard ESLint errors and 3 warnings (dead code, `let`/`const`, justified effect patterns)
 - `pytest` was missing from `requirements.txt` entirely (only ever installed ad-hoc locally)

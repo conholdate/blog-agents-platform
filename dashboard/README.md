@@ -11,12 +11,14 @@ AI agents run autonomously and produce output — keyword briefs, SEO priority r
 ## Sections
 
 ### Overview
-Landing page for the active domain. Shows live stats for each active tool and click **View →** to jump directly to any section.
+Landing page for the active domain. Shows live stats for each active tool and click **View →** to jump directly to any section. Toggle between **This Domain** (cards for the selected domain) and **All Domains** (one table, every domain at once).
 
 - **Keyword Agent card** — queued / approved / rejected / generated counts + per-product approved/total chips
+- **Translation Agent card** — Missing / Pending / Partial / Completed counts
 - **Optimization Agent card** — Pending / High / Medium / Optimized counts + Page 2 Posts / Avg Position / Avg Impressions / Avg CTR
 - **URL Validator card** — Total Issues / Products Affected / Scans Run / Last Scan date + top 3 error types with proportional bars
 - Coming-soon tools show their description until they go live
+- **All Domains table** — one row per domain with Keywords / Translations / Optimization / URL Validator column groups; any cell links straight into that domain + section
 
 ### Keyword Agent
 Review and edit AI-generated keyword briefs pulled from Google Sheets. Cards are sorted highest combined SEO + AEO score first.
@@ -85,7 +87,19 @@ Priority tiers: 🔴 High (score ≥ 400) · 🟡 Medium (100–399) · ⚪ Low 
 
 **Filters:** product filter chips (product extracted from URL path) + URL search box · click `#` to restore original sheet order
 
-### Translation Agent / Post Generation Agent
+### Translation Agent
+Tracks missing translations and translation progress across all domains. Powered by a single consolidated Google Sheet: one persistent tab per domain (overwritten on each daily scan) plus a shared `history` tab that tracks each post's translation status over time.
+
+**Two tabs:**
+
+- **Missing Translations** — posts from the active domain's scan tab that are still missing at least one translation: product, post link, author, missing count, missing-language chips, and any extra (orphaned) translation files
+- **History** — every post the agent has ever tracked for this domain, with a status badge: `pending` (not yet started) / `partial` (some languages done) / `completed` (fully translated), plus the completion date once done
+
+**Filters:** product filter chips, a language dropdown (options are derived from the data itself, not hardcoded — each domain supports a different language set), and a URL/product search box. Click any column header to sort.
+
+**Out of scope:** the agent's separate Quality Check / Retranslate steps write to per-domain quality-score sheets that aren't wired into this screen yet.
+
+### Post Generation Agent
 Coming soon.
 
 ---
@@ -135,6 +149,14 @@ A virtual tab at the end of the tab bar aggregates all rows with `status=generat
 5. Use product filter chips or the URL search box to narrow results
 6. Click **#** column header at any time to restore original sheet order
 7. Click the external link icon on any row to open the post in a new tab
+
+### Translation Agent — Browsing
+1. Select a **domain** from the top nav
+2. Click **Translation Agent** in the sidebar
+3. **Missing Translations** tab shows posts still missing at least one language for the active domain
+4. **History** tab shows every tracked post's status (`pending` / `partial` / `completed`) for the active domain
+5. Use the language dropdown to find posts missing a specific language, or the product chips / search box to narrow further
+6. Click the external link icon on any row to open the post in a new tab
 
 ### URL Validator — Running a Scan
 1. Select a **domain** from the top nav
@@ -203,6 +225,9 @@ URL_VALIDATOR_SHEET_ID_CONHOLDATE_CLOUD=
 # Optimization Agent — shared sheets (tabs named after domains)
 SHEET_ID_TO_BE_OPTIMIZED=
 SHEET_ID_OPTIMIZATION_LOG=
+
+# Translation Agent — single shared sheet (tabs = domain names + "history")
+TRANSLATION_SCAN_SHEET_ID=
 
 # Content dirs — absolute path to each blog's Hugo content folder
 # Required to run scans locally; viewing previous results works without these
@@ -276,6 +301,41 @@ Two shared sheets (each has one tab per domain, named exactly as the domain e.g.
 | `Last Optimized` | Date of last optimization (`YYYY-MM-DD`) |
 
 The `Consolidated` tab in the log sheet also includes a `Domain` column and aggregates all domains.
+
+### Translation Agent sheets
+
+One consolidated sheet (`TRANSLATION_SCAN_SHEET_ID`): one persistent tab per domain (named exactly as the domain, e.g. `blog.aspose.com`) overwritten on each daily scan, plus a shared `history` tab.
+
+**Domain tabs** — current missing-translation snapshot:
+
+| Column | Description |
+|---|---|
+| `Scan Date` | Date of the scan that produced this row |
+| `Domain` | Blog domain |
+| `Product` | Product slug (e.g. `barcode`) |
+| `Blog Post Directory` | Source post folder name |
+| `Blog Post URL` | Full post URL |
+| `Author` | Post author |
+| `Missing Count` | Number of languages still missing |
+| `Missing Translations` | Comma-separated missing language codes |
+| `Extra Translations` | Comma-separated orphaned language codes (translation exists but no longer matches a tracked language), or `-` |
+| `Extra Files Count` | Count of extra translation files |
+| `Status` | Reserved; currently always blank on domain tabs |
+
+**`history` tab** — append-only, shared across all domains:
+
+| Column | Description |
+|---|---|
+| `Scan Date` | Date of the scan that last touched this row |
+| `Domain` | Blog domain |
+| `Product` | Product slug |
+| `Blog Post Directory` | Source post folder name |
+| `Blog Post URL` | Full post URL |
+| `Author` | Post author |
+| `Missing Translations` | Comma-separated still-missing language codes |
+| `Missing Count` | Number of languages still missing |
+| `Status` | `pending` (new) / `partial` (some languages done) / `completed` (all done or post removed) |
+| `Completed Date` | Date the row reached `completed` |
 
 ### URL Validator sheets
 

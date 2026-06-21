@@ -1,6 +1,6 @@
 # Blog Agents Platform — Implementation Plan
 
-**Last updated:** 2026-04-29  
+**Last updated:** 2026-06-21  
 **Monorepo:** [github.com/conholdate/blog-agents-platform](https://github.com/conholdate/blog-agents-platform)  
 **Maintained by:** Shoaib Khan
 
@@ -51,9 +51,20 @@ The web control center for all blog agents. AI agents run autonomously and write
 
 #### Overview Section
 - [x] Keywords stats card — pending / ok / rejected counts + per-product progress bars (live data)
-- [x] WIP placeholder cards for Translation Agent, Optimization Agent, Post Generation Agent, URL Validator
-- [x] "View →" link navigates directly to the Keyword Agent section
+- [x] Translation Agent card — Missing / Pending / Partial / Completed counts (live data)
+- [x] WIP placeholder cards for Post Generation Agent (Optimization Agent and URL Validator are also live, predating this list)
+- [x] "View →" link navigates directly to the relevant section
 - [x] `/api/sheets/[domain]/summary` endpoint — fetches all tabs in parallel, returns status counts
+- [x] "All Domains" toggle — cross-domain table (Keywords / Translations / Optimization / URL Validator columns), each cell links into that domain + section
+- [x] Fixed: `/api/overview/all` returned no data in production — it was self-fetching its own API routes over an unset `NEXT_PUBLIC_BASE_URL` (falling back to a `localhost:3000` that doesn't exist inside a Vercel serverless function). Summary logic was extracted into shared `lib` functions (`getKeywordSummary`, `getOptimizationSummary`, `getUrlValidatorSummary`, `getTranslationSummary`) and called in-process instead
+
+#### Translation Agent
+- [x] Reads the consolidated scan sheet (`TRANSLATION_SCAN_SHEET_ID`) — one tab per domain (overwritten on each daily scan) plus a shared `history` tab
+- [x] "Missing Translations" tab — posts still missing a translation, with author, missing count, missing/extra language chips
+- [x] "History" tab — per-post translation progress (`pending` / `partial` / `completed`) filtered to the active domain from the shared history log
+- [x] Product filter pills, language filter dropdown (options derived from the data, not hardcoded per domain), URL/product search, sortable columns
+- [x] "Open Sheet" link, manual Refresh (bypasses cache)
+- [x] `/api/translation/[domain]` and `/api/translation/[domain]/summary` endpoints
 
 #### WIP Placeholder
 - [x] Section icon, label, "Coming Soon" badge, description per section
