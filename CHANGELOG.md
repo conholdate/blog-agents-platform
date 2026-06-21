@@ -14,6 +14,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Consolidated spreadsheet mode (`URL_VALIDATOR_SPREADSHEET_ID`): one persistent tab per domain, updated in place each run instead of creating new dated tabs, plus a shared `History` tab with one summary row per run
 - `--prepare-sheet` flag to idempotently create the consolidated spreadsheet's domain tabs + History tab ahead of the first real run
 - Dashboard URL Validator screen now reads and writes the consolidated spreadsheet when `URL_VALIDATOR_SPREADSHEET_ID` is set (results, summary, status, and the "Run Scan" trigger), matching the CLI/CI behavior instead of the legacy per-domain dated tabs
+- "Open Sheet" links deep-link to the active domain's tab (`#gid=`) instead of the spreadsheet root
+- CI workflow (`.github/workflows/ci.yml`) running `pytest`, `eslint`, and `tsc` on every push/PR to main
+- Retry with exponential backoff on Sheets writes (Python CLI and TS dashboard), and server-side validation of keyword brief `status` values against `STATUS_OPTIONS`
+
+### Fixed
+- 4 stale url-validator tests asserting the old `/zh-tw/` URL prefix for zh-hant content, instead of the current `/zh-hant/` prefix the site actually uses
+- All 7 dashboard ESLint errors and 3 warnings (dead code, `let`/`const`, justified effect patterns)
+- `pytest` was missing from `requirements.txt` entirely (only ever installed ad-hoc locally)
 
 ---
 
