@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 import { getUrlValidatorSheetId, getUrlValidatorConsolidatedSpreadsheetId } from "@/lib/url-validator-config";
-import { readDomainTab, getDomainHistory, getLatestHistoryEntry } from "@/lib/url-validator-sheets";
+import { readDomainTab, getDomainHistory, getLatestHistoryEntry, findTabId } from "@/lib/url-validator-sheets";
 import { getCached, setCached, TTL_URL_VALIDATOR } from "@/lib/cache";
 
 type Params = Promise<{ domain: string }>;
@@ -41,14 +41,15 @@ export async function GET(req: NextRequest, { params }: { params: Params }) {
 
     if (consolidatedId) {
       // Consolidated mode: read the domain's persistent tab directly, no dated-tab discovery.
-      const [values, history] = await Promise.all([
+      const [values, history, gid] = await Promise.all([
         readDomainTab(sheets, consolidatedId, decoded),
         getDomainHistory(sheets, consolidatedId, decoded),
+        findTabId(sheets, consolidatedId, decoded),
       ]);
       const latest = getLatestHistoryEntry(history);
 
       if (values.length < 2) {
-        return NextResponse.json({ issues: [], latestDate: latest?.runDate ?? null, availableDates: [], spreadsheetId: consolidatedId });
+        return NextResponse.json({ issues: [], latestDate: latest?.runDate ?? null, availableDates: [], spreadsheetId: consolidatedId, gid });
       }
 
       const headers = values[0];
@@ -58,14 +59,15 @@ export async function GET(req: NextRequest, { params }: { params: Params }) {
         return obj;
       });
 
-      const result = { issues, latestDate: latest?.runDate ?? null, availableDates: [], spreadsheetId: consolidatedId };
+      const result = { issues, latestDate: latest?.runDate ?? null, availableDates: [], spreadsheetId: consolidatedId, gid };
       setCached(key, result);
       return NextResponse.json(result);
     }
 
     // Legacy mode: discover the latest dated tab in this domain's own spreadsheet.
     const metaRes = await sheets.spreadsheets.get({ spreadsheetId });
-    const dateTabs = (metaRes.data.sheets ?? [])
+    const tabs = metaRes.data.sheets ?? [];
+    const dateTabs = tabs
       .map((s) => s.properties?.title ?? "")
       .filter((t) => /^\d{4}-\d{2}-\d{2}$/.test(t))
       .sort()
@@ -76,6 +78,7 @@ export async function GET(req: NextRequest, { params }: { params: Params }) {
     }
 
     const latestTab = dateTabs[0];
+    const gid = tabs.find((s) => s.properties?.title === latestTab)?.properties?.sheetId ?? null;
     const dataRes = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `'${latestTab}'!A1:I`,
@@ -83,7 +86,7 @@ export async function GET(req: NextRequest, { params }: { params: Params }) {
 
     const values = dataRes.data.values ?? [];
     if (values.length < 2) {
-      return NextResponse.json({ issues: [], latestDate: latestTab, availableDates: dateTabs.slice(0, 10), spreadsheetId });
+      return NextResponse.json({ issues: [], latestDate: latestTab, availableDates: dateTabs.slice(0, 10), spreadsheetId, gid });
     }
 
     const headers = values[0] as string[];
@@ -93,7 +96,7 @@ export async function GET(req: NextRequest, { params }: { params: Params }) {
       return obj;
     });
 
-    const result = { issues, latestDate: latestTab, availableDates: dateTabs.slice(0, 10), spreadsheetId };
+    const result = { issues, latestDate: latestTab, availableDates: dateTabs.slice(0, 10), spreadsheetId, gid };
     setCached(key, result);
     return NextResponse.json(result);
   } catch (e) {

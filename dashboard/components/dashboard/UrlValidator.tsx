@@ -29,7 +29,13 @@ interface Results {
   latestDate: string | null;
   availableDates: string[];
   spreadsheetId?: string;
+  gid?: number | null;
   error?: string;
+}
+
+function sheetUrl(spreadsheetId: string, gid?: number | null): string {
+  const base = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
+  return gid != null ? `${base}/edit#gid=${gid}` : base;
 }
 
 interface Status {
@@ -168,7 +174,7 @@ export function UrlValidator({ domain }: Props) {
                 <>
                   {" · "}
                   <a
-                    href={`https://docs.google.com/spreadsheets/d/${results.spreadsheetId}`}
+                    href={sheetUrl(results.spreadsheetId, results.gid)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-0.5"
@@ -380,7 +386,7 @@ export function UrlValidator({ domain }: Props) {
                 <span>Showing 500 of {filteredIssues.length} issues</span>
                 {results.spreadsheetId && (
                   <a
-                    href={`https://docs.google.com/spreadsheets/d/${results.spreadsheetId}`}
+                    href={sheetUrl(results.spreadsheetId, results.gid)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"

@@ -37,7 +37,7 @@ async function autosizeColumns(sheets: sheets_v4.Sheets, spreadsheetId: string, 
   });
 }
 
-async function findTabId(sheets: sheets_v4.Sheets, spreadsheetId: string, title: string): Promise<number | null> {
+export async function findTabId(sheets: sheets_v4.Sheets, spreadsheetId: string, title: string): Promise<number | null> {
   const metaRes = await sheets.spreadsheets.get({ spreadsheetId });
   const found = (metaRes.data.sheets ?? []).find((s) => s.properties?.title === title);
   return found?.properties?.sheetId ?? null;
