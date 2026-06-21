@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { BookMarked, Languages, TrendingUp, Link, Bot, Loader2, RefreshCw, Globe } from "lucide-react";
 import { DOMAIN_LABELS } from "@/lib/config";
 import type { Section } from "./Sidebar";
+import type { TranslationSummary } from "@/lib/translationSheets";
 
 type TabSummary = { name: string; total: number; queued: number; approved: number; rejected: number; generated: number };
 
@@ -21,13 +22,14 @@ interface DomainRow {
   kw:  { queued: number; approved: number; generated: number } | null;
   opt: { pending: number; high: number; optimized: number } | null;
   url: { totalIssues: number; latestScan: string | null } | null;
+  tr:  { missing: number; pending: number; completed: number } | null;
 }
 
 const WIP_CARDS: {
   section: Section; label: string; icon: React.ComponentType<{ className?: string }>;
   description: string; accentLight: string; iconBg: string; iconColor: string; viewColor?: string; ready?: boolean;
 }[] = [
-  { section: "translations",   label: "Translation Agent",     icon: Languages, description: "Track translation status per product and language",                          accentLight: "border-l-sky-500",    iconBg: "bg-sky-50 dark:bg-slate-600/70",     iconColor: "text-sky-600 dark:text-slate-300"    },
+  { section: "translations",   label: "Translation Agent",     icon: Languages, description: "Track translation status per product and language",                          accentLight: "border-l-sky-500",    iconBg: "bg-sky-50 dark:bg-slate-600/70",     iconColor: "text-sky-600 dark:text-slate-300",     viewColor: "text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300",         ready: true },
   { section: "optimization",   label: "Optimization Agent",    icon: TrendingUp, description: "SEO optimization queue with priority scoring; track pending and optimized posts", accentLight: "border-l-emerald-500", iconBg: "bg-emerald-50 dark:bg-slate-600/70",  iconColor: "text-emerald-600 dark:text-slate-300", viewColor: "text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300", ready: true },
   { section: "post-generation", label: "Post Generation Agent", icon: Bot,        description: "Generate full blog post drafts from keyword briefs using AI agents",          accentLight: "border-l-rose-500",   iconBg: "bg-rose-50 dark:bg-slate-600/70",    iconColor: "text-rose-600 dark:text-slate-300"   },
   { section: "url-validator",  label: "URL Validator",         icon: Link,       description: "Run URL validation scans and view reported issues",                          accentLight: "border-l-orange-500", iconBg: "bg-orange-50 dark:bg-slate-600/70",  iconColor: "text-orange-600 dark:text-slate-300",  viewColor: "text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300",   ready: true },
@@ -38,23 +40,26 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
   const [summary, setSummary]       = useState<TabSummary[] | null>(null);
   const [optSummary, setOptSummary] = useState<OptimizationSummary | null>(null);
   const [urlSummary, setUrlSummary] = useState<UrlValidatorSummary | null>(null);
+  const [trSummary, setTrSummary]   = useState<TranslationSummary | null>(null);
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState<string | null>(null);
 
   function load(refresh = false) {
-    setLoading(true); setSummary(null); setOptSummary(null); setUrlSummary(null); setError(null);
+    setLoading(true); setSummary(null); setOptSummary(null); setUrlSummary(null); setTrSummary(null); setError(null);
     const qs = refresh ? "?refresh=1" : "";
     const enc = encodeURIComponent(domain);
     Promise.all([
       fetch(`/api/sheets/${enc}/summary${qs}`).then((r) => r.json()),
       fetch(`/api/optimization/${enc}/summary${qs}`).then((r) => r.json()),
       fetch(`/api/url-validator/${enc}/summary${qs}`).then((r) => r.json()),
+      fetch(`/api/translation/${enc}/summary${qs}`).then((r) => r.json()),
     ])
-      .then(([kw, opt, url]) => {
+      .then(([kw, opt, url, tr]) => {
         if (kw.error) throw new Error(kw.error);
         setSummary(kw.tabs);
         if (!opt.error && !opt.notConfigured) setOptSummary(opt);
         if (!url.error && !url.notConfigured) setUrlSummary(url);
+        if (!tr.error && !tr.notConfigured) setTrSummary(tr);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -123,7 +128,14 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
                 <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30">Coming Soon</span>
               )}
             </div>
-            {section === "url-validator" && urlSummary ? (
+            {section === "translations" && trSummary ? (
+              <div className="grid grid-cols-4 gap-2">
+                <StatBox label="Missing"   value={trSummary.missing}   valueColor="text-amber-600 dark:text-amber-400"   bgClass="bg-amber-50 dark:bg-slate-800/60"  labelColor="text-amber-500/80 dark:text-slate-400" />
+                <StatBox label="Pending"   value={trSummary.pending}   valueColor="text-sky-600 dark:text-sky-400"       bgClass="bg-sky-50 dark:bg-slate-800/60"    labelColor="text-sky-500/80 dark:text-slate-400" />
+                <StatBox label="Partial"   value={trSummary.partial}   valueColor="text-blue-600 dark:text-blue-400"     bgClass="bg-blue-50 dark:bg-slate-800/60"   labelColor="text-blue-500/80 dark:text-slate-400" />
+                <StatBox label="Completed" value={trSummary.completed} valueColor="text-green-700 dark:text-green-400"   bgClass="bg-green-50 dark:bg-slate-800/60"  labelColor="text-green-600/70 dark:text-slate-400" />
+              </div>
+            ) : section === "url-validator" && urlSummary ? (
               <div className="flex flex-col gap-2">
                 <div className="grid grid-cols-4 gap-2">
                   <StatBox label="Total Issues" value={urlSummary.totalIssues}      valueColor="text-amber-600 dark:text-amber-400"   bgClass="bg-amber-50 dark:bg-slate-800/60"  labelColor="text-amber-500/80 dark:text-slate-400" />
@@ -222,6 +234,7 @@ function AllDomainsView({ onNavigate, onSelectDomain }: { onNavigate: (s: Sectio
               <tr>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Domain</th>
                 <th className="px-4 py-3 text-center text-[11px] font-semibold text-indigo-500 dark:text-indigo-400 uppercase tracking-wider" colSpan={3}>Keywords</th>
+                <th className="px-4 py-3 text-center text-[11px] font-semibold text-sky-500 dark:text-sky-400 uppercase tracking-wider" colSpan={3}>Translations</th>
                 <th className="px-4 py-3 text-center text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider" colSpan={3}>Optimization</th>
                 <th className="px-4 py-3 text-center text-[11px] font-semibold text-orange-500 dark:text-orange-400 uppercase tracking-wider" colSpan={2}>URL Validator</th>
               </tr>
@@ -230,6 +243,9 @@ function AllDomainsView({ onNavigate, onSelectDomain }: { onNavigate: (s: Sectio
                 <th className="px-3 py-2 text-center text-[10px] font-medium text-amber-500">Queued</th>
                 <th className="px-3 py-2 text-center text-[10px] font-medium text-green-600 dark:text-green-400">Approved</th>
                 <th className="px-3 py-2 text-center text-[10px] font-medium text-indigo-500">Generated</th>
+                <th className="px-3 py-2 text-center text-[10px] font-medium text-amber-500">Missing</th>
+                <th className="px-3 py-2 text-center text-[10px] font-medium text-sky-500">Pending</th>
+                <th className="px-3 py-2 text-center text-[10px] font-medium text-green-600 dark:text-green-400">Completed</th>
                 <th className="px-3 py-2 text-center text-[10px] font-medium text-amber-500">Pending</th>
                 <th className="px-3 py-2 text-center text-[10px] font-medium text-red-500">High</th>
                 <th className="px-3 py-2 text-center text-[10px] font-medium text-green-600 dark:text-green-400">Optimized</th>
@@ -238,7 +254,7 @@ function AllDomainsView({ onNavigate, onSelectDomain }: { onNavigate: (s: Sectio
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 bg-white dark:bg-slate-800">
-              {rows.map(({ domain, kw, opt, url }) => {
+              {rows.map(({ domain, kw, opt, url, tr }) => {
                 const meta = DOMAIN_LABELS[domain];
                 return (
                   <tr key={domain} className="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
@@ -258,6 +274,16 @@ function AllDomainsView({ onNavigate, onSelectDomain }: { onNavigate: (s: Sectio
                     </td>
                     <td className="px-3 py-3 text-center">
                       {kw ? <button onClick={() => goTo(domain, "keywords")} className="font-mono text-indigo-600 dark:text-indigo-400 hover:underline">{kw.generated}</button> : <span className="text-slate-300 dark:text-slate-600">—</span>}
+                    </td>
+                    {/* Translations */}
+                    <td className="px-3 py-3 text-center">
+                      {tr ? <button onClick={() => goTo(domain, "translations")} className="font-mono text-amber-600 dark:text-amber-400 hover:underline">{tr.missing}</button> : <span className="text-slate-300 dark:text-slate-600">—</span>}
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      {tr ? <button onClick={() => goTo(domain, "translations")} className="font-mono text-sky-600 dark:text-sky-400 hover:underline">{tr.pending}</button> : <span className="text-slate-300 dark:text-slate-600">—</span>}
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      {tr ? <button onClick={() => goTo(domain, "translations")} className="font-mono text-green-600 dark:text-green-400 hover:underline">{tr.completed}</button> : <span className="text-slate-300 dark:text-slate-600">—</span>}
                     </td>
                     {/* Optimization */}
                     <td className="px-3 py-3 text-center">

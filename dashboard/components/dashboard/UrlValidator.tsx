@@ -230,7 +230,7 @@ export function UrlValidator({ domain }: Props) {
             </button>
           ) : (
             <div className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 text-sm border border-slate-200 dark:border-slate-600 cursor-not-allowed select-none"
-              title="Set BLOG_CONTENT_DIR in dashboard/.env.local to enable running scans">
+              title="Scans run automatically via GitHub Actions. Set BLOG_CONTENT_DIR in dashboard/.env.local to also run scans from here.">
               <Play className="h-4 w-4" /> Run Scan
             </div>
           )}
@@ -262,9 +262,9 @@ export function UrlValidator({ domain }: Props) {
       {/* Setup hint if can't run */}
       {status && !status.canRun && (
         <div className="mb-5 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-300">
-          <p className="font-medium mb-1">Automated scans coming soon</p>
+          <p className="font-medium mb-1">Scans run automatically on GitHub</p>
           <p className="text-amber-700 dark:text-amber-400">
-            Scans are currently run locally by the team and results are published here. Full cloud-based scanning will be available soon.
+            Scans are scheduled nightly via GitHub Actions and results are published here. Running a scan from this dashboard requires BLOG_CONTENT_DIR to be configured locally.
           </p>
         </div>
       )}
@@ -292,7 +292,7 @@ export function UrlValidator({ domain }: Props) {
           <p className="text-sm">
             {status?.canRun
               ? "Click \"Run Scan\" to scan the blog and write results to Google Sheets."
-              : "Configure BLOG_CONTENT_DIR locally and run a scan to see results here."}
+              : "Scans run nightly via GitHub Actions — results will appear here once the next scan completes."}
           </p>
         </div>
       )}

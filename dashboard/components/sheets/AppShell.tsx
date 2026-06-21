@@ -10,6 +10,7 @@ import { Overview } from "@/components/dashboard/Overview";
 import { WorkInProgress } from "@/components/dashboard/WorkInProgress";
 import { UrlValidator } from "@/components/dashboard/UrlValidator";
 import { OptimizationAgent } from "@/components/dashboard/OptimizationAgent";
+import { TranslationAgent } from "@/components/dashboard/TranslationAgent";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const DOMAIN_LIST = Object.keys(DOMAINS);
@@ -353,7 +354,11 @@ export function AppShell() {
             <OptimizationAgent domain={activeDomain} />
           )}
 
-          {activeSection !== "overview" && activeSection !== "keywords" && activeSection !== "url-validator" && activeSection !== "optimization" && (
+          {activeSection === "translations" && (
+            <TranslationAgent domain={activeDomain} />
+          )}
+
+          {activeSection !== "overview" && activeSection !== "keywords" && activeSection !== "url-validator" && activeSection !== "optimization" && activeSection !== "translations" && (
             <WorkInProgress section={activeSection} domain={activeDomain} />
           )}
         </main>

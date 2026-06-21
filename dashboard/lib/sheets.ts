@@ -121,6 +121,35 @@ export async function reorderRows(
   });
 }
 
+export interface TabSummary {
+  name: string;
+  total: number;
+  queued: number;
+  approved: number;
+  rejected: number;
+  generated: number;
+}
+
+export async function getKeywordSummary(domain: string): Promise<TabSummary[]> {
+  const allTabs = await getSheetTabs(domain);
+  const productTabs = allTabs.filter((t) => t !== "All Missing Topics");
+
+  return Promise.all(
+    productTabs.map(async (tab) => {
+      const rows = await getSheetRows(domain, tab);
+      const counts = { queued: 0, approved: 0, rejected: 0, generated: 0 };
+      for (const row of rows) {
+        const status = (row["Status"] ?? "").toLowerCase().trim();
+        if (status === "approved") counts.approved++;
+        else if (status === "rejected") counts.rejected++;
+        else if (status === "generated") counts.generated++;
+        else counts.queued++;
+      }
+      return { name: tab, total: rows.length, ...counts };
+    })
+  );
+}
+
 function columnLetter(index: number): string {
   let letter = "";
   let n = index + 1;

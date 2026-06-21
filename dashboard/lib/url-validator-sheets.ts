@@ -1,5 +1,6 @@
 import { google, sheets_v4 } from "googleapis";
 import type { Issue, ScanStats } from "./url-validator";
+import { getUrlValidatorSheetId, getUrlValidatorConsolidatedSpreadsheetId } from "./url-validator-config";
 
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
 
@@ -348,4 +349,89 @@ async function writeToSheetsOnce(
 
 export async function writeToSheets(issues: Issue[], stats: ScanStats, spreadsheetId: string): Promise<void> {
   return withRetry(() => writeToSheetsOnce(issues, stats, spreadsheetId));
+}
+
+export interface UrlValidatorSummary {
+  totalIssues: number;
+  productsAffected: number;
+  topErrors: { type: string; count: number }[];
+  latestScan: string | null;
+  scansAvailable: number;
+}
+
+function summarizeRows(headers: string[], rows: string[][]): { totalIssues: number; productsAffected: number; topErrors: { type: string; count: number }[] } {
+  const iProduct   = headers.findIndex((h) => h.toLowerCase() === "product");
+  const iErrorType = headers.findIndex((h) => h.toLowerCase() === "error type");
+
+  const products  = new Set<string>();
+  const errorCounts: Record<string, number> = {};
+
+  for (const row of rows) {
+    const product   = (row[iProduct]   ?? "").trim();
+    const errorType = (row[iErrorType] ?? "").trim();
+    if (product)   products.add(product);
+    if (errorType) errorCounts[errorType] = (errorCounts[errorType] ?? 0) + 1;
+  }
+
+  const topErrors = Object.entries(errorCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([type, count]) => ({ type, count }));
+
+  return { totalIssues: rows.length, productsAffected: products.size, topErrors };
+}
+
+export async function getUrlValidatorSummary(domain: string): Promise<UrlValidatorSummary | { notConfigured: true }> {
+  const consolidatedId = getUrlValidatorConsolidatedSpreadsheetId();
+  const legacyId = getUrlValidatorSheetId(domain);
+  const spreadsheetId = consolidatedId ?? legacyId;
+
+  if (!spreadsheetId) return { notConfigured: true };
+
+  const sheets = getSheetsClient();
+
+  if (consolidatedId) {
+    // Consolidated mode: summarize the domain's persistent tab; latestScan/scansAvailable
+    // come from the History tab's entries for this domain.
+    const [values, history] = await Promise.all([
+      readDomainTab(sheets, consolidatedId, domain),
+      getDomainHistory(sheets, consolidatedId, domain),
+    ]);
+    const latest = history.length > 0 ? history[history.length - 1] : null;
+
+    if (values.length < 2) {
+      return { totalIssues: 0, productsAffected: 0, topErrors: [], latestScan: latest?.runDate ?? null, scansAvailable: history.length };
+    }
+
+    const headers = values[0];
+    const rows = values.slice(1);
+    return { ...summarizeRows(headers, rows), latestScan: latest?.runDate ?? null, scansAvailable: history.length };
+  }
+
+  // Legacy mode: discover the latest dated tab in this domain's own spreadsheet.
+  const metaRes = await sheets.spreadsheets.get({ spreadsheetId });
+  const dateTabs = (metaRes.data.sheets ?? [])
+    .map((s) => s.properties?.title ?? "")
+    .filter((t) => /^\d{4}-\d{2}-\d{2}$/.test(t))
+    .sort()
+    .reverse();
+
+  if (dateTabs.length === 0) {
+    return { totalIssues: 0, productsAffected: 0, topErrors: [], latestScan: null, scansAvailable: 0 };
+  }
+
+  const latestTab = dateTabs[0];
+  const dataRes = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${latestTab}'!A1:I`,
+  });
+
+  const values = dataRes.data.values ?? [];
+  if (values.length < 2) {
+    return { totalIssues: 0, productsAffected: 0, topErrors: [], latestScan: latestTab, scansAvailable: dateTabs.length };
+  }
+
+  const headers = values[0] as string[];
+  const rows = values.slice(1) as string[][];
+  return { ...summarizeRows(headers, rows), latestScan: latestTab, scansAvailable: dateTabs.length };
 }

@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCached, setCached, TTL_KEYWORDS } from "@/lib/cache";
 import { DOMAIN_LABELS } from "@/lib/config";
+import { getKeywordSummary } from "@/lib/sheets";
+import { getOptimizationSummary } from "@/lib/optimizationSheets";
+import { getUrlValidatorSummary } from "@/lib/url-validator-sheets";
+import { getTranslationSummary } from "@/lib/translationSheets";
 
 const TTL = TTL_KEYWORDS;
 const DOMAINS = Object.keys(DOMAIN_LABELS);
-const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
 
-async function safeFetch<T>(url: string): Promise<T | null> {
+// Returns null on failure or when a tool isn't configured for this domain, instead of
+// throwing — one domain/tool failing shouldn't blank out the rest of the table.
+async function safeCall<T extends object>(fn: () => Promise<T>): Promise<T | null> {
   try {
-    const res = await fetch(url, { cache: "no-store" });
-    const data = await res.json();
-    return data.error || data.notConfigured ? null : (data as T);
+    const result = await fn();
+    return "notConfigured" in result ? null : result;
   } catch {
     return null;
   }
@@ -27,25 +31,19 @@ export async function GET(req: NextRequest) {
 
   const results = await Promise.all(
     DOMAINS.map(async (domain) => {
-      const enc = encodeURIComponent(domain);
-      const [kw, opt, url] = await Promise.all([
-        safeFetch<{ tabs: { name: string; total: number; queued: number; approved: number; rejected: number; generated: number }[] }>(
-          `${BASE}/api/sheets/${enc}/summary`
-        ),
-        safeFetch<{ pending: number; high: number; medium: number; optimized: number; page2: number; avgPosition: number; avgCtr: number }>(
-          `${BASE}/api/optimization/${enc}/summary`
-        ),
-        safeFetch<{ totalIssues: number; productsAffected: number; latestScan: string | null }>(
-          `${BASE}/api/url-validator/${enc}/summary`
-        ),
+      const [kw, opt, url, tr] = await Promise.all([
+        safeCall(() => getKeywordSummary(domain)),
+        safeCall(() => getOptimizationSummary(domain)),
+        safeCall(() => getUrlValidatorSummary(domain)),
+        safeCall(() => getTranslationSummary(domain)),
       ]);
 
-      const kwTotals = kw?.tabs?.reduce(
+      const kwTotals = kw?.reduce(
         (acc, t) => ({ queued: acc.queued + t.queued, approved: acc.approved + t.approved, generated: acc.generated + t.generated }),
         { queued: 0, approved: 0, generated: 0 }
       ) ?? null;
 
-      return { domain, kw: kwTotals, opt, url };
+      return { domain, kw: kwTotals, opt, url, tr };
     })
   );
 

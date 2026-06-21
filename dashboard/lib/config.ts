@@ -10,6 +10,8 @@ export const DOMAINS: Record<string, string> = {
 export const OPTIMIZATION_SHEET_ID_QUEUE = process.env.SHEET_ID_TO_BE_OPTIMIZED ?? "";
 export const OPTIMIZATION_SHEET_ID_LOG   = process.env.SHEET_ID_OPTIMIZATION_LOG ?? "";
 
+export const TRANSLATION_SHEET_ID = process.env.TRANSLATION_SCAN_SHEET_ID ?? "";
+
 // Maps URL path segment (lowercase) → display name
 export const PRODUCT_LABELS: Record<string, string> = {
   "3d":        "3D",

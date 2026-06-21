@@ -146,3 +146,36 @@ export async function getOptimizationData(domain: string): Promise<OptimizationD
 
   return { queue, optimized };
 }
+
+export interface OptimizationSummary {
+  pending: number;
+  high: number;
+  medium: number;
+  optimized: number;
+  page2: number;
+  avgPosition: number;
+  avgImpressions: number;
+  avgCtr: number;
+}
+
+export async function getOptimizationSummary(domain: string): Promise<OptimizationSummary> {
+  const { queue, optimized } = await getOptimizationData(domain);
+
+  const high   = queue.filter((r) => r.priorityTier === "high").length;
+  const medium = queue.filter((r) => r.priorityTier === "medium").length;
+  const page2  = queue.filter((r) => r.position >= 11 && r.position <= 20).length;
+  const avgPosition    = queue.length ? queue.reduce((s, r) => s + r.position, 0)     / queue.length : 0;
+  const avgImpressions = queue.length ? queue.reduce((s, r) => s + r.impressions, 0)  / queue.length : 0;
+  const avgCtr         = queue.length ? queue.reduce((s, r) => s + r.ctr, 0)          / queue.length : 0;
+
+  return {
+    pending:        queue.length,
+    high,
+    medium,
+    optimized:      optimized.length,
+    page2,
+    avgPosition:    parseFloat(avgPosition.toFixed(1)),
+    avgImpressions: Math.round(avgImpressions),
+    avgCtr:         parseFloat(avgCtr.toFixed(2)),
+  };
+}
