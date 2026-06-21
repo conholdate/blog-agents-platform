@@ -21,7 +21,6 @@ on:
 
 jobs:
   validate:
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.domain == 'all' || github.event.inputs.domain == matrix.domain }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -53,11 +52,13 @@ jobs:
             sheet_secret: URL_VALIDATOR_SHEET_ID_CONHOLDATE_CLOUD
     steps:
       - name: Checkout blog-team-tools
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.domain == 'all' || github.event.inputs.domain == matrix.domain }}
         uses: actions/checkout@v4
         with:
           path: blog-team-tools
 
       - name: Checkout blog content (${{ matrix.content_repo }})
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.domain == 'all' || github.event.inputs.domain == matrix.domain }}
         uses: actions/checkout@v4
         with:
           repository: ${{ matrix.content_repo }}
@@ -66,6 +67,7 @@ jobs:
           sparse-checkout: ${{ matrix.content_path }}
 
       - name: Set up Python
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.domain == 'all' || github.event.inputs.domain == matrix.domain }}
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -73,10 +75,12 @@ jobs:
           cache-dependency-path: blog-team-tools/url-validator/requirements.txt
 
       - name: Install dependencies
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.domain == 'all' || github.event.inputs.domain == matrix.domain }}
         run: pip install -r requirements.txt
         working-directory: blog-team-tools/url-validator
 
       - name: Run URL Validator — ${{ matrix.domain }}
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.domain == 'all' || github.event.inputs.domain == matrix.domain }}
         working-directory: blog-team-tools/url-validator
         env:
           URL_VALIDATOR_CONTENT_DIR_OVERRIDE: ${{ github.workspace }}/blog-content/${{ matrix.content_path }}
