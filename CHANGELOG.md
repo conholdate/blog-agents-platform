@@ -8,6 +8,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- GitHub Actions workflow (`.github/workflows/url-validator.yml`) to run URL Validator on a daily schedule or on demand, across all 6 domains via a matrix job that checks out each domain's content repo
+- `--domain` flag on the url-validator CLI to select one of the 6 supported domains, resolving content dir and sheet ID from per-domain env vars instead of manual swapping
+- Consolidated spreadsheet mode (`URL_VALIDATOR_SPREADSHEET_ID`): one persistent tab per domain, updated in place each run instead of creating new dated tabs, plus a shared `History` tab with one summary row per run
+- `--prepare-sheet` flag to idempotently create the consolidated spreadsheet's domain tabs + History tab ahead of the first real run
+
 ---
 
 ## [0.6.0] — 2026-06-05

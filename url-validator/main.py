@@ -1,15 +1,16 @@
 #!/usr/local/bin/python3
 """
-URL Validator for blog.aspose.com posts
+URL Validator for blog post frontmatter across all 6 supported domains
 Validates frontmatter URLs and reports issues to Google Sheets.
 
 Setup:
   1. pip install -r requirements.txt
   2. Set GOOGLE_SERVICE_ACCOUNT_JSON in url-validator/.env (same key as the dashboard)
-  3. Set URL_VALIDATOR_SHEET_ID in url-validator/.env
-  4. Run: python3 main.py
+  3. Set URL_VALIDATOR_SHEET_ID_<DOMAIN> and URL_VALIDATOR_CONTENT_DIR_<DOMAIN> in url-validator/.env
+  4. Run: python3 main.py --domain blog.aspose.com
 """
 
+import argparse
 import json
 import re
 import sys
@@ -35,6 +36,72 @@ CONTENT_DIR     = Path(_content_override) if _content_override else REPO_ROOT / 
 SPREADSHEET_ID   = os.environ.get("URL_VALIDATOR_SHEET_ID", "1LVr91XakURG1CMCGpO4aaloF4d5wLqnZkob8uBI6jOc")
 CREDENTIALS_FILE = SCRIPT_DIR / "credentials.json"
 SCOPES           = ["https://www.googleapis.com/auth/spreadsheets"]
+
+# Consolidated spreadsheet: one sheet, one persistent tab per domain (overwritten each run,
+# not a new dated tab), plus a shared History tab. Takes over from the legacy per-domain
+# spreadsheet + dated-tabs flow whenever it's configured.
+CONSOLIDATED_SPREADSHEET_ID = os.environ.get("URL_VALIDATOR_SPREADSHEET_ID", "")
+HISTORY_TAB_NAME = "History"
+HISTORY_HEADERS  = ["Run Date", "Domain", "Products", "Posts", "Files", "Total Issues", "Error Breakdown"]
+
+# Supported domains and their content-dir defaults (relative to the checked-out content repo).
+# Mirrors dashboard/lib/url-validator-config.ts's domainToEnvKey() so env var names line up
+# across the CLI, the dashboard, and the GitHub Actions workflow.
+SUPPORTED_DOMAINS = [
+    "blog.aspose.com",
+    "blog.aspose.cloud",
+    "blog.groupdocs.com",
+    "blog.groupdocs.cloud",
+    "blog.conholdate.com",
+    "blog.conholdate.cloud",
+]
+
+
+def domain_to_env_key(domain: str) -> str:
+    """'blog.groupdocs.cloud' -> 'GROUPDOCS_CLOUD'. Mirrors the TS dashboard's domainToEnvKey()."""
+    suffix = re.sub(r"^blog\.", "", domain)
+    return re.sub(r"[.\-]", "_", suffix).upper()
+
+
+def resolve_domain_config(domain: str) -> tuple[Path, str]:
+    """Resolve (content_dir, spreadsheet_id) for one of the 6 supported domains."""
+    key = domain_to_env_key(domain)
+
+    # URL_VALIDATOR_CONTENT_DIR_OVERRIDE is for single-purpose process invocations only (e.g. one
+    # GitHub Actions job, set fresh per matrix leg to the domain it's actually running) — never set
+    # it in a long-lived local .env, since unlike the domain-keyed vars below it applies regardless
+    # of --domain. BLOG_CONTENT_DIR is the older legacy override, scoped to blog.aspose.com only —
+    # it must never fall back for other domains, or a stale value silently scans the wrong domain's
+    # content while writing results to the right domain's sheet (happened once; don't repeat it).
+    content_value = (
+        os.environ.get("URL_VALIDATOR_CONTENT_DIR_OVERRIDE")
+        or os.environ.get(f"URL_VALIDATOR_CONTENT_DIR_{key}")
+    )
+    if not content_value and domain == "blog.aspose.com":
+        content_value = os.environ.get("BLOG_CONTENT_DIR")
+    if content_value:
+        content_dir = Path(content_value)
+    elif domain == "blog.aspose.com":
+        content_dir = REPO_ROOT / "aspose-blog" / "content" / "Aspose.Blog"
+    else:
+        print(f"ERROR: No content directory configured for {domain}.")
+        print(f"  Set URL_VALIDATOR_CONTENT_DIR_{key} in url-validator/.env")
+        sys.exit(1)
+
+    # The legacy per-domain sheet ID is irrelevant once the consolidated spreadsheet is active —
+    # don't require it to be set in that case.
+    if CONSOLIDATED_SPREADSHEET_ID:
+        return content_dir, ""
+
+    sheet_id = os.environ.get(f"URL_VALIDATOR_SHEET_ID_{key}")
+    if not sheet_id and domain == "blog.aspose.com":
+        sheet_id = SPREADSHEET_ID  # legacy URL_VALIDATOR_SHEET_ID / hardcoded default
+    if not sheet_id:
+        print(f"ERROR: No spreadsheet configured for {domain}.")
+        print(f"  Set URL_VALIDATOR_SHEET_ID_{key} in url-validator/.env")
+        sys.exit(1)
+
+    return content_dir, sheet_id
 
 
 def _load_credentials() -> Credentials:
@@ -322,27 +389,24 @@ ERROR_COLORS = {
 }
 
 
-def write_to_sheets(issues: list, stats: dict):
-    creds = _load_credentials()
-    gc = gspread.authorize(creds)
-    spreadsheet = gc.open_by_key(SPREADSHEET_ID)
+def _autosize_columns(spreadsheet, sheet_id: int, num_cols: int):
+    """Auto-resize the first num_cols columns to fit their content, so no cell is truncated."""
+    spreadsheet.batch_update({"requests": [{
+        "autoResizeDimensions": {
+            "dimensions": {
+                "sheetId": sheet_id,
+                "dimension": "COLUMNS",
+                "startIndex": 0,
+                "endIndex": num_cols,
+            }
+        }
+    }]})
 
-    today = date.today().strftime("%Y-%m-%d")
-    tab_issues  = today
-    tab_summary = f"{today} – Summary"
 
-    # Remove existing tabs with same name (re-run safety)
-    for tab_name in [tab_issues, tab_summary]:
-        try:
-            spreadsheet.del_worksheet(spreadsheet.worksheet(tab_name))
-        except gspread.exceptions.WorksheetNotFound:
-            pass
-
-    # ── Tab 1: All Issues ─────────────────────────────────────────────────────
-    issues = sorted(issues, key=lambda x: x["error_type"])
-    print(f"\nCreating sheet '{tab_issues}'...", flush=True)
-    ws = spreadsheet.add_worksheet(title=tab_issues, rows=len(issues) + 2, cols=9, index=0)
-
+def _write_issue_tab(spreadsheet, ws, issues: list):
+    """Write the issue rows + standard formatting (headers, freeze, color-code, autosize)
+    into an issues worksheet. Shared by the legacy dated-tab flow and the consolidated
+    persistent-tab flow."""
     headers = ["#", "Product", "Post Folder", "Language", "Error Type",
                "Current URL", "Expected URL", "Notes", "Redirect Rule"]
     rows = [headers]
@@ -407,16 +471,124 @@ def write_to_sheets(issues: list, stats: dict):
             spreadsheet.batch_update({"requests": color_requests[i:i+1000]})
 
     # Auto-resize all columns to fit content
-    spreadsheet.batch_update({"requests": [{
-        "autoResizeDimensions": {
-            "dimensions": {
-                "sheetId": ws.id,
-                "dimension": "COLUMNS",
-                "startIndex": 0,
-                "endIndex": 9,
+    _autosize_columns(spreadsheet, ws.id, 9)
+
+
+def _append_history_row(spreadsheet, domain: str, stats: dict, issues: list):
+    """Append one summary row to the shared History tab, creating it (with headers) if missing."""
+    today = date.today().strftime("%Y-%m-%d")
+    error_counts = Counter(i["error_type"] for i in issues)
+    breakdown = ", ".join(f"{et}:{cnt}" for et, cnt in sorted(error_counts.items(), key=lambda x: -x[1])) or "none"
+
+    try:
+        ws = spreadsheet.worksheet(HISTORY_TAB_NAME)
+    except gspread.exceptions.WorksheetNotFound:
+        ws = spreadsheet.add_worksheet(title=HISTORY_TAB_NAME, rows=2, cols=len(HISTORY_HEADERS))
+        ws.update([HISTORY_HEADERS], "A1")
+        ws.format("A1:G1", {
+            "textFormat": {"bold": True, "foregroundColor": HEADER_FG},
+            "backgroundColor": HEADER_COLOR,
+        })
+        spreadsheet.batch_update({"requests": [{
+            "updateSheetProperties": {
+                "properties": {"sheetId": ws.id, "gridProperties": {"frozenRowCount": 1}},
+                "fields": "gridProperties.frozenRowCount",
             }
-        }
-    }]})
+        }]})
+
+    ws.append_row(
+        [today, domain, stats["products"], stats["posts"], stats["files"], len(issues), breakdown],
+        value_input_option="USER_ENTERED",
+    )
+    _autosize_columns(spreadsheet, ws.id, len(HISTORY_HEADERS))
+
+
+def write_to_consolidated_sheet(issues: list, stats: dict, domain: str):
+    """Write into the single consolidated spreadsheet: one persistent tab per domain
+    (overwritten in place each run, never a new dated tab) + a shared History row."""
+    creds = _load_credentials()
+    gc = gspread.authorize(creds)
+    spreadsheet = gc.open_by_key(CONSOLIDATED_SPREADSHEET_ID)
+
+    issues = sorted(issues, key=lambda x: x["error_type"])
+
+    try:
+        ws = spreadsheet.worksheet(domain)
+        ws.clear()
+        ws.resize(rows=max(len(issues) + 5, 2), cols=9)
+    except gspread.exceptions.WorksheetNotFound:
+        ws = spreadsheet.add_worksheet(title=domain, rows=len(issues) + 5, cols=9)
+
+    print(f"\nUpdating tab '{domain}'...", flush=True)
+    _write_issue_tab(spreadsheet, ws, issues)
+    _append_history_row(spreadsheet, domain, stats, issues)
+
+    print(f"\nDone! Open spreadsheet:")
+    print(f"  https://docs.google.com/spreadsheets/d/{CONSOLIDATED_SPREADSHEET_ID}#gid={ws.id}")
+
+
+def prepare_consolidated_sheet():
+    """Idempotent setup: ensure the consolidated spreadsheet has all 6 domain tabs and a
+    History tab, creating only what's missing. Never deletes or overwrites existing tabs."""
+    if not CONSOLIDATED_SPREADSHEET_ID:
+        print("ERROR: URL_VALIDATOR_SPREADSHEET_ID is not set in url-validator/.env")
+        sys.exit(1)
+
+    creds = _load_credentials()
+    gc = gspread.authorize(creds)
+    spreadsheet = gc.open_by_key(CONSOLIDATED_SPREADSHEET_ID)
+    existing = {ws.title for ws in spreadsheet.worksheets()}
+
+    for domain in SUPPORTED_DOMAINS:
+        if domain in existing:
+            print(f"  = {domain} (already exists, left as-is)")
+            continue
+        ws = spreadsheet.add_worksheet(title=domain, rows=10, cols=9)
+        _write_issue_tab(spreadsheet, ws, [])
+        print(f"  + {domain} (created)")
+
+    if HISTORY_TAB_NAME in existing:
+        print(f"  = {HISTORY_TAB_NAME} (already exists, left as-is)")
+    else:
+        ws = spreadsheet.add_worksheet(title=HISTORY_TAB_NAME, rows=10, cols=len(HISTORY_HEADERS))
+        ws.update([HISTORY_HEADERS], "A1")
+        ws.format("A1:G1", {
+            "textFormat": {"bold": True, "foregroundColor": HEADER_FG},
+            "backgroundColor": HEADER_COLOR,
+        })
+        spreadsheet.batch_update({"requests": [{
+            "updateSheetProperties": {
+                "properties": {"sheetId": ws.id, "gridProperties": {"frozenRowCount": 1}},
+                "fields": "gridProperties.frozenRowCount",
+            }
+        }]})
+        _autosize_columns(spreadsheet, ws.id, len(HISTORY_HEADERS))
+        print(f"  + {HISTORY_TAB_NAME} (created)")
+
+    print(f"\nReady: https://docs.google.com/spreadsheets/d/{CONSOLIDATED_SPREADSHEET_ID}")
+
+
+def write_to_sheets(issues: list, stats: dict):
+    creds = _load_credentials()
+    gc = gspread.authorize(creds)
+    spreadsheet = gc.open_by_key(SPREADSHEET_ID)
+
+    today = date.today().strftime("%Y-%m-%d")
+    tab_issues  = today
+    tab_summary = f"{today} – Summary"
+
+    # Remove existing tabs with same name (re-run safety)
+    for tab_name in [tab_issues, tab_summary]:
+        try:
+            spreadsheet.del_worksheet(spreadsheet.worksheet(tab_name))
+        except gspread.exceptions.WorksheetNotFound:
+            pass
+
+    # ── Tab 1: All Issues ─────────────────────────────────────────────────────
+    issues = sorted(issues, key=lambda x: x["error_type"])
+    print(f"\nCreating sheet '{tab_issues}'...", flush=True)
+    ws = spreadsheet.add_worksheet(title=tab_issues, rows=len(issues) + 2, cols=9, index=0)
+    _write_issue_tab(spreadsheet, ws, issues)
 
     # ── Tab 2: Summary ────────────────────────────────────────────────────────
     print(f"Creating sheet '{tab_summary}'...", flush=True)
@@ -466,16 +638,7 @@ def write_to_sheets(issues: list, stats: dict):
         "backgroundColor": HEADER_COLOR,
     })
 
-    spreadsheet.batch_update({"requests": [{
-        "autoResizeDimensions": {
-            "dimensions": {
-                "sheetId": ws2.id,
-                "dimension": "COLUMNS",
-                "startIndex": 0,
-                "endIndex": 4,
-            }
-        }
-    }]})
+    _autosize_columns(spreadsheet, ws2.id, 4)
 
     print(f"\nDone! Open spreadsheet:")
     print(f"  https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}")
@@ -483,6 +646,27 @@ def write_to_sheets(issues: list, stats: dict):
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 def main():
+    parser = argparse.ArgumentParser(description="URL Validator for blog post frontmatter")
+    parser.add_argument(
+        "--domain",
+        choices=SUPPORTED_DOMAINS,
+        default=os.environ.get("BLOG_DOMAIN", "blog.aspose.com"),
+        help="Which of the 6 supported domains to validate (default: blog.aspose.com)",
+    )
+    parser.add_argument(
+        "--prepare-sheet",
+        action="store_true",
+        help="Create/verify the consolidated spreadsheet's 6 domain tabs + History tab (no scan), then exit.",
+    )
+    args = parser.parse_args()
+
+    if args.prepare_sheet:
+        prepare_consolidated_sheet()
+        return
+
+    global CONTENT_DIR, SPREADSHEET_ID
+    CONTENT_DIR, SPREADSHEET_ID = resolve_domain_config(args.domain)
+
     if not os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON") and not CREDENTIALS_FILE.exists():
         print("ERROR: Google service account credentials not found.")
         print()
@@ -493,12 +677,18 @@ def main():
         print(f"  Save the JSON key as: {CREDENTIALS_FILE}")
         print()
         print("Share the spreadsheet with the service account email and set:")
-        print("  URL_VALIDATOR_SHEET_ID=<sheet id>  (optional, has default)")
+        print(f"  URL_VALIDATOR_SHEET_ID_{domain_to_env_key(args.domain)}=<sheet id>")
         sys.exit(1)
 
+    using_consolidated = bool(CONSOLIDATED_SPREADSHEET_ID)
+
+    print(f"Domain      : {args.domain}")
     print(f"Content dir : {CONTENT_DIR}")
-    print(f"Spreadsheet : https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}")
-    print(f"Output sheet: {date.today().strftime('%Y-%m-%d')}")
+    if using_consolidated:
+        print(f"Spreadsheet : https://docs.google.com/spreadsheets/d/{CONSOLIDATED_SPREADSHEET_ID}  (tab: {args.domain})")
+    else:
+        print(f"Spreadsheet : https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}")
+        print(f"Output sheet: {date.today().strftime('%Y-%m-%d')}")
     print()
     print("Scanning posts...")
 
@@ -513,6 +703,8 @@ def main():
 
     if not issues:
         print("\nNo issues found!")
+        if using_consolidated:
+            write_to_consolidated_sheet([], stats, args.domain)
         return
 
     # Error type breakdown
@@ -521,7 +713,10 @@ def main():
         print(f"  {et:<35} {cnt}")
 
     print()
-    write_to_sheets(issues, stats)
+    if using_consolidated:
+        write_to_consolidated_sheet(issues, stats, args.domain)
+    else:
+        write_to_sheets(issues, stats)
 
 
 if __name__ == "__main__":
