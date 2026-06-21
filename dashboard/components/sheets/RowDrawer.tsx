@@ -47,7 +47,7 @@ const EDITABLE_FIELDS = COLUMNS.filter((c) =>
   ["status", "text", "bullets", "textarea"].includes(c.type)
 );
 
-export function RowDrawer({ row, domain, tab, onSave, onClose }: Props) {
+export function RowDrawer({ row, tab, onSave, onClose }: Props) {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);

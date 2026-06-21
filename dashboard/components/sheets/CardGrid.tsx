@@ -39,6 +39,8 @@ export function CardGrid({ rows: initialRows, domain, tab, generatedMode = false
   const [showPin, setShowPin] = useState(false);
 
   useEffect(() => {
+    // sessionStorage is unavailable during SSR render, so this can only be read post-mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (sessionStorage.getItem(SESSION_KEY) === "true") setAuthorized(true);
   }, []);
 

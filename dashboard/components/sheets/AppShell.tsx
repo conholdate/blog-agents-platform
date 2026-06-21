@@ -33,6 +33,8 @@ export function AppShell() {
     if (activeSection !== "keywords") return;
     let cancelled = false;
 
+    // Reset immediately so stale data from the previous domain doesn't flash while the new fetch is in flight.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTabs([]);
     setActiveTab("");
     setSheetUrl(null);
@@ -64,6 +66,8 @@ export function AppShell() {
     if (!activeTab || activeTab === ALL_MISSING_TAB) return;
     let cancelled = false;
 
+    // Reset immediately so stale rows from the previous tab don't flash while the new fetch is in flight.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRows(null);
     setRowsLoading(true);
     setError(null);

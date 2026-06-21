@@ -60,7 +60,9 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => { load(); }, [domain]); // eslint-disable-line react-hooks/exhaustive-deps
+  // load() resets state then fetches; intentional fetch-on-domain-change pattern.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [domain]);
 
   const totals = summary?.reduce(
     (acc, t) => ({ total: acc.total + t.total, queued: acc.queued + t.queued, approved: acc.approved + t.approved, rejected: acc.rejected + t.rejected, generated: acc.generated + t.generated }),
@@ -186,6 +188,8 @@ function AllDomainsView({ onNavigate, onSelectDomain }: { onNavigate: (s: Sectio
       .finally(() => setLoading(false));
   }
 
+  // load() resets state then fetches; intentional fetch-on-mount pattern.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, []);
 
   function goTo(domain: string, section: Section) {

@@ -15,8 +15,6 @@ const TIER_STYLES = {
 
 const PAGE_SIZE = 100;
 
-type QueueSortKey = keyof Pick<QueueRow, "priorityScore" | "product" | "impressions" | "ctr" | "position" | "clicks" | "daysSincePublished">;
-type LogSortKey   = keyof Pick<LogRow, "product" | "lastOptimized">;
 type SortDir = "asc" | "desc";
 
 function slugToLabel(s: string) {
@@ -117,7 +115,7 @@ export function OptimizationAgent({ domain }: Props) {
       const bStr = typeof bv === "string" ? bv : "";
       const aNum = typeof av === "number" ? av : NaN;
       const bNum = typeof bv === "number" ? bv : NaN;
-      let cmp = !isNaN(aNum) && !isNaN(bNum)
+      const cmp = !isNaN(aNum) && !isNaN(bNum)
         ? aNum - bNum
         : aStr.localeCompare(bStr);
       return sortDir === "desc" ? -cmp : cmp;
