@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
-import { getUrlValidatorSheetId } from "@/lib/url-validator-config";
+import { getUrlValidatorSheetId, getUrlValidatorConsolidatedSpreadsheetId } from "@/lib/url-validator-config";
+import { readDomainTab, getDomainHistory, getLatestHistoryEntry } from "@/lib/url-validator-sheets";
 import { getCached, setCached, TTL_URL_VALIDATOR } from "@/lib/cache";
 
 type Params = Promise<{ domain: string }>;
@@ -18,8 +19,10 @@ const TTL = TTL_URL_VALIDATOR;
 
 export async function GET(req: NextRequest, { params }: { params: Params }) {
   const { domain } = await params;
-  const decoded      = decodeURIComponent(domain);
-  const spreadsheetId = getUrlValidatorSheetId(decoded);
+  const decoded = decodeURIComponent(domain);
+  const consolidatedId = getUrlValidatorConsolidatedSpreadsheetId();
+  const legacyId = getUrlValidatorSheetId(decoded);
+  const spreadsheetId = consolidatedId ?? legacyId;
 
   if (!spreadsheetId) {
     return NextResponse.json({ issues: [], latestDate: null, availableDates: [], notConfigured: true });
@@ -36,6 +39,31 @@ export async function GET(req: NextRequest, { params }: { params: Params }) {
   try {
     const sheets = google.sheets({ version: "v4", auth: getAuth() });
 
+    if (consolidatedId) {
+      // Consolidated mode: read the domain's persistent tab directly, no dated-tab discovery.
+      const [values, history] = await Promise.all([
+        readDomainTab(sheets, consolidatedId, decoded),
+        getDomainHistory(sheets, consolidatedId, decoded),
+      ]);
+      const latest = getLatestHistoryEntry(history);
+
+      if (values.length < 2) {
+        return NextResponse.json({ issues: [], latestDate: latest?.runDate ?? null, availableDates: [], spreadsheetId: consolidatedId });
+      }
+
+      const headers = values[0];
+      const issues = values.slice(1).map((row) => {
+        const obj: Record<string, string> = {};
+        headers.forEach((h, i) => { obj[h] = row[i] ?? ""; });
+        return obj;
+      });
+
+      const result = { issues, latestDate: latest?.runDate ?? null, availableDates: [], spreadsheetId: consolidatedId };
+      setCached(key, result);
+      return NextResponse.json(result);
+    }
+
+    // Legacy mode: discover the latest dated tab in this domain's own spreadsheet.
     const metaRes = await sheets.spreadsheets.get({ spreadsheetId });
     const dateTabs = (metaRes.data.sheets ?? [])
       .map((s) => s.properties?.title ?? "")

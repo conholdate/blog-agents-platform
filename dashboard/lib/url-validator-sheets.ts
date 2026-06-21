@@ -1,4 +1,4 @@
-import { google } from "googleapis";
+import { google, sheets_v4 } from "googleapis";
 import type { Issue, ScanStats } from "./url-validator";
 
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
@@ -7,6 +7,10 @@ function getAuth() {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   if (!raw) throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON is not set");
   return new google.auth.GoogleAuth({ credentials: JSON.parse(raw), scopes: SCOPES });
+}
+
+function getSheetsClient() {
+  return google.sheets({ version: "v4", auth: getAuth() });
 }
 
 const HEADER_COLOR = { red: 0.157, green: 0.306, blue: 0.612 };
@@ -22,6 +26,198 @@ const ERROR_COLORS: Record<string, { red: number; green: number; blue: number }>
   URL_TOO_SHORT:             { red: 0.96, green: 0.26, blue: 0.21 },
   DATE_BASED_URL:            { red: 0.13, green: 0.59, blue: 0.95 },
 };
+
+export const HISTORY_TAB_NAME = "History";
+const HISTORY_HEADERS = ["Run Date", "Domain", "Products", "Posts", "Files", "Total Issues", "Error Breakdown"];
+
+async function autosizeColumns(sheets: sheets_v4.Sheets, spreadsheetId: string, sheetId: number, numCols: number) {
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: { requests: [{ autoResizeDimensions: { dimensions: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: numCols } } }] },
+  });
+}
+
+async function findTabId(sheets: sheets_v4.Sheets, spreadsheetId: string, title: string): Promise<number | null> {
+  const metaRes = await sheets.spreadsheets.get({ spreadsheetId });
+  const found = (metaRes.data.sheets ?? []).find((s) => s.properties?.title === title);
+  return found?.properties?.sheetId ?? null;
+}
+
+/** Read a domain's persistent tab from the consolidated spreadsheet. Returns [] if the tab
+ * doesn't exist yet (e.g. no scan has run for this domain) rather than throwing. */
+export async function readDomainTab(sheets: sheets_v4.Sheets, spreadsheetId: string, domain: string): Promise<string[][]> {
+  try {
+    const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `'${domain}'!A1:I` });
+    return res.data.values as string[][] ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export interface HistoryEntry {
+  runDate: string;
+  products: number;
+  posts: number;
+  files: number;
+  totalIssues: number;
+  errorBreakdown: string;
+}
+
+/** Read History rows for one domain, oldest first (matches append order). [] if the History
+ * tab doesn't exist yet or has no entries for this domain. */
+export async function getDomainHistory(sheets: sheets_v4.Sheets, spreadsheetId: string, domain: string): Promise<HistoryEntry[]> {
+  try {
+    const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `'${HISTORY_TAB_NAME}'!A1:G` });
+    const values = (res.data.values as string[][]) ?? [];
+    if (values.length < 2) return [];
+    return values
+      .slice(1)
+      .filter((row) => row[1] === domain)
+      .map((row) => ({
+        runDate: row[0] ?? "",
+        products: Number(row[2] ?? 0),
+        posts: Number(row[3] ?? 0),
+        files: Number(row[4] ?? 0),
+        totalIssues: Number(row[5] ?? 0),
+        errorBreakdown: row[6] ?? "",
+      }));
+  } catch {
+    return [];
+  }
+}
+
+export function getLatestHistoryEntry(entries: HistoryEntry[]): HistoryEntry | null {
+  return entries.length > 0 ? entries[entries.length - 1] : null;
+}
+
+/** Write issue rows + standard formatting (headers, freeze, color-code, autosize) into an
+ * issues sheet. Shared by the legacy dated-tab flow and the consolidated persistent-tab flow. */
+async function writeIssueTab(sheets: sheets_v4.Sheets, spreadsheetId: string, sheetId: number, tabTitle: string, issues: Issue[]) {
+  const sortedIssues = [...issues].sort((a, b) => a.errorType.localeCompare(b.errorType));
+  const headers = ["#", "Product", "Post Folder", "Language", "Error Type", "Current URL", "Expected URL", "Notes", "Redirect Rule"];
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${tabTitle}'!A1`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: {
+      values: [
+        headers,
+        ...sortedIssues.map((issue, i) => [
+          i + 1, issue.product, issue.postFolder, issue.lang, issue.errorType,
+          issue.currentUrl, issue.expectedUrl, issue.notes, issue.redirectRule,
+        ]),
+      ]
+    },
+  });
+
+  const formatReqs: object[] = [
+    {
+      repeatCell: {
+        range: { sheetId, startRowIndex: 0, endRowIndex: 1 },
+        cell: { userEnteredFormat: { textFormat: { bold: true, foregroundColor: HEADER_FG }, backgroundColor: HEADER_COLOR } },
+        fields: "userEnteredFormat(textFormat,backgroundColor)",
+      }
+    },
+    {
+      updateSheetProperties: {
+        properties: { sheetId, gridProperties: { frozenRowCount: 1 } },
+        fields: "gridProperties.frozenRowCount",
+      }
+    },
+  ];
+
+  for (let i = 0; i < sortedIssues.length; i += 1000) {
+    const batch = sortedIssues.slice(i, i + 1000).flatMap((issue, j) => {
+      const bg = ERROR_COLORS[issue.errorType];
+      if (!bg) return [];
+      return [{
+        repeatCell: {
+          range: { sheetId, startRowIndex: i + j + 1, endRowIndex: i + j + 2, startColumnIndex: 4, endColumnIndex: 5 },
+          cell: { userEnteredFormat: { backgroundColor: bg } },
+          fields: "userEnteredFormat.backgroundColor",
+        }
+      }];
+    });
+    formatReqs.push(...batch);
+  }
+
+  await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: formatReqs } });
+  await autosizeColumns(sheets, spreadsheetId, sheetId, 9);
+}
+
+/** Append one summary row to the shared History tab, creating it (with headers) if missing. */
+async function appendHistoryRow(sheets: sheets_v4.Sheets, spreadsheetId: string, domain: string, stats: ScanStats, issues: Issue[]) {
+  const today = new Date().toISOString().slice(0, 10);
+  const errorCounts: Record<string, number> = {};
+  for (const issue of issues) errorCounts[issue.errorType] = (errorCounts[issue.errorType] ?? 0) + 1;
+  const breakdown = Object.entries(errorCounts).sort((a, b) => b[1] - a[1]).map(([t, c]) => `${t}:${c}`).join(", ") || "none";
+
+  let historySheetId = await findTabId(sheets, spreadsheetId, HISTORY_TAB_NAME);
+  if (historySheetId === null) {
+    const addRes = await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: { requests: [{ addSheet: { properties: { title: HISTORY_TAB_NAME, gridProperties: { rowCount: 2, columnCount: HISTORY_HEADERS.length } } } }] },
+    });
+    historySheetId = addRes.data.replies![0].addSheet!.properties!.sheetId!;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${HISTORY_TAB_NAME}'!A1`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: [HISTORY_HEADERS] },
+    });
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            repeatCell: {
+              range: { sheetId: historySheetId, startRowIndex: 0, endRowIndex: 1 },
+              cell: { userEnteredFormat: { textFormat: { bold: true, foregroundColor: HEADER_FG }, backgroundColor: HEADER_COLOR } },
+              fields: "userEnteredFormat(textFormat,backgroundColor)",
+            }
+          },
+          {
+            updateSheetProperties: {
+              properties: { sheetId: historySheetId, gridProperties: { frozenRowCount: 1 } },
+              fields: "gridProperties.frozenRowCount",
+            }
+          },
+        ]
+      }
+    });
+  }
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `'${HISTORY_TAB_NAME}'!A1`,
+    valueInputOption: "USER_ENTERED",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: { values: [[today, domain, stats.products, stats.posts, stats.files, issues.length, breakdown]] },
+  });
+  await autosizeColumns(sheets, spreadsheetId, historySheetId, HISTORY_HEADERS.length);
+}
+
+/** Write into the single consolidated spreadsheet: one persistent tab per domain (overwritten
+ * in place each run, never a new dated tab) + a shared History row. Mirrors url-validator/main.py's
+ * write_to_consolidated_sheet() so the CLI/CI and the dashboard produce identical results. */
+export async function writeToConsolidatedSheet(issues: Issue[], stats: ScanStats, domain: string, spreadsheetId: string): Promise<void> {
+  const sheets = getSheetsClient();
+
+  let sheetId = await findTabId(sheets, spreadsheetId, domain);
+  if (sheetId === null) {
+    const addRes = await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: { requests: [{ addSheet: { properties: { title: domain, gridProperties: { rowCount: issues.length + 5, columnCount: 9 } } } }] },
+    });
+    sheetId = addRes.data.replies![0].addSheet!.properties!.sheetId!;
+  } else {
+    await sheets.spreadsheets.values.clear({ spreadsheetId, range: `'${domain}'!A1:Z` });
+  }
+
+  await writeIssueTab(sheets, spreadsheetId, sheetId, domain, issues);
+  await appendHistoryRow(sheets, spreadsheetId, domain, stats, issues);
+}
 
 export async function writeToSheets(
   issues: Issue[],
@@ -45,8 +241,6 @@ export async function writeToSheets(
     await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: deleteRequests } });
   }
 
-  const sortedIssues = [...issues].sort((a, b) => a.errorType.localeCompare(b.errorType));
-
   // ── Tab 1: All Issues ─────────────────────────────────────────────────────
   const addRes = await sheets.spreadsheets.batchUpdate({
     spreadsheetId,
@@ -56,7 +250,7 @@ export async function writeToSheets(
           properties: {
             title: tabIssues,
             index: 0,
-            gridProperties: { rowCount: sortedIssues.length + 2, columnCount: 9 },
+            gridProperties: { rowCount: issues.length + 2, columnCount: 9 },
           }
         }
       }]
@@ -64,61 +258,7 @@ export async function writeToSheets(
   });
   const issuesSheetId = addRes.data.replies![0].addSheet!.properties!.sheetId!;
 
-  const headers = ["#", "Product", "Post Folder", "Language", "Error Type", "Current URL", "Expected URL", "Notes", "Redirect Rule"];
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range: `'${tabIssues}'!A1`,
-    valueInputOption: "USER_ENTERED",
-    requestBody: {
-      values: [
-        headers,
-        ...sortedIssues.map((issue, i) => [
-          i + 1, issue.product, issue.postFolder, issue.lang, issue.errorType,
-          issue.currentUrl, issue.expectedUrl, issue.notes, issue.redirectRule,
-        ]),
-      ]
-    },
-  });
-
-  // Header style + freeze + auto-resize
-  const formatReqs: object[] = [
-    {
-      repeatCell: {
-        range: { sheetId: issuesSheetId, startRowIndex: 0, endRowIndex: 1 },
-        cell: { userEnteredFormat: { textFormat: { bold: true, foregroundColor: HEADER_FG }, backgroundColor: HEADER_COLOR } },
-        fields: "userEnteredFormat(textFormat,backgroundColor)",
-      }
-    },
-    {
-      updateSheetProperties: {
-        properties: { sheetId: issuesSheetId, gridProperties: { frozenRowCount: 1 } },
-        fields: "gridProperties.frozenRowCount",
-      }
-    },
-    {
-      autoResizeDimensions: {
-        dimensions: { sheetId: issuesSheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 9 },
-      }
-    },
-  ];
-
-  // Color error type column (E) in batches of 1000
-  for (let i = 0; i < sortedIssues.length; i += 1000) {
-    const batch = sortedIssues.slice(i, i + 1000).flatMap((issue, j) => {
-      const bg = ERROR_COLORS[issue.errorType];
-      if (!bg) return [];
-      return [{
-        repeatCell: {
-          range: { sheetId: issuesSheetId, startRowIndex: i + j + 1, endRowIndex: i + j + 2, startColumnIndex: 4, endColumnIndex: 5 },
-          cell: { userEnteredFormat: { backgroundColor: bg } },
-          fields: "userEnteredFormat.backgroundColor",
-        }
-      }];
-    });
-    formatReqs.push(...batch);
-  }
-
-  await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: formatReqs } });
+  await writeIssueTab(sheets, spreadsheetId, issuesSheetId, tabIssues, issues);
 
   // ── Tab 2: Summary ────────────────────────────────────────────────────────
   const addSumRes = await sheets.spreadsheets.batchUpdate({

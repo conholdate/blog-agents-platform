@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
-import { getUrlValidatorSheetId } from "@/lib/url-validator-config";
+import { getUrlValidatorSheetId, getUrlValidatorConsolidatedSpreadsheetId } from "@/lib/url-validator-config";
+import { readDomainTab, getDomainHistory } from "@/lib/url-validator-sheets";
 import { getCached, setCached, TTL_URL_VALIDATOR } from "@/lib/cache";
 
 type Params = Promise<{ domain: string }>;
@@ -16,10 +17,34 @@ function getAuth() {
 
 const TTL = TTL_URL_VALIDATOR;
 
+function summarizeRows(headers: string[], rows: string[][]) {
+  const iProduct   = headers.findIndex((h) => h.toLowerCase() === "product");
+  const iErrorType = headers.findIndex((h) => h.toLowerCase() === "error type");
+
+  const products  = new Set<string>();
+  const errorCounts: Record<string, number> = {};
+
+  for (const row of rows) {
+    const product   = (row[iProduct]   ?? "").trim();
+    const errorType = (row[iErrorType] ?? "").trim();
+    if (product)   products.add(product);
+    if (errorType) errorCounts[errorType] = (errorCounts[errorType] ?? 0) + 1;
+  }
+
+  const topErrors = Object.entries(errorCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([type, count]) => ({ type, count }));
+
+  return { totalIssues: rows.length, productsAffected: products.size, topErrors };
+}
+
 export async function GET(req: NextRequest, { params }: { params: Params }) {
   const { domain } = await params;
   const decoded = decodeURIComponent(domain);
-  const spreadsheetId = getUrlValidatorSheetId(decoded);
+  const consolidatedId = getUrlValidatorConsolidatedSpreadsheetId();
+  const legacyId = getUrlValidatorSheetId(decoded);
+  const spreadsheetId = consolidatedId ?? legacyId;
 
   if (!spreadsheetId) {
     return NextResponse.json({ notConfigured: true });
@@ -36,6 +61,28 @@ export async function GET(req: NextRequest, { params }: { params: Params }) {
   try {
     const sheets = google.sheets({ version: "v4", auth: getAuth() });
 
+    if (consolidatedId) {
+      // Consolidated mode: summarize the domain's persistent tab; latestScan/scansAvailable
+      // come from the History tab's entries for this domain.
+      const [values, history] = await Promise.all([
+        readDomainTab(sheets, consolidatedId, decoded),
+        getDomainHistory(sheets, consolidatedId, decoded),
+      ]);
+      const latest = history.length > 0 ? history[history.length - 1] : null;
+
+      if (values.length < 2) {
+        return NextResponse.json({ totalIssues: 0, productsAffected: 0, topErrors: [], latestScan: latest?.runDate ?? null, scansAvailable: history.length });
+      }
+
+      const headers = values[0];
+      const rows = values.slice(1);
+      const result = { ...summarizeRows(headers, rows), latestScan: latest?.runDate ?? null, scansAvailable: history.length };
+
+      setCached(key, result);
+      return NextResponse.json(result);
+    }
+
+    // Legacy mode: discover the latest dated tab in this domain's own spreadsheet.
     const metaRes = await sheets.spreadsheets.get({ spreadsheetId });
     const dateTabs = (metaRes.data.sheets ?? [])
       .map((s) => s.properties?.title ?? "")
@@ -59,32 +106,8 @@ export async function GET(req: NextRequest, { params }: { params: Params }) {
     }
 
     const headers = values[0] as string[];
-    const iProduct   = headers.findIndex((h) => h.toLowerCase() === "product");
-    const iErrorType = headers.findIndex((h) => h.toLowerCase() === "error type");
-
-    const rows = values.slice(1);
-    const products  = new Set<string>();
-    const errorCounts: Record<string, number> = {};
-
-    for (const row of rows) {
-      const product   = (row[iProduct]   as string ?? "").trim();
-      const errorType = (row[iErrorType] as string ?? "").trim();
-      if (product)   products.add(product);
-      if (errorType) errorCounts[errorType] = (errorCounts[errorType] ?? 0) + 1;
-    }
-
-    const topErrors = Object.entries(errorCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([type, count]) => ({ type, count }));
-
-    const result = {
-      totalIssues:      rows.length,
-      productsAffected: products.size,
-      topErrors,
-      latestScan:       latestTab,
-      scansAvailable:   dateTabs.length,
-    };
+    const rows = values.slice(1) as string[][];
+    const result = { ...summarizeRows(headers, rows), latestScan: latestTab, scansAvailable: dateTabs.length };
 
     setCached(key, result);
     return NextResponse.json(result);

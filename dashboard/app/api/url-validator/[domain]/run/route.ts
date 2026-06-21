@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
 import { existsSync } from "fs";
 import { scanAll } from "@/lib/url-validator";
-import { writeToSheets } from "@/lib/url-validator-sheets";
-import { getUrlValidatorSheetId, getUrlValidatorContentDir } from "@/lib/url-validator-config";
+import { writeToSheets, writeToConsolidatedSheet } from "@/lib/url-validator-sheets";
+import { getUrlValidatorSheetId, getUrlValidatorContentDir, getUrlValidatorConsolidatedSpreadsheetId } from "@/lib/url-validator-config";
 import { invalidateCache } from "@/lib/cache";
 import { logAgentRun, logAgentMetric, productName, type AgentLogEntry } from "@/lib/agent-logger";
 
@@ -12,9 +12,11 @@ export const maxDuration = 300;
 
 export async function POST(_req: NextRequest, { params }: { params: Params }) {
   const { domain } = await params;
-  const decoded      = decodeURIComponent(domain);
-  const contentDir    = getUrlValidatorContentDir(decoded);
-  const spreadsheetId = getUrlValidatorSheetId(decoded);
+  const decoded        = decodeURIComponent(domain);
+  const contentDir      = getUrlValidatorContentDir(decoded);
+  const consolidatedId  = getUrlValidatorConsolidatedSpreadsheetId();
+  const legacyId        = getUrlValidatorSheetId(decoded);
+  const spreadsheetId   = consolidatedId ?? legacyId;
 
   const encoder = new TextEncoder();
 
@@ -30,7 +32,7 @@ export async function POST(_req: NextRequest, { params }: { params: Params }) {
           return;
         }
         if (!spreadsheetId) {
-          send({ type: "error", message: `No sheet configured for ${decoded}. Set URL_VALIDATOR_SHEET_ID_* in .env.local.` });
+          send({ type: "error", message: `No sheet configured for ${decoded}. Set URL_VALIDATOR_SPREADSHEET_ID or URL_VALIDATOR_SHEET_ID_* in .env.local.` });
           return;
         }
 
@@ -45,8 +47,13 @@ export async function POST(_req: NextRequest, { params }: { params: Params }) {
 
         send({ type: "scan_complete", stats, issueCount: issues.length });
 
-        await writeToSheets(issues, stats, spreadsheetId);
+        if (consolidatedId) {
+          await writeToConsolidatedSheet(issues, stats, decoded, consolidatedId);
+        } else {
+          await writeToSheets(issues, stats, spreadsheetId);
+        }
         invalidateCache(`urlresults:${decoded}`);
+        invalidateCache(`urlsummary:${decoded}`);
 
         const run_duration_ms = Date.now() - startTime;
         const website = decoded.replace(/^blog\./, "");
