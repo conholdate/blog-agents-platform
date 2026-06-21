@@ -20,45 +20,43 @@ on:
           - blog.conholdate.cloud
 
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+    steps:
+      - id: build
+        name: Build matrix (filtered to the selected domain, if any)
+        run: |
+          ALL='[
+            {"domain":"blog.aspose.com","content_repo":"aspose/aspose-blog","content_path":"content/Aspose.Blog","sheet_secret":"URL_VALIDATOR_SHEET_ID_ASPOSE_COM"},
+            {"domain":"blog.aspose.cloud","content_repo":"aspose-cloud/aspose-cloud-blog","content_path":"content/Aspose.Cloud","sheet_secret":"URL_VALIDATOR_SHEET_ID_ASPOSE_CLOUD"},
+            {"domain":"blog.groupdocs.com","content_repo":"groupdocs/groupdocs-blog","content_path":"content/Groupdocs.Blog","sheet_secret":"URL_VALIDATOR_SHEET_ID_GROUPDOCS_COM"},
+            {"domain":"blog.groupdocs.cloud","content_repo":"groupdocs-cloud/groupdocs-cloud-blog","content_path":"content/GroupDocs.Cloud","sheet_secret":"URL_VALIDATOR_SHEET_ID_GROUPDOCS_CLOUD"},
+            {"domain":"blog.conholdate.com","content_repo":"conholdate/conholdate-blog","content_path":"content/Conholdate.Total","sheet_secret":"URL_VALIDATOR_SHEET_ID_CONHOLDATE_COM"},
+            {"domain":"blog.conholdate.cloud","content_repo":"conholdate-cloud/blog.conholdate.cloud","content_path":"content/Conholdate.Cloud","sheet_secret":"URL_VALIDATOR_SHEET_ID_CONHOLDATE_CLOUD"}
+          ]'
+          SELECTED="${{ github.event.inputs.domain }}"
+          if [ -z "$SELECTED" ] || [ "$SELECTED" = "all" ]; then
+            MATRIX=$(echo "$ALL" | jq -c '{include: .}')
+          else
+            MATRIX=$(echo "$ALL" | jq -c --arg d "$SELECTED" '{include: [.[] | select(.domain == $d)]}')
+          fi
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
   validate:
+    needs: plan
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - domain: blog.aspose.com
-            content_repo: aspose/aspose-blog
-            content_path: content/Aspose.Blog
-            sheet_secret: URL_VALIDATOR_SHEET_ID_ASPOSE_COM
-          - domain: blog.aspose.cloud
-            content_repo: aspose-cloud/aspose-cloud-blog
-            content_path: content/Aspose.Cloud
-            sheet_secret: URL_VALIDATOR_SHEET_ID_ASPOSE_CLOUD
-          - domain: blog.groupdocs.com
-            content_repo: groupdocs/groupdocs-blog
-            content_path: content/Groupdocs.Blog
-            sheet_secret: URL_VALIDATOR_SHEET_ID_GROUPDOCS_COM
-          - domain: blog.groupdocs.cloud
-            content_repo: groupdocs-cloud/groupdocs-cloud-blog
-            content_path: content/GroupDocs.Cloud
-            sheet_secret: URL_VALIDATOR_SHEET_ID_GROUPDOCS_CLOUD
-          - domain: blog.conholdate.com
-            content_repo: conholdate/conholdate-blog
-            content_path: content/Conholdate.Total
-            sheet_secret: URL_VALIDATOR_SHEET_ID_CONHOLDATE_COM
-          - domain: blog.conholdate.cloud
-            content_repo: conholdate-cloud/blog.conholdate.cloud
-            content_path: content/Conholdate.Cloud
-            sheet_secret: URL_VALIDATOR_SHEET_ID_CONHOLDATE_CLOUD
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - name: Checkout blog-team-tools
-        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.domain == 'all' || github.event.inputs.domain == matrix.domain }}
         uses: actions/checkout@v4
         with:
           path: blog-team-tools
 
       - name: Checkout blog content (${{ matrix.content_repo }})
-        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.domain == 'all' || github.event.inputs.domain == matrix.domain }}
         uses: actions/checkout@v4
         with:
           repository: ${{ matrix.content_repo }}
@@ -67,7 +65,6 @@ jobs:
           sparse-checkout: ${{ matrix.content_path }}
 
       - name: Set up Python
-        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.domain == 'all' || github.event.inputs.domain == matrix.domain }}
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -75,12 +72,10 @@ jobs:
           cache-dependency-path: blog-team-tools/url-validator/requirements.txt
 
       - name: Install dependencies
-        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.domain == 'all' || github.event.inputs.domain == matrix.domain }}
         run: pip install -r requirements.txt
         working-directory: blog-team-tools/url-validator
 
       - name: Run URL Validator — ${{ matrix.domain }}
-        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.domain == 'all' || github.event.inputs.domain == matrix.domain }}
         working-directory: blog-team-tools/url-validator
         env:
           URL_VALIDATOR_CONTENT_DIR_OVERRIDE: ${{ github.workspace }}/blog-content/${{ matrix.content_path }}
