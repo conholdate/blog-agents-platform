@@ -198,10 +198,27 @@ async function appendHistoryRow(sheets: sheets_v4.Sheets, spreadsheetId: string,
   await autosizeColumns(sheets, spreadsheetId, historySheetId, HISTORY_HEADERS.length);
 }
 
-/** Write into the single consolidated spreadsheet: one persistent tab per domain (overwritten
- * in place each run, never a new dated tab) + a shared History row. Mirrors url-validator/main.py's
- * write_to_consolidated_sheet() so the CLI/CI and the dashboard produce identical results. */
-export async function writeToConsolidatedSheet(issues: Issue[], stats: ScanStats, domain: string, spreadsheetId: string): Promise<void> {
+/** Retry a Sheets write with exponential backoff on transient API errors. Safe to retry
+ * whole-function here since the write paths are find-or-create / clear-and-rewrite --
+ * re-running after a partial failure converges to the same result. Mirrors url-validator's
+ * _with_retry() in main.py. */
+async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3, baseDelayMs = 2000): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (attempt === maxAttempts) break;
+      const delay = baseDelayMs * 2 ** (attempt - 1);
+      console.warn(`Sheets write failed (attempt ${attempt}/${maxAttempts}): ${err}. Retrying in ${delay}ms...`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw lastErr;
+}
+
+async function writeToConsolidatedSheetOnce(issues: Issue[], stats: ScanStats, domain: string, spreadsheetId: string): Promise<void> {
   const sheets = getSheetsClient();
 
   let sheetId = await findTabId(sheets, spreadsheetId, domain);
@@ -219,7 +236,14 @@ export async function writeToConsolidatedSheet(issues: Issue[], stats: ScanStats
   await appendHistoryRow(sheets, spreadsheetId, domain, stats, issues);
 }
 
-export async function writeToSheets(
+/** Write into the single consolidated spreadsheet: one persistent tab per domain (overwritten
+ * in place each run, never a new dated tab) + a shared History row. Mirrors url-validator/main.py's
+ * write_to_consolidated_sheet() so the CLI/CI and the dashboard produce identical results. */
+export async function writeToConsolidatedSheet(issues: Issue[], stats: ScanStats, domain: string, spreadsheetId: string): Promise<void> {
+  return withRetry(() => writeToConsolidatedSheetOnce(issues, stats, domain, spreadsheetId));
+}
+
+async function writeToSheetsOnce(
   issues: Issue[],
   stats: ScanStats,
   spreadsheetId: string
@@ -320,4 +344,8 @@ export async function writeToSheets(
       ]
     }
   });
+}
+
+export async function writeToSheets(issues: Issue[], stats: ScanStats, spreadsheetId: string): Promise<void> {
+  return withRetry(() => writeToSheetsOnce(issues, stats, spreadsheetId));
 }

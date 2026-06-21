@@ -14,6 +14,7 @@ import argparse
 import json
 import re
 import sys
+import time
 from collections import Counter, defaultdict
 from datetime import date
 from pathlib import Path
@@ -111,6 +112,9 @@ def _load_credentials() -> Credentials:
         return Credentials.from_service_account_info(json.loads(sa_json), scopes=SCOPES)
     return Credentials.from_service_account_file(str(CREDENTIALS_FILE), scopes=SCOPES)
 
+# Intentionally empty: content migrated from a /zh-tw/ URL prefix for zh-hant files to
+# /zh-hant/ directly (no alias). Don't add a zh-hant->zh-tw mapping back here without
+# re-checking real content first -- see test_main.py's zh-hant test comments.
 LANG_URL_ALIASES: dict[str, str] = {}
 
 # ── Frontmatter ───────────────────────────────────────────────────────────────
@@ -503,6 +507,24 @@ def _append_history_row(spreadsheet, domain: str, stats: dict, issues: list):
     _autosize_columns(spreadsheet, ws.id, len(HISTORY_HEADERS))
 
 
+def _with_retry(fn, *args, max_attempts=3, base_delay_s=2.0, **kwargs):
+    """Retry a Sheets write with exponential backoff on transient API errors.
+    Safe to retry whole-function here since the write paths are find-or-create /
+    clear-and-rewrite -- re-running after a partial failure converges to the same result."""
+    last_exc = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as exc:
+            last_exc = exc
+            if attempt == max_attempts:
+                break
+            delay = base_delay_s * (2 ** (attempt - 1))
+            print(f"  Sheets write failed (attempt {attempt}/{max_attempts}): {exc}. Retrying in {delay:.0f}s...")
+            time.sleep(delay)
+    raise last_exc
+
+
 def write_to_consolidated_sheet(issues: list, stats: dict, domain: str):
     """Write into the single consolidated spreadsheet: one persistent tab per domain
     (overwritten in place each run, never a new dated tab) + a shared History row."""
@@ -704,7 +726,7 @@ def main():
     if not issues:
         print("\nNo issues found!")
         if using_consolidated:
-            write_to_consolidated_sheet([], stats, args.domain)
+            _with_retry(write_to_consolidated_sheet, [], stats, args.domain)
         return
 
     # Error type breakdown
@@ -714,9 +736,9 @@ def main():
 
     print()
     if using_consolidated:
-        write_to_consolidated_sheet(issues, stats, args.domain)
+        _with_retry(write_to_consolidated_sheet, issues, stats, args.domain)
     else:
-        write_to_sheets(issues, stats)
+        _with_retry(write_to_sheets, issues, stats)
 
 
 if __name__ == "__main__":
