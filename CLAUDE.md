@@ -5,6 +5,15 @@ This is the root-level CLAUDE.md for the monorepo. It covers repo-wide rules. Fo
 - [`dashboard/CLAUDE.md`](./dashboard/CLAUDE.md) — before touching anything in `dashboard/`
 - [`dashboard/AGENTS.md`](./dashboard/AGENTS.md) — Next.js-specific agent rules
 
+Other repo-level docs (not duplicated here — read directly if relevant):
+
+- [`README.md`](./README.md) — project overview, how the agent → Sheet → platform loop works
+- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — full structure of dashboard routes/components/lib
+- [`AGENTS.md`](./AGENTS.md) — generic agent instructions (Codex, Cursor, etc.)
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) — local setup and contribution workflow
+- [`IMPLEMENTATION_PLAN.md`](./IMPLEMENTATION_PLAN.md) — agent-by-agent status and roadmap
+- [`CHANGELOG.md`](./CHANGELOG.md) — release history
+
 ## What This Project Is
 
 The control center for AI agents that automate blog content operations (keyword research, post generation, translation, SEO optimization) across 6 brand domains. AI agents run autonomously and write output to Google Sheets. The platform reads those Sheets and lets the blog team monitor, review, and act on the output.
@@ -60,3 +69,7 @@ cd url-validator && source venv/bin/activate && pytest test_main.py
 ## Deployment
 
 Vercel auto-deploys `dashboard/` on every push to `main`. No manual deploy step needed. URL Validator is CLI-only and has no deployment.
+
+## Git Workflow
+
+This repo uses **direct-to-main** for day-to-day human contributions (per `CONTRIBUTING.md`) — no required PRs for small changes. **Claude Code should never run `git commit` or `git push` in this repo** — make local file changes only, and leave committing to the user, unless explicitly asked to commit in that specific turn.
