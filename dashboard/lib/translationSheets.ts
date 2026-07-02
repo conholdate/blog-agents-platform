@@ -61,6 +61,11 @@ function colIndex(headers: string[], name: string): number {
   return headers.findIndex((h) => h.trim().toLowerCase() === name.toLowerCase());
 }
 
+function normalizeUrl(url: string): string {
+  if (!url || /^https?:\/\//i.test(url)) return url;
+  return `https://${url}`;
+}
+
 function parseScan(raw: string[][]): ScanRow[] {
   const headers = raw[0] ?? [];
   const iProduct  = colIndex(headers, "Product");
@@ -75,7 +80,7 @@ function parseScan(raw: string[][]): ScanRow[] {
   const rows: ScanRow[] = [];
   let i = 0;
   for (const row of raw.slice(1)) {
-    const postUrl = (row[iUrl] ?? "").trim();
+    const postUrl = normalizeUrl((row[iUrl] ?? "").trim());
     if (!postUrl) continue;
     rows.push({
       originalIndex: ++i,
@@ -107,7 +112,7 @@ function parseHistory(raw: string[][], domain: string): HistoryRow[] {
   const rows: HistoryRow[] = [];
   let i = 0;
   for (const row of raw.slice(1)) {
-    const postUrl = (row[iUrl] ?? "").trim();
+    const postUrl = normalizeUrl((row[iUrl] ?? "").trim());
     if (!postUrl) continue;
     if ((row[iDomain] ?? "").trim() !== domain) continue;
     rows.push({
