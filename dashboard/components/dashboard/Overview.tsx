@@ -44,15 +44,15 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState<string | null>(null);
 
-  function load(refresh = false) {
+  function load(refresh = false, signal?: AbortSignal) {
     setLoading(true); setSummary(null); setOptSummary(null); setUrlSummary(null); setTrSummary(null); setError(null);
     const qs = refresh ? "?refresh=1" : "";
     const enc = encodeURIComponent(domain);
     Promise.all([
-      fetch(`/api/sheets/${enc}/summary${qs}`).then((r) => r.json()),
-      fetch(`/api/optimization/${enc}/summary${qs}`).then((r) => r.json()),
-      fetch(`/api/url-validator/${enc}/summary${qs}`).then((r) => r.json()),
-      fetch(`/api/translation/${enc}/summary${qs}`).then((r) => r.json()),
+      fetch(`/api/sheets/${enc}/summary${qs}`, { signal }).then((r) => r.json()),
+      fetch(`/api/optimization/${enc}/summary${qs}`, { signal }).then((r) => r.json()),
+      fetch(`/api/url-validator/${enc}/summary${qs}`, { signal }).then((r) => r.json()),
+      fetch(`/api/translation/${enc}/summary${qs}`, { signal }).then((r) => r.json()),
     ])
       .then(([kw, opt, url, tr]) => {
         if (kw.error) throw new Error(kw.error);
@@ -61,13 +61,17 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
         if (!url.error && !url.notConfigured) setUrlSummary(url);
         if (!tr.error && !tr.notConfigured) setTrSummary(tr);
       })
-      .catch((e) => setError(e.message))
+      .catch((e) => { if (e.name !== "AbortError") setError(e.message); })
       .finally(() => setLoading(false));
   }
 
-  // load() resets state then fetches; intentional fetch-on-domain-change pattern.
+  // Cancel in-flight requests when domain changes to avoid quota bursts.
+  useEffect(() => {
+    const controller = new AbortController();
+    load(false, controller.signal);
+    return () => controller.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, [domain]);
+  }, [domain]);
 
   const totals = summary?.reduce(
     (acc, t) => ({ total: acc.total + t.total, queued: acc.queued + t.queued, approved: acc.approved + t.approved, rejected: acc.rejected + t.rejected, generated: acc.generated + t.generated }),
