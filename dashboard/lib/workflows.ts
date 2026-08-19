@@ -1,4 +1,4 @@
-import { GITHUB_WORKFLOWS_OWNER, GITHUB_WORKFLOWS_REPO, getGithubToken } from "./workflows-config";
+import { getWorkflowsRepo, getGithubToken } from "./workflows-config";
 
 export interface WorkflowRun {
   id: number;
@@ -41,12 +41,13 @@ function getHeaders(token: string): HeadersInit {
   };
 }
 
-export async function getRecentWorkflowRuns(perPage = 20): Promise<WorkflowRunsResult> {
+export async function getRecentWorkflowRuns(domain: string, perPage = 20): Promise<WorkflowRunsResult> {
   const token = getGithubToken();
-  if (!token) return { runs: [], notConfigured: true };
+  const repo = getWorkflowsRepo(domain);
+  if (!token || !repo) return { runs: [], notConfigured: true };
 
   const res = await fetch(
-    `https://api.github.com/repos/${GITHUB_WORKFLOWS_OWNER}/${GITHUB_WORKFLOWS_REPO}/actions/runs?per_page=${perPage}`,
+    `https://api.github.com/repos/${repo.owner}/${repo.repo}/actions/runs?per_page=${perPage}`,
     { headers: getHeaders(token) }
   );
 

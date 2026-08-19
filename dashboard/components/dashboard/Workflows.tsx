@@ -20,11 +20,10 @@ interface WorkflowRun {
 
 interface RunsResponse {
   runs: WorkflowRun[];
+  repo?: string | null;
   notConfigured?: true;
   error?: string;
 }
-
-const REPO = "Aspose/aspose-blog-workflows";
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -37,14 +36,20 @@ function timeAgo(iso: string): string {
   return `${days}d ago`;
 }
 
-export function Workflows() {
+interface Props {
+  domain: string;
+}
+
+export function Workflows({ domain }: Props) {
   const [data, setData] = useState<RunsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [filterWorkflow, setFilterWorkflow] = useState<string>("all");
 
+  const base = `/api/workflows/${encodeURIComponent(domain)}/runs`;
+
   function load(forceRefresh = false) {
     setLoading(true);
-    const url = forceRefresh ? "/api/workflows/runs?refresh=1" : "/api/workflows/runs";
+    const url = forceRefresh ? `${base}?refresh=1` : base;
     fetch(url)
       .then((r) => r.json())
       .then(setData)
@@ -53,9 +58,11 @@ export function Workflows() {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
-  }, []);
+    setData(null);
+    setFilterWorkflow("all");
+    load(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [domain]);
 
   const workflowCounts: Record<string, number> = {};
   for (const run of data?.runs ?? []) {
@@ -74,27 +81,33 @@ export function Workflows() {
           <h1 className="text-xl font-semibold text-slate-900 dark:text-white">CI/CD Status</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Recent GitHub Actions runs for{" "}
-            <a
-              href={`https://github.com/${REPO}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline"
-            >
-              {REPO}
-            </a>
+            {data?.repo ? (
+              <a
+                href={`https://github.com/${data.repo}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline"
+              >
+                {data.repo}
+              </a>
+            ) : (
+              <span className="font-medium text-slate-700 dark:text-slate-300">{domain}</span>
+            )}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <a
-            href={`https://github.com/${REPO}/actions`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 text-[12px] font-medium text-slate-400 hover:text-indigo-600 dark:text-slate-500 dark:hover:text-indigo-400 transition-colors"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            View all on GitHub
-          </a>
+          {data?.repo && (
+            <a
+              href={`https://github.com/${data.repo}/actions`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[12px] font-medium text-slate-400 hover:text-indigo-600 dark:text-slate-500 dark:hover:text-indigo-400 transition-colors"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              View all on GitHub
+            </a>
+          )}
           <button
             onClick={() => load(true)}
             disabled={loading}
@@ -111,7 +124,7 @@ export function Workflows() {
         <div className="mb-5 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-300">
           <p className="font-medium mb-1">GitHub token not configured</p>
           <p className="text-amber-700 dark:text-amber-400">
-            Set GITHUB_TOKEN in dashboard/.env.local (a fine-grained PAT with Actions: Read-only access to {REPO}) to see workflow run statuses here.
+            Set GITHUB_READONLY_TOKEN in dashboard/.env.local (a classic PAT with the &quot;repo&quot; scope, or a fine-grained PAT with Actions: Read-only access) to see workflow run statuses here.
           </p>
         </div>
       )}

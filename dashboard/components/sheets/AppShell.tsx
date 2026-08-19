@@ -360,7 +360,7 @@ export function AppShell() {
             <TranslationAgent domain={activeDomain} />
           )}
 
-          {activeSection === "workflows" && <Workflows />}
+          {activeSection === "workflows" && <Workflows domain={activeDomain} />}
 
           {activeSection !== "overview" && activeSection !== "keywords" && activeSection !== "url-validator" && activeSection !== "optimization" && activeSection !== "translations" && activeSection !== "workflows" && (
             <WorkInProgress section={activeSection} domain={activeDomain} />
