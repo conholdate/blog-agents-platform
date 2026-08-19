@@ -7,6 +7,7 @@ import type { Section } from "./Sidebar";
 import type { TranslationSummary } from "@/lib/translationSheets";
 import type { WorkflowsSummary } from "@/lib/workflows";
 import { WorkflowStatusBadge } from "./WorkflowStatusBadge";
+import { RunHistoryStrip } from "./RunHistoryStrip";
 
 type TabSummary = { name: string; total: number; queued: number; approved: number; rejected: number; generated: number };
 
@@ -85,9 +86,21 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
     { total: 0, queued: 0, approved: 0, rejected: 0, generated: 0 }
   );
 
+  const health = !loading ? domainHealth({ opt: optSummary, url: urlSummary, tr: trSummary, wf: wfSummary }) : null;
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        {health && (
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium border ${
+            health.dotClass.includes("green") ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800"
+            : health.dotClass.includes("amber") ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800"
+            : "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
+          }`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${health.dotClass}`} />
+            {health.label}
+          </span>
+        )}
         <button onClick={() => load(true)} disabled={loading} title="Refresh"
           className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors">
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
@@ -96,7 +109,7 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
         {/* Keyword Agent */}
-        <div className="bg-white border border-slate-200 border-l-4 border-l-indigo-500 dark:bg-slate-700/50 dark:border-slate-600 dark:border-l-indigo-500 rounded-xl p-5 flex flex-col gap-4 shadow-sm dark:shadow-none">
+        <div className="bg-white border border-slate-200 border-l-4 border-l-indigo-500 dark:bg-slate-700/50 dark:border-slate-600 dark:border-l-indigo-500 rounded-xl p-5 flex flex-col gap-4 shadow-sm dark:shadow-none hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="rounded-lg bg-indigo-50 dark:bg-slate-600 p-2"><BookMarked className="h-4 w-4 text-indigo-600 dark:text-slate-200" /></div>
@@ -113,6 +126,9 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
               <StatBox label="Rejected"  value={totals.rejected}  valueColor="text-red-600 dark:text-red-400"       bgClass="bg-red-50 dark:bg-slate-800/60"    labelColor="text-red-400/80 dark:text-slate-400" />
               <StatBox label="Generated" value={totals.generated} valueColor="text-indigo-600 dark:text-indigo-400" bgClass="bg-indigo-50 dark:bg-slate-800/60" labelColor="text-indigo-400/80 dark:text-slate-400" />
             </div>
+            {totals.total > 0 && (
+              <Meter label="Approved of total backlog" value={totals.approved} total={totals.total} fillClass="bg-green-500 dark:bg-green-400" trackClass="bg-green-100 dark:bg-slate-800/60" />
+            )}
             <div className="flex flex-wrap gap-1.5">
               {summary!.map((tab) => (
                 <span key={tab.name} className="flex items-center gap-1 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-[11px]">
@@ -129,7 +145,7 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
 
         {/* Other tool cards */}
         {WIP_CARDS.map(({ section, label, icon: Icon, description, accentLight, iconBg, iconColor, viewColor, ready }) => (
-          <div key={section} className={`bg-white border border-slate-200 border-l-4 ${accentLight} dark:bg-slate-700/30 dark:border-slate-600/60 rounded-xl p-5 flex flex-col gap-3 shadow-sm dark:shadow-none ${ready ? "" : "opacity-80"}`}>
+          <div key={section} className={`bg-white border border-slate-200 border-l-4 ${accentLight} dark:bg-slate-700/30 dark:border-slate-600/60 rounded-xl p-5 flex flex-col gap-3 shadow-sm dark:shadow-none hover:shadow-md transition-shadow ${ready ? "" : "opacity-80"}`}>
             <div className="flex items-center gap-2.5">
               <div className={`rounded-lg ${iconBg} p-2`}><Icon className={`h-4 w-4 ${iconColor}`} /></div>
               <span className={`text-[15px] font-semibold ${ready ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"}`}>{label}</span>
@@ -140,11 +156,22 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
               )}
             </div>
             {section === "translations" && trSummary ? (
-              <div className="grid grid-cols-4 gap-2">
-                <StatBox label="Missing"   value={trSummary.missing}   valueColor="text-amber-600 dark:text-amber-400"   bgClass="bg-amber-50 dark:bg-slate-800/60"  labelColor="text-amber-500/80 dark:text-slate-400" />
-                <StatBox label="Pending"   value={trSummary.pending}   valueColor="text-sky-600 dark:text-sky-400"       bgClass="bg-sky-50 dark:bg-slate-800/60"    labelColor="text-sky-500/80 dark:text-slate-400" />
-                <StatBox label="Partial"   value={trSummary.partial}   valueColor="text-blue-600 dark:text-blue-400"     bgClass="bg-blue-50 dark:bg-slate-800/60"   labelColor="text-blue-500/80 dark:text-slate-400" />
-                <StatBox label="Completed" value={trSummary.completed} valueColor="text-green-700 dark:text-green-400"   bgClass="bg-green-50 dark:bg-slate-800/60"  labelColor="text-green-600/70 dark:text-slate-400" />
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-4 gap-2">
+                  <StatBox label="Missing"   value={trSummary.missing}   valueColor="text-amber-600 dark:text-amber-400"   bgClass="bg-amber-50 dark:bg-slate-800/60"  labelColor="text-amber-500/80 dark:text-slate-400" />
+                  <StatBox label="Pending"   value={trSummary.pending}   valueColor="text-sky-600 dark:text-sky-400"       bgClass="bg-sky-50 dark:bg-slate-800/60"    labelColor="text-sky-500/80 dark:text-slate-400" />
+                  <StatBox label="Partial"   value={trSummary.partial}   valueColor="text-blue-600 dark:text-blue-400"     bgClass="bg-blue-50 dark:bg-slate-800/60"   labelColor="text-blue-500/80 dark:text-slate-400" />
+                  <StatBox label="Completed" value={trSummary.completed} valueColor="text-green-700 dark:text-green-400"   bgClass="bg-green-50 dark:bg-slate-800/60"  labelColor="text-green-600/70 dark:text-slate-400" />
+                </div>
+                {trSummary.missing + trSummary.pending + trSummary.partial + trSummary.completed > 0 && (
+                  <Meter
+                    label="Fully translated"
+                    value={trSummary.completed}
+                    total={trSummary.missing + trSummary.pending + trSummary.partial + trSummary.completed}
+                    fillClass="bg-sky-500 dark:bg-sky-400"
+                    trackClass="bg-sky-100 dark:bg-slate-800/60"
+                  />
+                )}
               </div>
             ) : section === "url-validator" && urlSummary ? (
               <div className="flex flex-col gap-2">
@@ -172,22 +199,34 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
                 )}
               </div>
             ) : section === "optimization" && optSummary ? (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-4 gap-2">
                   <StatBox label="Pending"   value={optSummary.pending}   valueColor="text-amber-600 dark:text-amber-400"   bgClass="bg-amber-50 dark:bg-slate-800/60"  labelColor="text-amber-500/80 dark:text-slate-400" />
                   <StatBox label="High"      value={optSummary.high}      valueColor="text-red-600 dark:text-red-400"       bgClass="bg-red-50 dark:bg-slate-800/60"    labelColor="text-red-400/80 dark:text-slate-400" />
                   <StatBox label="Medium"    value={optSummary.medium}    valueColor="text-orange-600 dark:text-orange-400" bgClass="bg-orange-50 dark:bg-slate-800/60" labelColor="text-orange-400/80 dark:text-slate-400" />
                   <StatBox label="Optimized" value={optSummary.optimized} valueColor="text-green-700 dark:text-green-400"   bgClass="bg-green-50 dark:bg-slate-800/60"  labelColor="text-green-600/70 dark:text-slate-400" />
                 </div>
-                <div className="grid grid-cols-4 gap-2">
-                  <StatBox label="Page 2"  value={optSummary.page2}         valueColor="text-indigo-600 dark:text-indigo-400" bgClass="bg-indigo-50 dark:bg-slate-800/60" labelColor="text-indigo-400/80 dark:text-slate-400" />
-                  <StatBox label="Avg Pos" value={optSummary.avgPosition}   valueColor="text-slate-700 dark:text-slate-300"   bgClass="bg-slate-50 dark:bg-slate-800/60"  labelColor="text-slate-400 dark:text-slate-500" />
-                  <StatBox label="Avg Imp" value={optSummary.avgImpressions >= 1000 ? parseFloat((optSummary.avgImpressions / 1000).toFixed(1)) : optSummary.avgImpressions} valueColor="text-slate-700 dark:text-slate-300" bgClass="bg-slate-50 dark:bg-slate-800/60" labelColor="text-slate-400 dark:text-slate-500" suffix={optSummary.avgImpressions >= 1000 ? "k" : ""} />
-                  <StatBox label="Avg CTR" value={optSummary.avgCtr}        valueColor="text-slate-700 dark:text-slate-300"   bgClass="bg-slate-50 dark:bg-slate-800/60"  labelColor="text-slate-400 dark:text-slate-500" suffix="%" />
+                {optSummary.pending + optSummary.optimized > 0 && (
+                  <Meter
+                    label="Optimized of tracked posts"
+                    value={optSummary.optimized}
+                    total={optSummary.pending + optSummary.optimized}
+                    fillClass="bg-emerald-500 dark:bg-emerald-400"
+                    trackClass="bg-emerald-100 dark:bg-slate-800/60"
+                  />
+                )}
+                <div className="pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">Search performance (avg.)</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    <StatBox label="Page 2"     value={optSummary.page2} valueColor="text-indigo-600 dark:text-indigo-400" bgClass="bg-indigo-50 dark:bg-slate-800/60" labelColor="text-indigo-400/80 dark:text-slate-400" />
+                    <StatBox label="Position"   value={optSummary.avgPosition} valueColor="text-slate-700 dark:text-slate-300" bgClass="bg-slate-50 dark:bg-slate-800/60" labelColor="text-slate-400 dark:text-slate-500" />
+                    <StatBox label="Impressions" value={optSummary.avgImpressions >= 1000 ? parseFloat((optSummary.avgImpressions / 1000).toFixed(1)) : optSummary.avgImpressions} valueColor="text-slate-700 dark:text-slate-300" bgClass="bg-slate-50 dark:bg-slate-800/60" labelColor="text-slate-400 dark:text-slate-500" suffix={optSummary.avgImpressions >= 1000 ? "k" : ""} />
+                    <StatBox label="CTR"        value={optSummary.avgCtr} valueColor="text-slate-700 dark:text-slate-300" bgClass="bg-slate-50 dark:bg-slate-800/60" labelColor="text-slate-400 dark:text-slate-500" suffix="%" />
+                  </div>
                 </div>
               </div>
             ) : section === "workflows" && wfSummary ? (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3">
                 {wfSummary.latestRun && (
                   <a
                     href={wfSummary.latestRun.htmlUrl}
@@ -199,10 +238,25 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
                     <span className="truncate">{wfSummary.latestRun.workflowName}</span>
                   </a>
                 )}
-                <div className="grid grid-cols-3 gap-2">
-                  <StatBox label="Success" value={wfSummary.successCount}    valueColor="text-green-700 dark:text-green-400" bgClass="bg-green-50 dark:bg-slate-800/60" labelColor="text-green-600/70 dark:text-slate-400" />
-                  <StatBox label="Failed"  value={wfSummary.failureCount}    valueColor="text-red-600 dark:text-red-400"     bgClass="bg-red-50 dark:bg-slate-800/60"   labelColor="text-red-400/80 dark:text-slate-400" />
-                  <StatBox label="Running" value={wfSummary.inProgressCount} valueColor="text-blue-600 dark:text-blue-400"   bgClass="bg-blue-50 dark:bg-slate-800/60"  labelColor="text-blue-500/80 dark:text-slate-400" />
+
+                <RunHistoryStrip runs={wfSummary.recentRuns} />
+
+                <div className="flex items-end gap-4">
+                  {wfSummary.successCount + wfSummary.failureCount > 0 && (
+                    <div>
+                      <div className="text-2xl font-bold text-slate-900 dark:text-white leading-none">
+                        {Math.round((wfSummary.successCount / (wfSummary.successCount + wfSummary.failureCount)) * 100)}%
+                      </div>
+                      <div className="text-[11px] mt-1 font-medium text-slate-400 dark:text-slate-500">Success rate (last {wfSummary.successCount + wfSummary.failureCount + wfSummary.inProgressCount})</div>
+                    </div>
+                  )}
+                  <div className="flex gap-3 text-[11px] text-slate-500 dark:text-slate-400 mb-0.5">
+                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-500 dark:bg-green-400" />{wfSummary.successCount} success</span>
+                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500 dark:bg-red-400" />{wfSummary.failureCount} failed</span>
+                    {wfSummary.inProgressCount > 0 && (
+                      <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-500 dark:bg-blue-400 animate-pulse" />{wfSummary.inProgressCount} running</span>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : (
@@ -213,6 +267,19 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
       </div>
     </div>
   );
+}
+
+/* Rolls each domain's per-tool signals into one glanceable status: critical
+   (CI failing or high-priority SEO issues), attention (something pending), or clear. */
+function domainHealth({ opt, url, tr, wf }: {
+  opt: DomainRow["opt"]; url: DomainRow["url"]; tr: DomainRow["tr"]; wf: DomainRow["wf"];
+}): { dotClass: string; label: string } {
+  if ((wf?.failureCount ?? 0) > 0) return { dotClass: "bg-red-500 dark:bg-red-400", label: "CI has recent failures" };
+  if ((opt?.high ?? 0) > 0) return { dotClass: "bg-red-500 dark:bg-red-400", label: "High-priority SEO issues pending" };
+  if ((url?.totalIssues ?? 0) > 0 || (tr?.missing ?? 0) > 0 || (opt?.pending ?? 0) > 0) {
+    return { dotClass: "bg-amber-400 dark:bg-amber-500", label: "Items need attention" };
+  }
+  return { dotClass: "bg-green-500 dark:bg-green-400", label: "All clear" };
 }
 
 /* ─── All-domains view ───────────────────────────────────────────── */
@@ -241,7 +308,13 @@ function AllDomainsView({ onNavigate, onSelectDomain }: { onNavigate: (s: Sectio
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400">
+          <span className="font-medium text-slate-400 dark:text-slate-500">Health</span>
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-500 dark:bg-green-400" />Clear</span>
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400 dark:bg-amber-500" />Attention</span>
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500 dark:bg-red-400" />Critical</span>
+        </div>
         <button onClick={() => load(true)} disabled={loading} title="Refresh"
           className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors">
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
@@ -289,11 +362,16 @@ function AllDomainsView({ onNavigate, onSelectDomain }: { onNavigate: (s: Sectio
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 bg-white dark:bg-slate-800">
               {rows.map(({ domain, kw, opt, url, tr, wf }) => {
                 const meta = DOMAIN_LABELS[domain];
+                const health = domainHealth({ opt, url, tr, wf });
                 return (
                   <tr key={domain} className="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
                     {/* Domain */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2">
+                        <span
+                          className={`h-2 w-2 rounded-full shrink-0 ${health.dotClass}`}
+                          title={health.label}
+                        />
                         <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: meta?.brandColor ?? "#64748b" }} />
                         <span className="font-medium text-slate-700 dark:text-slate-200">{meta?.label ?? domain}</span>
                       </div>
@@ -410,6 +488,23 @@ function StatBox({ label, value, valueColor, bgClass, labelColor, suffix = "" }:
     <div className={`${bgClass} rounded-lg p-3 text-center`}>
       <div className={`text-2xl font-bold ${valueColor}`}>{value}{suffix}</div>
       <div className={`text-[11px] mt-0.5 font-medium ${labelColor}`}>{label}</div>
+    </div>
+  );
+}
+
+function Meter({ label, value, total, fillClass, trackClass }: {
+  label: string; value: number; total: number; fillClass: string; trackClass: string;
+}) {
+  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+  return (
+    <div>
+      <div className="flex items-center justify-between text-[11px] mb-1">
+        <span className="text-slate-500 dark:text-slate-400 font-medium">{label}</span>
+        <span className="font-semibold text-slate-700 dark:text-slate-300">{pct}%</span>
+      </div>
+      <div className={`h-1.5 rounded-full overflow-hidden ${trackClass}`}>
+        <div className={`h-full rounded-full ${fillClass}`} style={{ width: `${pct}%` }} />
+      </div>
     </div>
   );
 }

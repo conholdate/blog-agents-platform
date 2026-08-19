@@ -76,12 +76,22 @@ export async function getRecentWorkflowRuns(domain: string, perPage = 20): Promi
   return { runs };
 }
 
+export interface WorkflowRunTick {
+  status: string;
+  conclusion: string | null;
+  workflowName: string;
+  updatedAt: string;
+  htmlUrl: string;
+}
+
 export interface WorkflowsSummary {
   repo: string;
   latestRun: { workflowName: string; status: string; conclusion: string | null; updatedAt: string; htmlUrl: string } | null;
   successCount: number;
   failureCount: number;
   inProgressCount: number;
+  // Oldest → newest, for a left-to-right timeline strip.
+  recentRuns: WorkflowRunTick[];
 }
 
 export async function getWorkflowsSummary(domain: string): Promise<WorkflowsSummary | { notConfigured: true }> {
@@ -104,5 +114,9 @@ export async function getWorkflowsSummary(domain: string): Promise<WorkflowsSumm
     successCount,
     failureCount,
     inProgressCount,
+    recentRuns: runs
+      .slice()
+      .reverse()
+      .map((r) => ({ status: r.status, conclusion: r.conclusion, workflowName: r.workflowName, updatedAt: r.updatedAt, htmlUrl: r.htmlUrl })),
   };
 }
