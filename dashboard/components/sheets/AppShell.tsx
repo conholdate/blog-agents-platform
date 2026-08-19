@@ -11,6 +11,7 @@ import { WorkInProgress } from "@/components/dashboard/WorkInProgress";
 import { UrlValidator } from "@/components/dashboard/UrlValidator";
 import { OptimizationAgent } from "@/components/dashboard/OptimizationAgent";
 import { TranslationAgent } from "@/components/dashboard/TranslationAgent";
+import { Workflows } from "@/components/dashboard/Workflows";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const DOMAIN_LIST = Object.keys(DOMAINS);
@@ -126,6 +127,7 @@ export function AppShell() {
     optimization:      "Optimization Agent",
     "post-generation": "Post Generation Agent",
     "url-validator":   "URL Validator",
+    workflows:         "CI/CD Status",
   };
 
   return (
@@ -358,7 +360,9 @@ export function AppShell() {
             <TranslationAgent domain={activeDomain} />
           )}
 
-          {activeSection !== "overview" && activeSection !== "keywords" && activeSection !== "url-validator" && activeSection !== "optimization" && activeSection !== "translations" && (
+          {activeSection === "workflows" && <Workflows />}
+
+          {activeSection !== "overview" && activeSection !== "keywords" && activeSection !== "url-validator" && activeSection !== "optimization" && activeSection !== "translations" && activeSection !== "workflows" && (
             <WorkInProgress section={activeSection} domain={activeDomain} />
           )}
         </main>

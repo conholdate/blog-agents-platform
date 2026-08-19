@@ -2,6 +2,7 @@ export const TTL_KEYWORDS    = 2 * 60 * 60 * 1000; // 2 hours — keyword rows &
 export const TTL_OPTIMIZATION = 4 * 60 * 60 * 1000; // 4 hours — optimization queue & log
 export const TTL_TRANSLATION = 4 * 60 * 60 * 1000; // 4 hours — translation scan & history (daily scan cadence)
 export const TTL_URL_VALIDATOR = 6 * 60 * 60 * 1000; // 6 hours — scan results (date-stamped)
+export const TTL_WORKFLOWS = 5 * 60 * 1000; // 5 minutes — CI runs change on the order of minutes
 
 interface Entry<T> { data: T; ts: number }
 
