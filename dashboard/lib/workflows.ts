@@ -75,3 +75,34 @@ export async function getRecentWorkflowRuns(domain: string, perPage = 20): Promi
 
   return { runs };
 }
+
+export interface WorkflowsSummary {
+  repo: string;
+  latestRun: { workflowName: string; status: string; conclusion: string | null; updatedAt: string; htmlUrl: string } | null;
+  successCount: number;
+  failureCount: number;
+  inProgressCount: number;
+}
+
+export async function getWorkflowsSummary(domain: string): Promise<WorkflowsSummary | { notConfigured: true }> {
+  const repo = getWorkflowsRepo(domain);
+  if (!getGithubToken() || !repo) return { notConfigured: true };
+
+  const { runs } = await getRecentWorkflowRuns(domain, 10);
+
+  let successCount = 0, failureCount = 0, inProgressCount = 0;
+  for (const r of runs) {
+    if (r.status === "in_progress" || r.status === "queued" || r.status === "waiting") inProgressCount++;
+    else if (r.conclusion === "success") successCount++;
+    else if (r.conclusion === "failure" || r.conclusion === "timed_out") failureCount++;
+  }
+
+  const latest = runs[0] ?? null;
+  return {
+    repo: `${repo.owner}/${repo.repo}`,
+    latestRun: latest ? { workflowName: latest.workflowName, status: latest.status, conclusion: latest.conclusion, updatedAt: latest.updatedAt, htmlUrl: latest.htmlUrl } : null,
+    successCount,
+    failureCount,
+    inProgressCount,
+  };
+}

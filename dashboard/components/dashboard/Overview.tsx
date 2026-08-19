@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BookMarked, Languages, TrendingUp, Link, Bot, Loader2, RefreshCw, Globe } from "lucide-react";
+import { BookMarked, Languages, TrendingUp, Link, Bot, Loader2, RefreshCw, Globe, GitBranch } from "lucide-react";
 import { DOMAIN_LABELS } from "@/lib/config";
 import type { Section } from "./Sidebar";
 import type { TranslationSummary } from "@/lib/translationSheets";
+import type { WorkflowsSummary } from "@/lib/workflows";
+import { WorkflowStatusBadge } from "./WorkflowStatusBadge";
 
 type TabSummary = { name: string; total: number; queued: number; approved: number; rejected: number; generated: number };
 
@@ -23,6 +25,7 @@ interface DomainRow {
   opt: { pending: number; high: number; optimized: number } | null;
   url: { totalIssues: number; latestScan: string | null } | null;
   tr:  { missing: number; pending: number; completed: number } | null;
+  wf:  WorkflowsSummary | null;
 }
 
 const WIP_CARDS: {
@@ -33,6 +36,7 @@ const WIP_CARDS: {
   { section: "optimization",   label: "Optimization Agent",    icon: TrendingUp, description: "SEO optimization queue with priority scoring; track pending and optimized posts", accentLight: "border-l-emerald-500", iconBg: "bg-emerald-50 dark:bg-slate-600/70",  iconColor: "text-emerald-600 dark:text-slate-300", viewColor: "text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300", ready: true },
   { section: "post-generation", label: "Post Generation Agent", icon: Bot,        description: "Generate full blog post drafts from keyword briefs using AI agents",          accentLight: "border-l-rose-500",   iconBg: "bg-rose-50 dark:bg-slate-600/70",    iconColor: "text-rose-600 dark:text-slate-300"   },
   { section: "url-validator",  label: "URL Validator",         icon: Link,       description: "Run URL validation scans and view reported issues",                          accentLight: "border-l-orange-500", iconBg: "bg-orange-50 dark:bg-slate-600/70",  iconColor: "text-orange-600 dark:text-slate-300",  viewColor: "text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300",   ready: true },
+  { section: "workflows",      label: "CI/CD Status",          icon: GitBranch,  description: "Recent GitHub Actions workflow runs for this domain's repo",                 accentLight: "border-l-violet-500", iconBg: "bg-violet-50 dark:bg-slate-600/70",  iconColor: "text-violet-600 dark:text-slate-300",  viewColor: "text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300",   ready: true },
 ];
 
 /* ─── Single-domain view ─────────────────────────────────────────── */
@@ -41,11 +45,12 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
   const [optSummary, setOptSummary] = useState<OptimizationSummary | null>(null);
   const [urlSummary, setUrlSummary] = useState<UrlValidatorSummary | null>(null);
   const [trSummary, setTrSummary]   = useState<TranslationSummary | null>(null);
+  const [wfSummary, setWfSummary]   = useState<WorkflowsSummary | null>(null);
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState<string | null>(null);
 
   function load(refresh = false, signal?: AbortSignal) {
-    setLoading(true); setSummary(null); setOptSummary(null); setUrlSummary(null); setTrSummary(null); setError(null);
+    setLoading(true); setSummary(null); setOptSummary(null); setUrlSummary(null); setTrSummary(null); setWfSummary(null); setError(null);
     const qs = refresh ? "?refresh=1" : "";
     const enc = encodeURIComponent(domain);
     Promise.all([
@@ -53,13 +58,15 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
       fetch(`/api/optimization/${enc}/summary${qs}`, { signal }).then((r) => r.json()),
       fetch(`/api/url-validator/${enc}/summary${qs}`, { signal }).then((r) => r.json()),
       fetch(`/api/translation/${enc}/summary${qs}`, { signal }).then((r) => r.json()),
+      fetch(`/api/workflows/${enc}/summary${qs}`, { signal }).then((r) => r.json()),
     ])
-      .then(([kw, opt, url, tr]) => {
+      .then(([kw, opt, url, tr, wf]) => {
         if (kw.error) throw new Error(kw.error);
         setSummary(kw.tabs);
         if (!opt.error && !opt.notConfigured) setOptSummary(opt);
         if (!url.error && !url.notConfigured) setUrlSummary(url);
         if (!tr.error && !tr.notConfigured) setTrSummary(tr);
+        if (!wf.error && !wf.notConfigured) setWfSummary(wf);
       })
       .catch((e) => { if (e.name !== "AbortError") setError(e.message); })
       .finally(() => setLoading(false));
@@ -179,6 +186,25 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
                   <StatBox label="Avg CTR" value={optSummary.avgCtr}        valueColor="text-slate-700 dark:text-slate-300"   bgClass="bg-slate-50 dark:bg-slate-800/60"  labelColor="text-slate-400 dark:text-slate-500" suffix="%" />
                 </div>
               </div>
+            ) : section === "workflows" && wfSummary ? (
+              <div className="flex flex-col gap-2">
+                {wfSummary.latestRun && (
+                  <a
+                    href={wfSummary.latestRun.htmlUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-[12px] text-slate-500 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+                  >
+                    <WorkflowStatusBadge status={wfSummary.latestRun.status} conclusion={wfSummary.latestRun.conclusion} />
+                    <span className="truncate">{wfSummary.latestRun.workflowName}</span>
+                  </a>
+                )}
+                <div className="grid grid-cols-3 gap-2">
+                  <StatBox label="Success" value={wfSummary.successCount}    valueColor="text-green-700 dark:text-green-400" bgClass="bg-green-50 dark:bg-slate-800/60" labelColor="text-green-600/70 dark:text-slate-400" />
+                  <StatBox label="Failed"  value={wfSummary.failureCount}    valueColor="text-red-600 dark:text-red-400"     bgClass="bg-red-50 dark:bg-slate-800/60"   labelColor="text-red-400/80 dark:text-slate-400" />
+                  <StatBox label="Running" value={wfSummary.inProgressCount} valueColor="text-blue-600 dark:text-blue-400"   bgClass="bg-blue-50 dark:bg-slate-800/60"  labelColor="text-blue-500/80 dark:text-slate-400" />
+                </div>
+              </div>
             ) : (
               <p className="text-sm text-slate-500 dark:text-slate-400">{description}</p>
             )}
@@ -241,6 +267,7 @@ function AllDomainsView({ onNavigate, onSelectDomain }: { onNavigate: (s: Sectio
                 <th className="px-4 py-3 text-center text-[11px] font-semibold text-sky-500 dark:text-sky-400 uppercase tracking-wider" colSpan={3}>Translations</th>
                 <th className="px-4 py-3 text-center text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider" colSpan={3}>Optimization</th>
                 <th className="px-4 py-3 text-center text-[11px] font-semibold text-orange-500 dark:text-orange-400 uppercase tracking-wider" colSpan={2}>URL Validator</th>
+                <th className="px-4 py-3 text-center text-[11px] font-semibold text-violet-500 dark:text-violet-400 uppercase tracking-wider" colSpan={2}>CI/CD</th>
               </tr>
               <tr className="border-t border-slate-100 dark:border-slate-700/50">
                 <th className="px-4 py-2" />
@@ -255,10 +282,12 @@ function AllDomainsView({ onNavigate, onSelectDomain }: { onNavigate: (s: Sectio
                 <th className="px-3 py-2 text-center text-[10px] font-medium text-green-600 dark:text-green-400">Optimized</th>
                 <th className="px-3 py-2 text-center text-[10px] font-medium text-orange-500">Issues</th>
                 <th className="px-3 py-2 text-center text-[10px] font-medium text-slate-400">Last Scan</th>
+                <th className="px-3 py-2 text-center text-[10px] font-medium text-violet-500">Status</th>
+                <th className="px-3 py-2 text-center text-[10px] font-medium text-slate-400">Success/Fail</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 bg-white dark:bg-slate-800">
-              {rows.map(({ domain, kw, opt, url, tr }) => {
+              {rows.map(({ domain, kw, opt, url, tr, wf }) => {
                 const meta = DOMAIN_LABELS[domain];
                 return (
                   <tr key={domain} className="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
@@ -305,6 +334,27 @@ function AllDomainsView({ onNavigate, onSelectDomain }: { onNavigate: (s: Sectio
                     </td>
                     <td className="px-3 py-3 text-center font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
                       {url?.latestScan ?? <span className="text-slate-300 dark:text-slate-600">—</span>}
+                    </td>
+                    {/* CI/CD */}
+                    <td className="px-3 py-3 text-center">
+                      {wf?.latestRun ? (
+                        <button onClick={() => goTo(domain, "workflows")}>
+                          <WorkflowStatusBadge status={wf.latestRun.status} conclusion={wf.latestRun.conclusion} />
+                        </button>
+                      ) : (
+                        <span className="text-slate-300 dark:text-slate-600">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-center whitespace-nowrap">
+                      {wf ? (
+                        <button onClick={() => goTo(domain, "workflows")} className="font-mono hover:underline">
+                          <span className="text-green-600 dark:text-green-400">{wf.successCount}</span>
+                          <span className="text-slate-300 dark:text-slate-600"> / </span>
+                          <span className="text-red-600 dark:text-red-400">{wf.failureCount}</span>
+                        </button>
+                      ) : (
+                        <span className="text-slate-300 dark:text-slate-600">—</span>
+                      )}
                     </td>
                   </tr>
                 );

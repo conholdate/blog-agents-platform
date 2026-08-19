@@ -5,6 +5,7 @@ import { getKeywordSummary } from "@/lib/sheets";
 import { getOptimizationSummary } from "@/lib/optimizationSheets";
 import { getUrlValidatorSummary } from "@/lib/url-validator-sheets";
 import { getTranslationSummary } from "@/lib/translationSheets";
+import { getWorkflowsSummary } from "@/lib/workflows";
 
 const TTL = TTL_KEYWORDS;
 const DOMAINS = Object.keys(DOMAIN_LABELS);
@@ -31,11 +32,12 @@ export async function GET(req: NextRequest) {
 
   const results = await Promise.all(
     DOMAINS.map(async (domain) => {
-      const [kw, opt, url, tr] = await Promise.all([
+      const [kw, opt, url, tr, wf] = await Promise.all([
         safeCall(() => getKeywordSummary(domain)),
         safeCall(() => getOptimizationSummary(domain)),
         safeCall(() => getUrlValidatorSummary(domain)),
         safeCall(() => getTranslationSummary(domain)),
+        safeCall(() => getWorkflowsSummary(domain)),
       ]);
 
       const kwTotals = kw?.reduce(
@@ -43,7 +45,7 @@ export async function GET(req: NextRequest) {
         { queued: 0, approved: 0, generated: 0 }
       ) ?? null;
 
-      return { domain, kw: kwTotals, opt, url, tr };
+      return { domain, kw: kwTotals, opt, url, tr, wf };
     })
   );
 
