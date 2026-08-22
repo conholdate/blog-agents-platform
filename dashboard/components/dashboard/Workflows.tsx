@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, ExternalLink, RefreshCw, GitBranch } from "lucide-react";
+import { Loader2, ExternalLink, RefreshCw, GitBranch, Clock } from "lucide-react";
 import { WorkflowStatusBadge } from "./WorkflowStatusBadge";
+import { formatScheduleTime } from "@/lib/format-time";
 
 interface WorkflowRun {
   id: number;
@@ -25,6 +26,20 @@ interface RunsResponse {
   error?: string;
 }
 
+interface WorkflowSchedule {
+  workflowName: string;
+  path: string;
+  crons: string[];
+  description: string;
+  nextRunAt: string | null;
+}
+
+interface SchedulesResponse {
+  schedules: WorkflowSchedule[];
+  notConfigured?: true;
+  error?: string;
+}
+
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.round(diffMs / 60000);
@@ -36,16 +51,28 @@ function timeAgo(iso: string): string {
   return `${days}d ago`;
 }
 
+function timeUntil(iso: string): string {
+  const diffMs = new Date(iso).getTime() - Date.now();
+  const mins = Math.round(diffMs / 60000);
+  if (mins < 1) return "any moment";
+  if (mins < 60) return `in ${mins}m`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `in ${hours}h`;
+  return `in ${Math.round(hours / 24)}d`;
+}
+
 interface Props {
   domain: string;
 }
 
 export function Workflows({ domain }: Props) {
   const [data, setData] = useState<RunsResponse | null>(null);
+  const [schedules, setSchedules] = useState<SchedulesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [filterWorkflow, setFilterWorkflow] = useState<string>("all");
 
   const base = `/api/workflows/${encodeURIComponent(domain)}/runs`;
+  const schedulesBase = `/api/workflows/${encodeURIComponent(domain)}/schedules`;
 
   function load(forceRefresh = false) {
     setLoading(true);
@@ -55,14 +82,24 @@ export function Workflows({ domain }: Props) {
       .then(setData)
       .catch((e) => setData({ runs: [], error: e.message }))
       .finally(() => setLoading(false));
+
+    fetch(forceRefresh ? `${schedulesBase}?refresh=1` : schedulesBase)
+      .then((r) => r.json())
+      .then(setSchedules)
+      .catch((e) => setSchedules({ schedules: [], error: e.message }));
   }
 
   useEffect(() => {
     setData(null);
+    setSchedules(null);
     setFilterWorkflow("all");
     load(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [domain]);
+
+  const scheduledWorkflows = (schedules?.schedules ?? [])
+    .filter((s) => s.nextRunAt)
+    .sort((a, b) => (a.nextRunAt! < b.nextRunAt! ? -1 : 1));
 
   const workflowCounts: Record<string, number> = {};
   for (const run of data?.runs ?? []) {
@@ -118,6 +155,33 @@ export function Workflows({ domain }: Props) {
           </button>
         </div>
       </div>
+
+      {/* Scheduled workflows */}
+      {scheduledWorkflows.length > 0 && (
+        <div className="mb-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center gap-1.5">
+            <Clock className="h-3.5 w-3.5 text-slate-400" />
+            <span className="text-[12px] font-semibold text-slate-600 dark:text-slate-300">Scheduled Workflows</span>
+          </div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-700">
+            {scheduledWorkflows.map((s) => (
+              <div key={s.path} className="px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-slate-700 dark:text-slate-300 text-[13px] truncate">{s.workflowName}</span>
+                    <span className="font-mono text-[10px] text-slate-400 dark:text-slate-500 shrink-0">{s.crons.join(", ")}</span>
+                  </div>
+                  {s.description && <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{s.description}</p>}
+                </div>
+                <div className="text-[12px] text-slate-500 dark:text-slate-400 shrink-0">
+                  <div className="font-medium text-slate-700 dark:text-slate-300">{formatScheduleTime(s.nextRunAt!)}</div>
+                  <div className="text-slate-400 dark:text-slate-500 text-right">{timeUntil(s.nextRunAt!)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Not configured */}
       {data?.notConfigured && (

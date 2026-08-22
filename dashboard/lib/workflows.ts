@@ -1,4 +1,21 @@
+import { CronExpressionParser } from "cron-parser";
+import { toString as cronToString } from "cronstrue";
 import { getWorkflowsRepo, getGithubToken } from "./workflows-config";
+import { getCached, setCached, TTL_WORKFLOW_SCHEDULES } from "./cache";
+
+// Cron fields in GitHub Actions schedules are always UTC, so the description
+// describes UTC clock times regardless of where this runs.
+function describeCrons(crons: string[]): string {
+  return crons
+    .map((c) => {
+      try {
+        return cronToString(c, { use24HourTimeFormat: true, verbose: false });
+      } catch {
+        return c;
+      }
+    })
+    .join("; ");
+}
 
 export interface WorkflowRun {
   id: number;
@@ -76,6 +93,79 @@ export async function getRecentWorkflowRuns(domain: string, perPage = 20): Promi
   return { runs };
 }
 
+export interface WorkflowSchedule {
+  workflowName: string;
+  path: string;
+  crons: string[];
+  description: string;
+  nextRunAt: string | null;
+}
+
+interface RawWorkflowDef {
+  name: string;
+  path: string;
+  state: string;
+}
+
+function earliestNextRun(crons: string[]): string | null {
+  let earliest: Date | null = null;
+  for (const cron of crons) {
+    try {
+      const next = CronExpressionParser.parse(cron, { tz: "UTC" }).next().toDate();
+      if (!earliest || next < earliest) earliest = next;
+    } catch {
+      // Not a plain cron string GitHub Actions accepts (or a schedule we can't parse) — skip it.
+    }
+  }
+  return earliest ? earliest.toISOString() : null;
+}
+
+// Cron schedules live only in each workflow's YAML file — GitHub's API doesn't
+// surface them on the run/workflow list endpoints — so this fetches the file
+// content per workflow and regex-extracts `cron:` lines rather than pulling in
+// a full YAML parser for one field.
+export async function getWorkflowSchedules(domain: string): Promise<WorkflowSchedule[]> {
+  const token = getGithubToken();
+  const repo = getWorkflowsRepo(domain);
+  if (!token || !repo) return [];
+
+  const cacheKey = `workflows:schedules:${domain}`;
+  const cached = getCached<WorkflowSchedule[]>(cacheKey, TTL_WORKFLOW_SCHEDULES);
+  if (cached) return cached;
+
+  const listRes = await fetch(
+    `https://api.github.com/repos/${repo.owner}/${repo.repo}/actions/workflows?per_page=100`,
+    { headers: getHeaders(token) }
+  );
+  if (!listRes.ok) throw new Error(`GitHub API error ${listRes.status}: ${listRes.statusText}`);
+
+  const listJson: { workflows?: RawWorkflowDef[] } = await listRes.json();
+  const activeWorkflows = (listJson.workflows ?? []).filter((w) => w.state === "active");
+
+  const schedules = await Promise.all(
+    activeWorkflows.map(async (w): Promise<WorkflowSchedule> => {
+      try {
+        const contentRes = await fetch(
+          `https://api.github.com/repos/${repo.owner}/${repo.repo}/contents/${w.path}`,
+          { headers: getHeaders(token) }
+        );
+        if (!contentRes.ok) return { workflowName: w.name, path: w.path, crons: [], description: "", nextRunAt: null };
+
+        const contentJson: { content?: string } = await contentRes.json();
+        const yamlText = contentJson.content ? Buffer.from(contentJson.content, "base64").toString("utf-8") : "";
+        const crons = [...yamlText.matchAll(/cron:\s*['"]([^'"]+)['"]/g)].map((m) => m[1]);
+
+        return { workflowName: w.name, path: w.path, crons, description: describeCrons(crons), nextRunAt: earliestNextRun(crons) };
+      } catch {
+        return { workflowName: w.name, path: w.path, crons: [], description: "", nextRunAt: null };
+      }
+    })
+  );
+
+  setCached(cacheKey, schedules);
+  return schedules;
+}
+
 export interface WorkflowRunTick {
   status: string;
   conclusion: string | null;
@@ -92,13 +182,17 @@ export interface WorkflowsSummary {
   inProgressCount: number;
   // Oldest → newest, for a left-to-right timeline strip.
   recentRuns: WorkflowRunTick[];
+  nextScheduledRun: { workflowName: string; nextRunAt: string; description: string } | null;
 }
 
 export async function getWorkflowsSummary(domain: string): Promise<WorkflowsSummary | { notConfigured: true }> {
   const repo = getWorkflowsRepo(domain);
   if (!getGithubToken() || !repo) return { notConfigured: true };
 
-  const { runs } = await getRecentWorkflowRuns(domain, 10);
+  const [{ runs }, schedules] = await Promise.all([
+    getRecentWorkflowRuns(domain, 10),
+    getWorkflowSchedules(domain),
+  ]);
 
   let successCount = 0, failureCount = 0, inProgressCount = 0;
   for (const r of runs) {
@@ -108,6 +202,14 @@ export async function getWorkflowsSummary(domain: string): Promise<WorkflowsSumm
   }
 
   const latest = runs[0] ?? null;
+
+  let nextScheduledRun: { workflowName: string; nextRunAt: string; description: string } | null = null;
+  for (const s of schedules) {
+    if (s.nextRunAt && (!nextScheduledRun || s.nextRunAt < nextScheduledRun.nextRunAt)) {
+      nextScheduledRun = { workflowName: s.workflowName, nextRunAt: s.nextRunAt, description: s.description };
+    }
+  }
+
   return {
     repo: `${repo.owner}/${repo.repo}`,
     latestRun: latest ? { workflowName: latest.workflowName, status: latest.status, conclusion: latest.conclusion, updatedAt: latest.updatedAt, htmlUrl: latest.htmlUrl } : null,
@@ -118,5 +220,6 @@ export async function getWorkflowsSummary(domain: string): Promise<WorkflowsSumm
       .slice()
       .reverse()
       .map((r) => ({ status: r.status, conclusion: r.conclusion, workflowName: r.workflowName, updatedAt: r.updatedAt, htmlUrl: r.htmlUrl })),
+    nextScheduledRun,
   };
 }

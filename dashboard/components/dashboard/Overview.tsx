@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BookMarked, Languages, TrendingUp, Link, Bot, Loader2, RefreshCw, Globe, GitBranch } from "lucide-react";
+import { BookMarked, Languages, TrendingUp, Link, Bot, Loader2, RefreshCw, Globe, GitBranch, Clock } from "lucide-react";
 import { DOMAIN_LABELS } from "@/lib/config";
 import type { Section } from "./Sidebar";
 import type { TranslationSummary } from "@/lib/translationSheets";
 import type { WorkflowsSummary } from "@/lib/workflows";
 import { WorkflowStatusBadge } from "./WorkflowStatusBadge";
 import { RunHistoryStrip } from "./RunHistoryStrip";
+import { formatScheduleTime } from "@/lib/format-time";
 
 type TabSummary = { name: string; total: number; queued: number; approved: number; rejected: number; generated: number };
 
@@ -258,6 +259,16 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
                     )}
                   </div>
                 </div>
+
+                {wfSummary.nextScheduledRun && (
+                  <div className="flex items-start gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                    <Clock className="h-3 w-3 shrink-0 mt-0.5" />
+                    <span>
+                      Next scheduled: <span className="font-medium text-slate-600 dark:text-slate-300">{formatScheduleTime(wfSummary.nextScheduledRun.nextRunAt)}</span> · {wfSummary.nextScheduledRun.workflowName}
+                      {wfSummary.nextScheduledRun.description && <span className="block text-slate-400 dark:text-slate-500 mt-0.5">{wfSummary.nextScheduledRun.description}</span>}
+                    </span>
+                  </div>
+                )}
               </div>
             ) : (
               <p className="text-sm text-slate-500 dark:text-slate-400">{description}</p>
@@ -331,7 +342,8 @@ function AllDomainsView({ onNavigate, onSelectDomain }: { onNavigate: (s: Sectio
       )}
 
       {!loading && rows && (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="hidden md:block rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-[12px] border-collapse">
             <thead className="bg-slate-50 dark:bg-slate-700/60 border-b border-slate-200 dark:border-slate-700">
               <tr>
@@ -439,9 +451,89 @@ function AllDomainsView({ onNavigate, onSelectDomain }: { onNavigate: (s: Sectio
               })}
             </tbody>
           </table>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile: stacked cards instead of the wide table */}
+      {!loading && rows && (
+        <div className="md:hidden flex flex-col gap-3">
+          {rows.map((row) => {
+            const meta = DOMAIN_LABELS[row.domain];
+            const health = domainHealth(row);
+            return (
+              <div key={row.domain} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 shadow-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className={`h-2 w-2 rounded-full shrink-0 ${health.dotClass}`} title={health.label} />
+                  <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: meta?.brandColor ?? "#64748b" }} />
+                  <span className="font-semibold text-slate-800 dark:text-white text-[14px]">{meta?.label ?? row.domain}</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {row.kw && (
+                    <MobileMetricGroup label="Keywords" labelColor="text-indigo-500 dark:text-indigo-400" onClick={() => goTo(row.domain, "keywords")} metrics={[
+                      { value: row.kw.queued, text: "queued", color: "text-amber-600 dark:text-amber-400" },
+                      { value: row.kw.approved, text: "approved", color: "text-green-600 dark:text-green-400" },
+                      { value: row.kw.generated, text: "generated", color: "text-indigo-600 dark:text-indigo-400" },
+                    ]} />
+                  )}
+                  {row.tr && (
+                    <MobileMetricGroup label="Translations" labelColor="text-sky-500 dark:text-sky-400" onClick={() => goTo(row.domain, "translations")} metrics={[
+                      { value: row.tr.missing, text: "missing", color: "text-amber-600 dark:text-amber-400" },
+                      { value: row.tr.pending, text: "pending", color: "text-sky-600 dark:text-sky-400" },
+                      { value: row.tr.completed, text: "completed", color: "text-green-600 dark:text-green-400" },
+                    ]} />
+                  )}
+                  {row.opt && (
+                    <MobileMetricGroup label="Optimization" labelColor="text-emerald-600 dark:text-emerald-400" onClick={() => goTo(row.domain, "optimization")} metrics={[
+                      { value: row.opt.pending, text: "pending", color: "text-amber-600 dark:text-amber-400" },
+                      { value: row.opt.high, text: "high", color: "text-red-600 dark:text-red-400" },
+                      { value: row.opt.optimized, text: "optimized", color: "text-green-600 dark:text-green-400" },
+                    ]} />
+                  )}
+                  {row.url && (
+                    <MobileMetricGroup label="URL Validator" labelColor="text-orange-500 dark:text-orange-400" onClick={() => goTo(row.domain, "url-validator")} metrics={[
+                      { value: row.url.totalIssues.toLocaleString(), text: "issues", color: "text-orange-600 dark:text-orange-400" },
+                      { value: row.url.latestScan ?? "—", text: "last scan", color: "text-slate-500 dark:text-slate-400" },
+                    ]} />
+                  )}
+                  {row.wf && (
+                    <button onClick={() => goTo(row.domain, "workflows")} className="text-left rounded-lg bg-slate-50 dark:bg-slate-700/40 p-2.5 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors">
+                      <div className="text-[10px] font-semibold uppercase tracking-wide mb-1 text-violet-500 dark:text-violet-400">CI/CD</div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {row.wf.latestRun && <WorkflowStatusBadge status={row.wf.latestRun.status} conclusion={row.wf.latestRun.conclusion} />}
+                        <span className="text-[11px] text-slate-600 dark:text-slate-300">
+                          <span className="font-mono font-semibold text-green-600 dark:text-green-400">{row.wf.successCount}</span>
+                          <span className="text-slate-300 dark:text-slate-600"> / </span>
+                          <span className="font-mono font-semibold text-red-600 dark:text-red-400">{row.wf.failureCount}</span>
+                        </span>
+                      </div>
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
+  );
+}
+
+function MobileMetricGroup({ label, labelColor, onClick, metrics }: {
+  label: string; labelColor: string; onClick: () => void;
+  metrics: { value: number | string; text: string; color: string }[];
+}) {
+  return (
+    <button onClick={onClick} className="text-left rounded-lg bg-slate-50 dark:bg-slate-700/40 p-2.5 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors">
+      <div className={`text-[10px] font-semibold uppercase tracking-wide mb-1 ${labelColor}`}>{label}</div>
+      <div className="flex flex-wrap gap-x-2.5 gap-y-0.5">
+        {metrics.map((m, i) => (
+          <span key={i} className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-nowrap">
+            <span className={`font-mono font-semibold ${m.color}`}>{m.value}</span> {m.text}
+          </span>
+        ))}
+      </div>
+    </button>
   );
 }
 

@@ -3,6 +3,7 @@ export const TTL_OPTIMIZATION = 4 * 60 * 60 * 1000; // 4 hours — optimization 
 export const TTL_TRANSLATION = 4 * 60 * 60 * 1000; // 4 hours — translation scan & history (daily scan cadence)
 export const TTL_URL_VALIDATOR = 6 * 60 * 60 * 1000; // 6 hours — scan results (date-stamped)
 export const TTL_WORKFLOWS = 5 * 60 * 1000; // 5 minutes — CI runs change on the order of minutes
+export const TTL_WORKFLOW_SCHEDULES = 6 * 60 * 60 * 1000; // 6 hours — cron schedules only change when a workflow YAML is edited
 
 interface Entry<T> { data: T; ts: number }
 
