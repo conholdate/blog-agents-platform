@@ -58,23 +58,33 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
     setLoading(true); setSummary(null); setOptSummary(null); setUrlSummary(null); setTrSummary(null); setWfSummary(null); setError(null);
     const qs = refresh ? "?refresh=1" : "";
     const enc = encodeURIComponent(domain);
+    // Swallow AbortError right at the fetch site (rather than letting it reject
+    // through Promise.all) — an aborted request just means the domain changed
+    // mid-flight, not a real failure, and this keeps it from ever surfacing as
+    // an unhandled rejection in the console.
+    const fetchJson = (url: string) =>
+      fetch(url, { signal })
+        .then((r) => r.json())
+        .catch((e) => { if (e.name === "AbortError") return null; throw e; });
+
     Promise.all([
-      fetch(`/api/sheets/${enc}/summary${qs}`, { signal }).then((r) => r.json()),
-      fetch(`/api/optimization/${enc}/summary${qs}`, { signal }).then((r) => r.json()),
-      fetch(`/api/url-validator/${enc}/summary${qs}`, { signal }).then((r) => r.json()),
-      fetch(`/api/translation/${enc}/summary${qs}`, { signal }).then((r) => r.json()),
-      fetch(`/api/workflows/${enc}/summary${qs}`, { signal }).then((r) => r.json()),
+      fetchJson(`/api/sheets/${enc}/summary${qs}`),
+      fetchJson(`/api/optimization/${enc}/summary${qs}`),
+      fetchJson(`/api/url-validator/${enc}/summary${qs}`),
+      fetchJson(`/api/translation/${enc}/summary${qs}`),
+      fetchJson(`/api/workflows/${enc}/summary${qs}`),
     ])
       .then(([kw, opt, url, tr, wf]) => {
+        if (signal?.aborted || kw == null) return;
         if (kw.error) throw new Error(kw.error);
         setSummary(kw.tabs);
-        if (!opt.error && !opt.notConfigured) setOptSummary(opt);
-        if (!url.error && !url.notConfigured) setUrlSummary(url);
-        if (!tr.error && !tr.notConfigured) setTrSummary(tr);
-        if (!wf.error && !wf.notConfigured) setWfSummary(wf);
+        if (opt && !opt.error && !opt.notConfigured) setOptSummary(opt);
+        if (url && !url.error && !url.notConfigured) setUrlSummary(url);
+        if (tr && !tr.error && !tr.notConfigured) setTrSummary(tr);
+        if (wf && !wf.error && !wf.notConfigured) setWfSummary(wf);
       })
       .catch((e) => { if (e.name !== "AbortError") setError(e.message); })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!signal?.aborted) setLoading(false); });
   }
 
   // Cancel in-flight requests when domain changes to avoid quota bursts.
@@ -258,10 +268,11 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
                       href={wfSummary.latestRun.htmlUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-[12px] text-slate-500 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+                      title={wfSummary.latestRun.workflowName}
+                      className="flex items-center gap-2 min-w-0 text-[12px] text-slate-500 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
                     >
                       <WorkflowStatusBadge status={wfSummary.latestRun.status} conclusion={wfSummary.latestRun.conclusion} />
-                      <span className="truncate">{wfSummary.latestRun.workflowName}</span>
+                      <span className="truncate min-w-0">{wfSummary.latestRun.workflowName}</span>
                     </a>
                   ) : null;
                 })()}
@@ -292,10 +303,11 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
                 {wfSummary.dailyStats.length > 0 && <DailyRunsChart stats={wfSummary.dailyStats} variant="compact" />}
 
                 {wfSummary.nextScheduledRun && (
-                  <div className="flex items-start gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                  <div className="flex items-start gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 pt-1 border-t border-slate-100 dark:border-slate-700/60 min-w-0">
                     <Clock className="h-3 w-3 shrink-0 mt-0.5" />
-                    <span>
-                      Next scheduled: <span className="font-medium text-slate-600 dark:text-slate-300">{formatScheduleTime(wfSummary.nextScheduledRun.nextRunAt)}</span> · {wfSummary.nextScheduledRun.workflowName}
+                    <span className="min-w-0">
+                      Next scheduled: <span className="font-medium text-slate-600 dark:text-slate-300">{formatScheduleTime(wfSummary.nextScheduledRun.nextRunAt)}</span> ·{" "}
+                      <span className="inline-block max-w-[160px] align-bottom truncate" title={wfSummary.nextScheduledRun.workflowName}>{wfSummary.nextScheduledRun.workflowName}</span>
                       {wfSummary.nextScheduledRun.description && <span className="block text-slate-400 dark:text-slate-500 mt-0.5">{wfSummary.nextScheduledRun.description}</span>}
                     </span>
                   </div>
@@ -731,7 +743,10 @@ function AllDomainsView({ onNavigate, onSelectDomain }: { onNavigate: (s: Sectio
                       </div>
                       {row.wf.dailyStats.length > 0 && <DailyRunsChart stats={row.wf.dailyStats} variant="compact" />}
                       {row.wf.nextScheduledRun && (
-                        <div className="text-[11px] text-slate-400 dark:text-slate-500">Next: {timeUntil(row.wf.nextScheduledRun.nextRunAt)} · {row.wf.nextScheduledRun.workflowName}</div>
+                        <div className="flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500 min-w-0">
+                          <span className="shrink-0">Next: {timeUntil(row.wf.nextScheduledRun.nextRunAt)} ·</span>
+                          <span className="truncate min-w-0" title={row.wf.nextScheduledRun.workflowName}>{row.wf.nextScheduledRun.workflowName}</span>
+                        </div>
                       )}
                     </button>
                   );

@@ -36,6 +36,12 @@ function classifyProvider(workflowName: string): RunProvider {
   return "other";
 }
 
+// Exposed so schedules (a separate GitHub API surface from runs) can be matched
+// back to the same (env, provider) buckets a run gets classified into.
+export function classifyWorkflowName(workflowName: string): { env: RunEnv; provider: RunProvider } {
+  return { env: classifyEnv(workflowName), provider: classifyProvider(workflowName) };
+}
+
 export interface WorkflowRun {
   id: number;
   workflowName: string;
@@ -129,6 +135,8 @@ export interface WorkflowSchedule {
   crons: string[];
   description: string;
   nextRunAt: string | null;
+  env: RunEnv;
+  provider: RunProvider;
 }
 
 interface RawWorkflowDef {
@@ -179,15 +187,15 @@ export async function getWorkflowSchedules(domain: string): Promise<WorkflowSche
           `https://api.github.com/repos/${repo.owner}/${repo.repo}/contents/${w.path}`,
           { headers: getHeaders(token) }
         );
-        if (!contentRes.ok) return { workflowName: w.name, path: w.path, crons: [], description: "", nextRunAt: null };
+        if (!contentRes.ok) return { workflowName: w.name, path: w.path, crons: [], description: "", nextRunAt: null, ...classifyWorkflowName(w.name) };
 
         const contentJson: { content?: string } = await contentRes.json();
         const yamlText = contentJson.content ? Buffer.from(contentJson.content, "base64").toString("utf-8") : "";
         const crons = [...yamlText.matchAll(/cron:\s*['"]([^'"]+)['"]/g)].map((m) => m[1]);
 
-        return { workflowName: w.name, path: w.path, crons, description: describeCrons(crons), nextRunAt: earliestNextRun(crons) };
+        return { workflowName: w.name, path: w.path, crons, description: describeCrons(crons), nextRunAt: earliestNextRun(crons), ...classifyWorkflowName(w.name) };
       } catch {
-        return { workflowName: w.name, path: w.path, crons: [], description: "", nextRunAt: null };
+        return { workflowName: w.name, path: w.path, crons: [], description: "", nextRunAt: null, ...classifyWorkflowName(w.name) };
       }
     })
   );
