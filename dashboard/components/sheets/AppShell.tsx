@@ -6,7 +6,7 @@ import { DOMAINS, DOMAIN_LABELS } from "@/lib/config";
 import { Loader2, ExternalLink, Menu, X, RefreshCw } from "lucide-react";
 import { CardGrid } from "./CardGrid";
 import { Sidebar, type Section } from "@/components/dashboard/Sidebar";
-import { Overview } from "@/components/dashboard/Overview";
+import { Overview } from "@/components/dashboard/overview/Overview";
 import { WorkInProgress } from "@/components/dashboard/WorkInProgress";
 import { UrlValidator } from "@/components/dashboard/url-validator/UrlValidator";
 import { OptimizationAgent } from "@/components/dashboard/optimization/OptimizationAgent";
