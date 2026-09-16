@@ -49,3 +49,7 @@ jobs:
       - name: Type-check
         run: npx tsc --noEmit
         working-directory: dashboard
+
+      - name: Run tests
+        run: npm test
+        working-directory: dashboard

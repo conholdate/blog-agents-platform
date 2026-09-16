@@ -250,7 +250,7 @@ export function deploymentFailureCount(deployments: DeploymentStatus[], env: "pr
   return deployments.filter((d) => d.env === env).reduce((sum, d) => sum + d.failureCount, 0);
 }
 
-function buildDeployments(runs: WorkflowRun[]): DeploymentStatus[] {
+export function buildDeployments(runs: WorkflowRun[]): DeploymentStatus[] {
   const byKey = new Map<string, DeploymentStatus>();
   // `runs` is newest-first (GitHub API default), so the first run seen per
   // (env, provider) key is already that bucket's latest.
@@ -300,7 +300,7 @@ const DAILY_STATS_WINDOW_DAYS = 14;
 // Wide enough to cover DAILY_STATS_WINDOW_DAYS for domains that run CI a few times a day.
 const SUMMARY_RUNS_PAGE_SIZE = 40;
 
-function buildDailyStats(runs: WorkflowRun[], days = DAILY_STATS_WINDOW_DAYS): DailyRunStat[] {
+export function buildDailyStats(runs: WorkflowRun[], days = DAILY_STATS_WINDOW_DAYS): DailyRunStat[] {
   const byDate = new Map<string, { success: number; failure: number; other: number; durations: number[] }>();
   for (const r of runs) {
     const date = r.createdAt.slice(0, 10); // YYYY-MM-DD, UTC (ISO strings from GitHub are UTC)
