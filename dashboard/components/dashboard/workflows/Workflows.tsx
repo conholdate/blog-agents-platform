@@ -6,7 +6,7 @@ import { WorkflowStatusBadge } from "./WorkflowStatusBadge";
 import { DailyRunsChart, formatDuration } from "./DailyRunsChart";
 import { EnvTag, ProviderTag } from "./DeployTag";
 import { formatScheduleTime } from "@/lib/format-time";
-import type { DailyRunStat, FailedStep, DeploymentStatus, RunEnv, RunProvider } from "@/lib/workflows";
+import type { DailyRunStat, FailedStep, DeploymentStatus, RunEnv, RunProvider } from "@/lib/workflows/workflows";
 
 interface WorkflowRun {
   id: number;

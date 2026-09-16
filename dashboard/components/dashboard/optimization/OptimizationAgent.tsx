@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { ExternalLink, RefreshCw, Loader2, TrendingUp, CheckCircle2, Search, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
-import type { QueueRow, LogRow } from "@/lib/optimizationSheets";
+import type { QueueRow, LogRow } from "@/lib/optimization/optimizationSheets";
 import { PRODUCT_LABELS } from "@/lib/config";
 
 interface Props { domain: string }

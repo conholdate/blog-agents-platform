@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFailedSteps } from "@/lib/workflows";
-import { isGithubWorkflowsConfigured, getWorkflowsRepo } from "@/lib/workflows-config";
+import { getFailedSteps } from "@/lib/workflows/workflows";
+import { isGithubWorkflowsConfigured, getWorkflowsRepo } from "@/lib/workflows/workflows-config";
 
 type Params = Promise<{ domain: string; runId: string }>;
 

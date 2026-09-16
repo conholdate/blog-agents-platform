@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getWorkflowSchedules } from "@/lib/workflows";
-import { isGithubWorkflowsConfigured, getWorkflowsRepo } from "@/lib/workflows-config";
+import { getWorkflowSchedules } from "@/lib/workflows/workflows";
+import { isGithubWorkflowsConfigured, getWorkflowsRepo } from "@/lib/workflows/workflows-config";
 import { invalidateCache } from "@/lib/cache";
 
 type Params = Promise<{ domain: string }>;

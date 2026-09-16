@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOptimizationSummary } from "@/lib/optimizationSheets";
+import { getOptimizationSummary } from "@/lib/optimization/optimizationSheets";
 import { getCached, setCached, TTL_OPTIMIZATION } from "@/lib/cache";
 
 type Params = Promise<{ domain: string }>;

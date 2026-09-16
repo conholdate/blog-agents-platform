@@ -48,14 +48,25 @@ dashboard/
 │       │   └── summary/        # GET — issue counts per domain
 │       └── overview/all/       # GET — aggregated stats across all agents
 ├── components/
-│   └── dashboard/          # All UI components (Sidebar, sections, cards, drawers)
+│   └── dashboard/          # Sidebar, Overview (shell) + one subfolder per agent:
+│       ├── optimization/       # OptimizationAgent.tsx
+│       ├── translation/        # TranslationAgent.tsx
+│       ├── url-validator/      # UrlValidator.tsx
+│       └── workflows/          # Workflows.tsx + its DailyRunsChart/DeployTag/etc. helpers
 └── lib/
     ├── sheets.ts           # Google Sheets API wrappers + getKeywordSummary
-    ├── optimizationSheets.ts  # Optimization queue/log parsing + getOptimizationSummary
-    ├── translationSheets.ts   # Translation scan/history parsing + getTranslationSummary
-    ├── url-validator-sheets.ts # URL Validator sheet I/O + getUrlValidatorSummary
     ├── config.ts           # Domain → Sheet ID map, brand colors, platform colors
-    └── cache.ts            # Server-side in-memory cache with TTL
+    ├── cache.ts            # Server-side in-memory cache with TTL
+    ├── optimization/optimizationSheets.ts  # Optimization queue/log parsing + getOptimizationSummary
+    ├── translation/translationSheets.ts    # Translation scan/history parsing + getTranslationSummary
+    ├── url-validator/url-validator-sheets.ts # URL Validator sheet I/O + getUrlValidatorSummary
+    └── workflows/workflows.ts              # CI/CD run + schedule parsing + getWorkflowsSummary
+
+Each per-agent subfolder under components/dashboard/ and lib/ is owned by
+that agent alone — a new agent (e.g. Post Generation) gets its own
+components/dashboard/post-generation/ and lib/post-generation/ without
+touching another agent's files. Only Overview.tsx (summary tiles) and
+Sidebar.tsx (nav entry) are shared integration points every agent touches.
 ```
 
 ### Data Flow

@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCached, setCached, TTL_KEYWORDS } from "@/lib/cache";
 import { DOMAIN_LABELS } from "@/lib/config";
 import { getKeywordSummary } from "@/lib/sheets";
-import { getOptimizationSummary } from "@/lib/optimizationSheets";
-import { getUrlValidatorSummary } from "@/lib/url-validator-sheets";
-import { getTranslationSummary } from "@/lib/translationSheets";
-import { getWorkflowsSummary } from "@/lib/workflows";
+import { getOptimizationSummary } from "@/lib/optimization/optimizationSheets";
+import { getUrlValidatorSummary } from "@/lib/url-validator/url-validator-sheets";
+import { getTranslationSummary } from "@/lib/translation/translationSheets";
+import { getWorkflowsSummary } from "@/lib/workflows/workflows";
 
 const TTL = TTL_KEYWORDS;
 const DOMAINS = Object.keys(DOMAIN_LABELS);

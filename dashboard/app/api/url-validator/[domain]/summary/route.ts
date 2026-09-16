@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUrlValidatorSheetId, getUrlValidatorConsolidatedSpreadsheetId } from "@/lib/url-validator-config";
-import { getUrlValidatorSummary } from "@/lib/url-validator-sheets";
+import { getUrlValidatorSheetId, getUrlValidatorConsolidatedSpreadsheetId } from "@/lib/url-validator/url-validator-config";
+import { getUrlValidatorSummary } from "@/lib/url-validator/url-validator-sheets";
 import { getCached, setCached, TTL_URL_VALIDATOR } from "@/lib/cache";
 
 type Params = Promise<{ domain: string }>;

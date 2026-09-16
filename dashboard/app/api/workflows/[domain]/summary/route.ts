@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCached, setCached, TTL_WORKFLOWS } from "@/lib/cache";
-import { getWorkflowsSummary } from "@/lib/workflows";
+import { getWorkflowsSummary } from "@/lib/workflows/workflows";
 
 type Params = Promise<{ domain: string }>;
 

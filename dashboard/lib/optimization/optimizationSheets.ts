@@ -1,5 +1,5 @@
 import { google } from "googleapis";
-import { OPTIMIZATION_SHEET_ID_QUEUE, OPTIMIZATION_SHEET_ID_LOG, PRODUCT_LABELS } from "./config";
+import { OPTIMIZATION_SHEET_ID_QUEUE, OPTIMIZATION_SHEET_ID_LOG, PRODUCT_LABELS } from "../config";
 
 function getAuth() {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { existsSync } from "fs";
-import { getUrlValidatorSheetId, getUrlValidatorContentDir, getUrlValidatorConsolidatedSpreadsheetId } from "@/lib/url-validator-config";
+import { getUrlValidatorSheetId, getUrlValidatorContentDir, getUrlValidatorConsolidatedSpreadsheetId } from "@/lib/url-validator/url-validator-config";
 
 type Params = Promise<{ domain: string }>;
 

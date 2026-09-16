@@ -1,5 +1,5 @@
 import { google } from "googleapis";
-import { TRANSLATION_SHEET_ID } from "./config";
+import { TRANSLATION_SHEET_ID } from "../config";
 
 function getAuth() {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;

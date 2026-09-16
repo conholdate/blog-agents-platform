@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { ExternalLink, RefreshCw, Loader2, Languages, CheckCircle2, Search, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
-import type { ScanRow, HistoryRow, HistoryStatus } from "@/lib/translationSheets";
+import type { ScanRow, HistoryRow, HistoryStatus } from "@/lib/translation/translationSheets";
 import { PRODUCT_LABELS } from "@/lib/config";
 
 interface Props { domain: string }

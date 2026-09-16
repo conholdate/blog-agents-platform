@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
 import { existsSync } from "fs";
-import { scanAll } from "@/lib/url-validator";
-import { writeToSheets, writeToConsolidatedSheet } from "@/lib/url-validator-sheets";
-import { getUrlValidatorSheetId, getUrlValidatorContentDir, getUrlValidatorConsolidatedSpreadsheetId } from "@/lib/url-validator-config";
+import { scanAll } from "@/lib/url-validator/url-validator";
+import { writeToSheets, writeToConsolidatedSheet } from "@/lib/url-validator/url-validator-sheets";
+import { getUrlValidatorSheetId, getUrlValidatorContentDir, getUrlValidatorConsolidatedSpreadsheetId } from "@/lib/url-validator/url-validator-config";
 import { invalidateCache } from "@/lib/cache";
 import { logAgentRun, logAgentMetric, productName, type AgentLogEntry } from "@/lib/agent-logger";
 

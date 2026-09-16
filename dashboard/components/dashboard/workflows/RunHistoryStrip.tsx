@@ -1,6 +1,6 @@
 "use client";
 
-import type { WorkflowRunTick } from "@/lib/workflows";
+import type { WorkflowRunTick } from "@/lib/workflows/workflows";
 
 const TICK_COLORS: Record<string, string> = {
   success:         "bg-green-500 dark:bg-green-400",

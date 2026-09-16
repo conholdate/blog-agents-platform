@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOptimizationData } from "@/lib/optimizationSheets";
+import { getOptimizationData } from "@/lib/optimization/optimizationSheets";
 import { OPTIMIZATION_SHEET_ID_QUEUE, OPTIMIZATION_SHEET_ID_LOG } from "@/lib/config";
 import { getCached, setCached, TTL_OPTIMIZATION } from "@/lib/cache";
 

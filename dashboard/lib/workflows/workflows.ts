@@ -1,7 +1,7 @@
 import { CronExpressionParser } from "cron-parser";
 import { toString as cronToString } from "cronstrue";
 import { getWorkflowsRepo, getGithubToken } from "./workflows-config";
-import { getCached, setCached, TTL_WORKFLOW_SCHEDULES } from "./cache";
+import { getCached, setCached, TTL_WORKFLOW_SCHEDULES } from "../cache";
 
 // Cron fields in GitHub Actions schedules are always UTC, so the description
 // describes UTC clock times regardless of where this runs.

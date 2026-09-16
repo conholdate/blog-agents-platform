@@ -8,10 +8,10 @@ import { CardGrid } from "./CardGrid";
 import { Sidebar, type Section } from "@/components/dashboard/Sidebar";
 import { Overview } from "@/components/dashboard/Overview";
 import { WorkInProgress } from "@/components/dashboard/WorkInProgress";
-import { UrlValidator } from "@/components/dashboard/UrlValidator";
-import { OptimizationAgent } from "@/components/dashboard/OptimizationAgent";
-import { TranslationAgent } from "@/components/dashboard/TranslationAgent";
-import { Workflows } from "@/components/dashboard/Workflows";
+import { UrlValidator } from "@/components/dashboard/url-validator/UrlValidator";
+import { OptimizationAgent } from "@/components/dashboard/optimization/OptimizationAgent";
+import { TranslationAgent } from "@/components/dashboard/translation/TranslationAgent";
+import { Workflows } from "@/components/dashboard/workflows/Workflows";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const DOMAIN_LIST = Object.keys(DOMAINS);

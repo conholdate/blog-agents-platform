@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTranslationSummary } from "@/lib/translationSheets";
+import { getTranslationSummary } from "@/lib/translation/translationSheets";
 import { getCached, setCached, TTL_TRANSLATION } from "@/lib/cache";
 
 type Params = Promise<{ domain: string }>;

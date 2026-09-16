@@ -1,6 +1,6 @@
 "use client";
 
-import type { DailyRunStat } from "@/lib/workflows";
+import type { DailyRunStat } from "@/lib/workflows/workflows";
 
 export function formatDuration(seconds: number | null): string {
   if (seconds == null) return "—";

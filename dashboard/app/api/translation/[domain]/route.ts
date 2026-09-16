@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTranslationData } from "@/lib/translationSheets";
+import { getTranslationData } from "@/lib/translation/translationSheets";
 import { TRANSLATION_SHEET_ID } from "@/lib/config";
 import { getCached, setCached, TTL_TRANSLATION } from "@/lib/cache";
 

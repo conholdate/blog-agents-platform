@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
-import { getUrlValidatorSheetId, getUrlValidatorConsolidatedSpreadsheetId } from "@/lib/url-validator-config";
-import { readDomainTab, getDomainHistory, getLatestHistoryEntry, findTabId } from "@/lib/url-validator-sheets";
+import { getUrlValidatorSheetId, getUrlValidatorConsolidatedSpreadsheetId } from "@/lib/url-validator/url-validator-config";
+import { readDomainTab, getDomainHistory, getLatestHistoryEntry, findTabId } from "@/lib/url-validator/url-validator-sheets";
 import { getCached, setCached, TTL_URL_VALIDATOR } from "@/lib/cache";
 
 type Params = Promise<{ domain: string }>;
