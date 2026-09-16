@@ -58,14 +58,16 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
     setLoading(true); setSummary(null); setOptSummary(null); setUrlSummary(null); setTrSummary(null); setWfSummary(null); setError(null);
     const qs = refresh ? "?refresh=1" : "";
     const enc = encodeURIComponent(domain);
-    // Swallow AbortError right at the fetch site (rather than letting it reject
-    // through Promise.all) — an aborted request just means the domain changed
-    // mid-flight, not a real failure, and this keeps it from ever surfacing as
-    // an unhandled rejection in the console.
+    // Swallow the cancellation right at the fetch site (rather than letting it
+    // reject through Promise.all) — an aborted request just means the domain
+    // changed mid-flight, not a real failure. Check `signal.aborted` rather than
+    // the rejection's `.name`/`.message`: an explicit abort reason (below) means
+    // the rejection isn't a plain "AbortError" DOMException, so name-sniffing
+    // would stop matching and let a routine cancellation surface as an error.
     const fetchJson = (url: string) =>
       fetch(url, { signal })
         .then((r) => r.json())
-        .catch((e) => { if (e.name === "AbortError") return null; throw e; });
+        .catch((e) => { if (signal?.aborted) return null; throw e; });
 
     Promise.all([
       fetchJson(`/api/sheets/${enc}/summary${qs}`),
@@ -83,15 +85,19 @@ function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: 
         if (tr && !tr.error && !tr.notConfigured) setTrSummary(tr);
         if (wf && !wf.error && !wf.notConfigured) setWfSummary(wf);
       })
-      .catch((e) => { if (e.name !== "AbortError") setError(e.message); })
+      .catch((e) => { if (!signal?.aborted) setError(e.message); })
       .finally(() => { if (!signal?.aborted) setLoading(false); });
   }
 
-  // Cancel in-flight requests when domain changes to avoid quota bursts.
+  // Cancel in-flight requests when domain changes to avoid quota bursts. Abort
+  // with an explicit reason — a reasonless abort() produces a DOMException
+  // whose message is literally "signal is aborted without reason", which the
+  // Next.js dev overlay surfaces as an uncaught runtime error even though it's
+  // handled above.
   useEffect(() => {
     const controller = new AbortController();
     load(false, controller.signal);
-    return () => controller.abort();
+    return () => controller.abort("domain changed");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [domain]);
 
