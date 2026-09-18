@@ -12,6 +12,7 @@ import { UrlValidator } from "@/components/dashboard/url-validator/UrlValidator"
 import { OptimizationAgent } from "@/components/dashboard/optimization/OptimizationAgent";
 import { TranslationAgent } from "@/components/dashboard/translation/TranslationAgent";
 import { Workflows } from "@/components/dashboard/workflows/Workflows";
+import { RepoDoctor } from "@/components/dashboard/repo-doctor/RepoDoctor";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const DOMAIN_LIST = Object.keys(DOMAINS);
@@ -128,6 +129,7 @@ export function AppShell() {
     "post-generation": "Post Generation Agent",
     "url-validator":   "URL Validator",
     workflows:         "CI/CD Status",
+    "repo-doctor":     "Repo Doctor",
   };
 
   return (
@@ -362,7 +364,9 @@ export function AppShell() {
 
           {activeSection === "workflows" && <Workflows domain={activeDomain} />}
 
-          {activeSection !== "overview" && activeSection !== "keywords" && activeSection !== "url-validator" && activeSection !== "optimization" && activeSection !== "translations" && activeSection !== "workflows" && (
+          {activeSection === "repo-doctor" && <RepoDoctor domain={activeDomain} />}
+
+          {activeSection !== "overview" && activeSection !== "keywords" && activeSection !== "url-validator" && activeSection !== "optimization" && activeSection !== "translations" && activeSection !== "workflows" && activeSection !== "repo-doctor" && (
             <WorkInProgress section={activeSection} domain={activeDomain} />
           )}
         </main>

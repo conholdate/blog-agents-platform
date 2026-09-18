@@ -1,8 +1,8 @@
 "use client";
 
-import { LayoutDashboard, BookMarked, Languages, TrendingUp, Link, Bot, GitBranch } from "lucide-react";
+import { LayoutDashboard, BookMarked, Languages, TrendingUp, Link, Bot, GitBranch, Wrench } from "lucide-react";
 
-export type Section = "overview" | "keywords" | "translations" | "optimization" | "url-validator" | "post-generation" | "workflows";
+export type Section = "overview" | "keywords" | "translations" | "optimization" | "url-validator" | "post-generation" | "workflows" | "repo-doctor";
 
 const NAV_ITEMS: { key: Section; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: "overview",         label: "Overview",              icon: LayoutDashboard },
@@ -12,6 +12,7 @@ const NAV_ITEMS: { key: Section; label: string; icon: React.ComponentType<{ clas
   { key: "optimization",     label: "Optimization Agent",    icon: TrendingUp },
   { key: "url-validator",    label: "URL Validator",         icon: Link },
   { key: "workflows",        label: "CI/CD Status",          icon: GitBranch },
+  { key: "repo-doctor",      label: "Repo Doctor",           icon: Wrench },
 ];
 
 interface SidebarProps {

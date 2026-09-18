@@ -1,0 +1,47 @@
+name: Repo Doctor
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"   # Monday 04:00 UTC
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: "Run for a single domain only (default: all configured)"
+        required: false
+        type: choice
+        default: all
+        options:
+          - all
+          - blog.aspose.com
+          # TODO(repo-doctor): add other domains here once they're populated
+          # in dashboard/lib/repo-doctor/repo-doctor-config.ts
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+    steps:
+      - id: build
+        run: |
+          # TODO(repo-doctor): keep this list in sync with the populated
+          # (non-null) entries in dashboard/lib/repo-doctor/repo-doctor-config.ts
+          ALL='["blog.aspose.com"]'
+          SELECTED="${{ github.event.inputs.domain }}"
+          if [ -z "$SELECTED" ] || [ "$SELECTED" = "all" ]; then
+            MATRIX=$(echo "$ALL" | jq -c '{include: [.[] | {domain: .}]}')
+          else
+            MATRIX=$(echo "$ALL" | jq -c --arg d "$SELECTED" '{include: [{domain: $d}]}')
+          fi
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
+  scan:
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - name: Trigger Repo Doctor scan — ${{ matrix.domain }}
+        run: |
+          curl -sf -X POST "${{ vars.DASHBOARD_BASE_URL }}/api/repo-doctor/${{ matrix.domain }}/run?refresh=1"

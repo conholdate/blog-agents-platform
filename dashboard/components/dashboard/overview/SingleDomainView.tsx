@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Languages, TrendingUp, Link, Bot, Loader2, RefreshCw, GitBranch, Clock, BookMarked } from "lucide-react";
+import { Languages, TrendingUp, Link, Bot, Loader2, RefreshCw, GitBranch, Clock, BookMarked, Wrench } from "lucide-react";
 import type { Section } from "../Sidebar";
 import type { TranslationSummary } from "@/lib/translation/translationSheets";
 import type { WorkflowsSummary } from "@/lib/workflows/workflows";
@@ -17,6 +17,7 @@ type TabSummary = { name: string; total: number; queued: number; approved: numbe
 
 interface OptimizationSummary { pending: number; high: number; medium: number; optimized: number; page2: number; avgPosition: number; avgImpressions: number; avgCtr: number; }
 interface UrlValidatorSummary  { totalIssues: number; productsAffected: number; topErrors: { type: string; count: number }[]; latestScan: string | null; scansAvailable: number; }
+interface RepoDoctorSummary { totalIssues: number; byType: Record<string, number>; lastScanAt: string | null; }
 
 const WIP_CARDS: {
   section: Section; label: string; icon: React.ComponentType<{ className?: string }>;
@@ -27,6 +28,7 @@ const WIP_CARDS: {
   { section: "post-generation", label: "Post Generation Agent", icon: Bot,        description: "Generate full blog post drafts from keyword briefs using AI agents",          accentLight: "border-l-rose-500",   iconBg: "bg-rose-50 dark:bg-slate-600/70",    iconColor: "text-rose-600 dark:text-slate-300"   },
   { section: "url-validator",  label: "URL Validator",         icon: Link,       description: "Run URL validation scans and view reported issues",                          accentLight: "border-l-orange-500", iconBg: "bg-orange-50 dark:bg-slate-600/70",  iconColor: "text-orange-600 dark:text-slate-300",  viewColor: "text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300",   ready: true },
   { section: "workflows",      label: "CI/CD Status",          icon: GitBranch,  description: "Recent GitHub Actions workflow runs for this domain's repo",                 accentLight: "border-l-violet-500", iconBg: "bg-violet-50 dark:bg-slate-600/70",  iconColor: "text-violet-600 dark:text-slate-300",  viewColor: "text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300",   ready: true },
+  { section: "repo-doctor",    label: "Repo Doctor",           icon: Wrench,     description: "Scans redirect config files for issues and opens fix PRs",                  accentLight: "border-l-red-500",    iconBg: "bg-red-50 dark:bg-slate-600/70",     iconColor: "text-red-600 dark:text-slate-300",     viewColor: "text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300",               ready: true },
 ];
 
 export function SingleDomainView({ domain, onNavigate }: { domain: string; onNavigate: (s: Section) => void }) {
@@ -35,11 +37,12 @@ export function SingleDomainView({ domain, onNavigate }: { domain: string; onNav
   const [urlSummary, setUrlSummary] = useState<UrlValidatorSummary | null>(null);
   const [trSummary, setTrSummary]   = useState<TranslationSummary | null>(null);
   const [wfSummary, setWfSummary]   = useState<WorkflowsSummary | null>(null);
+  const [rdSummary, setRdSummary]   = useState<RepoDoctorSummary | null>(null);
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState<string | null>(null);
 
   function load(refresh = false, signal?: AbortSignal) {
-    setLoading(true); setSummary(null); setOptSummary(null); setUrlSummary(null); setTrSummary(null); setWfSummary(null); setError(null);
+    setLoading(true); setSummary(null); setOptSummary(null); setUrlSummary(null); setTrSummary(null); setWfSummary(null); setRdSummary(null); setError(null);
     const qs = refresh ? "?refresh=1" : "";
     const enc = encodeURIComponent(domain);
     // Swallow the cancellation right at the fetch site (rather than letting it
@@ -59,8 +62,9 @@ export function SingleDomainView({ domain, onNavigate }: { domain: string; onNav
       fetchJson(`/api/url-validator/${enc}/summary${qs}`),
       fetchJson(`/api/translation/${enc}/summary${qs}`),
       fetchJson(`/api/workflows/${enc}/summary${qs}`),
+      fetchJson(`/api/repo-doctor/${enc}/summary${qs}`),
     ])
-      .then(([kw, opt, url, tr, wf]) => {
+      .then(([kw, opt, url, tr, wf, rd]) => {
         if (signal?.aborted || kw == null) return;
         if (kw.error) throw new Error(kw.error);
         setSummary(kw.tabs);
@@ -68,6 +72,7 @@ export function SingleDomainView({ domain, onNavigate }: { domain: string; onNav
         if (url && !url.error && !url.notConfigured) setUrlSummary(url);
         if (tr && !tr.error && !tr.notConfigured) setTrSummary(tr);
         if (wf && !wf.error && !wf.notConfigured) setWfSummary(wf);
+        if (rd && !rd.error && !rd.notConfigured) setRdSummary(rd);
       })
       .catch((e) => { if (!signal?.aborted) setError(e.message); })
       .finally(() => { if (!signal?.aborted) setLoading(false); });
@@ -300,6 +305,29 @@ export function SingleDomainView({ domain, onNavigate }: { domain: string; onNav
                       <span className="inline-block max-w-[160px] align-bottom truncate" title={wfSummary.nextScheduledRun.workflowName}>{wfSummary.nextScheduledRun.workflowName}</span>
                       {wfSummary.nextScheduledRun.description && <span className="block text-slate-400 dark:text-slate-500 mt-0.5">{wfSummary.nextScheduledRun.description}</span>}
                     </span>
+                  </div>
+                )}
+              </div>
+            ) : section === "repo-doctor" && rdSummary ? (
+              <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <StatBox label="Open Issues" value={rdSummary.totalIssues} valueColor="text-red-600 dark:text-red-400" bgClass="bg-red-50 dark:bg-slate-800/60" labelColor="text-red-500/80 dark:text-slate-400" />
+                  <div className="bg-slate-50 dark:bg-slate-800/60 rounded-lg p-3 text-center">
+                    <div className="text-[13px] font-bold text-slate-700 dark:text-slate-300 leading-tight">
+                      {rdSummary.lastScanAt ? new Date(rdSummary.lastScanAt).toLocaleDateString() : "—"}
+                    </div>
+                    <div className="text-[11px] mt-0.5 font-medium text-slate-400 dark:text-slate-500">Last Scan</div>
+                  </div>
+                </div>
+                {Object.keys(rdSummary.byType).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(rdSummary.byType).map(([type, count]) => (
+                      <span key={type} className="flex items-center gap-1 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-[11px]">
+                        <span className="text-slate-600 dark:text-slate-300 font-medium">{type.replace(/_/g, " ")}</span>
+                        <span className="text-slate-300 dark:text-slate-600">·</span>
+                        <span className="text-red-600 dark:text-red-400 font-semibold">{count}</span>
+                      </span>
+                    ))}
                   </div>
                 )}
               </div>
