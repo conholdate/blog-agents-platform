@@ -46,14 +46,29 @@ function makeIssueId(domain: string, filePath: string, type: RepoIssueType, sour
   return createHash("sha1").update(parts.join("|")).digest("hex").slice(0, 16);
 }
 
-const HOST_PREFIX_RE = /^https?:\/\/[^/]+/i;
 const SCHEME_RE = /^[a-z][a-z0-9+.-]*:\/\//i;
 
-// Normalizes a redirect source/target for comparison only — strips scheme+host,
-// ensures a leading slash, drops a trailing slash, lowercases. Never used as a
-// literal replacement value (see followChain, which returns the original raw string).
-export function normalizePath(value: string): string {
-  let v = value.trim().replace(HOST_PREFIX_RE, "");
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Normalizes a redirect source/target for same-site comparison only — strips
+// scheme+host ONLY when the host is this domain's own (e.g. "blog.aspose.com"),
+// ensures a leading slash, drops a trailing slash, lowercases. A target on a
+// DIFFERENT host (e.g. blog.groupdocs.cloud → about.groupdocs.cloud — a real,
+// deliberate cross-subdomain redirect, confirmed live in that file) is left as
+// a full URL, which can never equal a bare source path — without this, that
+// redirect collapsed to "/contact" on both sides and was flagged as a false
+// self-loop. Never used as a literal replacement value (see followChain, which
+// returns the original raw string).
+export function normalizePath(value: string, domain: string): string {
+  let v = value.trim();
+  const ownHostRe = new RegExp(`^https?://${escapeRegExp(domain)}(?=[/?#]|$)`, "i");
+  if (ownHostRe.test(v)) {
+    v = v.replace(ownHostRe, "");
+  } else if (SCHEME_RE.test(v)) {
+    return v.toLowerCase(); // scheme + a DIFFERENT host — never treat as same-site
+  }
   if (!v.startsWith("/")) v = "/" + v;
   if (v.length > 1 && v.endsWith("/")) v = v.slice(0, -1);
   return v.toLowerCase();
@@ -180,10 +195,10 @@ interface CanonicalEntry {
   rawValue: string;
 }
 
-function buildCanonicalMap(entries: RawEntry[]): Map<string, CanonicalEntry> {
+function buildCanonicalMap(entries: RawEntry[], domain: string): Map<string, CanonicalEntry> {
   const map = new Map<string, CanonicalEntry>();
   for (const e of entries) {
-    map.set(normalizePath(e.key), { normValue: normalizePath(e.value), rawValue: e.value });
+    map.set(normalizePath(e.key, domain), { normValue: normalizePath(e.value, domain), rawValue: e.value });
   }
   return map;
 }
@@ -222,7 +237,7 @@ export function detectIssues(rawText: string, domain: string, filePath: string):
     return issues; // file structure isn't trustworthy enough for entry-level rules below
   }
 
-  const canonical = buildCanonicalMap(entries);
+  const canonical = buildCanonicalMap(entries, domain);
 
   for (const entry of entries) {
     if (entry.value === "") {
@@ -273,8 +288,8 @@ export function detectIssues(rawText: string, domain: string, filePath: string):
       continue;
     }
 
-    const normKey = normalizePath(entry.key);
-    const normVal = normalizePath(entry.value);
+    const normKey = normalizePath(entry.key, domain);
+    const normVal = normalizePath(entry.value, domain);
 
     if (normKey === normVal) {
       issues.push({
@@ -296,7 +311,7 @@ export function detectIssues(rawText: string, domain: string, filePath: string):
     }
 
     const finalRawTarget = followChain(normVal, canonical);
-    if (finalRawTarget && normalizePath(finalRawTarget) !== normVal) {
+    if (finalRawTarget && normalizePath(finalRawTarget, domain) !== normVal) {
       issues.push({
         id: makeIssueId(domain, filePath, "CHAINED_REDIRECT", entry.key),
         type: "CHAINED_REDIRECT",

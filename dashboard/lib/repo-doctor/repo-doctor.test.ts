@@ -14,11 +14,21 @@ const DOMAIN = "blog.aspose.com";
 const FILE = "Redirects.json";
 
 describe("normalizePath", () => {
-  it("strips scheme+host, adds leading slash, drops trailing slash, lowercases", () => {
-    expect(normalizePath("https://blog.aspose.com/PDF/Convert/")).toBe("/pdf/convert");
-    expect(normalizePath("/pdf/convert")).toBe("/pdf/convert");
-    expect(normalizePath("pdf/convert")).toBe("/pdf/convert");
-    expect(normalizePath("/")).toBe("/");
+  it("strips the domain's own scheme+host, adds leading slash, drops trailing slash, lowercases", () => {
+    expect(normalizePath("https://blog.aspose.com/PDF/Convert/", "blog.aspose.com")).toBe("/pdf/convert");
+    expect(normalizePath("/pdf/convert", "blog.aspose.com")).toBe("/pdf/convert");
+    expect(normalizePath("pdf/convert", "blog.aspose.com")).toBe("/pdf/convert");
+    expect(normalizePath("/", "blog.aspose.com")).toBe("/");
+  });
+
+  it("leaves a DIFFERENT host's URL fully intact — never collapses to a bare path", () => {
+    // Real bug found live in groupdocs-cloud-blog/Redirects.json: "/contact" ->
+    // "https://about.groupdocs.cloud/contact/" is a deliberate cross-subdomain
+    // redirect, not a self-loop — stripping any host indiscriminately made both
+    // sides normalize to "/contact" and falsely matched.
+    const normalized = normalizePath("https://about.groupdocs.cloud/contact/", "blog.groupdocs.cloud");
+    expect(normalized).not.toBe("/contact");
+    expect(normalized).toBe("https://about.groupdocs.cloud/contact/");
   });
 });
 
@@ -71,6 +81,15 @@ describe("detectIssues", () => {
     const issues = detectIssues(raw, DOMAIN, FILE);
     expect(issues).toHaveLength(1);
     expect(issues[0]).toMatchObject({ type: "SELF_LOOP_REDIRECT", fixStrategy: "deterministic" });
+  });
+
+  it("does NOT flag a deliberate cross-subdomain redirect as a self-loop", () => {
+    // Real shape from groupdocs-cloud-blog/Redirects.json: blog.groupdocs.cloud
+    // redirecting /contact to about.groupdocs.cloud/contact/ is intentional.
+    const raw = `{
+  "/contact": "https://about.groupdocs.cloud/contact/"
+}`;
+    expect(detectIssues(raw, "blog.groupdocs.cloud", FILE)).toHaveLength(0);
   });
 
   it("finds a self-loop even when scheme/host differ from the key", () => {
