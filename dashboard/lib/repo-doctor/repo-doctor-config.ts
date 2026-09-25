@@ -4,11 +4,11 @@ export interface RepoDoctorTarget {
   filePath: string;
 }
 
-// Content repo + target file to scan, per domain. Only blog.aspose.com is
-// populated for V1 (per the staged rollout) — the other 5 domains stay null
-// until their redirects file path is confirmed; adding one later is a one-line
-// change here, not a rebuild. Mirrors WORKFLOWS_REPOS's shape in
-// lib/workflows/workflows-config.ts.
+// Content repo + target file to scan, per domain. Rolled out incrementally —
+// each entry is verified against the real file (valid JSON, rules produce
+// sane results) before being added here. Remaining null entries stay that way
+// until confirmed; adding one is a one-line change here, not a rebuild.
+// Mirrors WORKFLOWS_REPOS's shape in lib/workflows/workflows-config.ts.
 export const REPO_DOCTOR_REPOS: Record<string, RepoDoctorTarget | null> = {
   "blog.aspose.com": { owner: "aspose", repo: "aspose-blog", filePath: "Redirects.json" },
   "blog.aspose.cloud": { owner: "aspose-cloud", repo: "aspose-cloud-blog", filePath: "Redirects.json" },
@@ -17,8 +17,7 @@ export const REPO_DOCTOR_REPOS: Record<string, RepoDoctorTarget | null> = {
   // TODO(repo-doctor): confirm and add this domain's redirects file path.
   "blog.groupdocs.cloud": null,
   "blog.conholdate.com": { owner: "conholdate", repo: "conholdate-blog", filePath: "Redirects.json" },
-  // TODO(repo-doctor): confirm and add this domain's redirects file path.
-  "blog.conholdate.cloud": null,
+  "blog.conholdate.cloud": { owner: "conholdate-cloud", repo: "blog.conholdate.cloud", filePath: "Redirects.json" },
 };
 
 export function getRepoDoctorTarget(domain: string): RepoDoctorTarget | null {
