@@ -11,8 +11,7 @@ export interface RepoDoctorTarget {
 // lib/workflows/workflows-config.ts.
 export const REPO_DOCTOR_REPOS: Record<string, RepoDoctorTarget | null> = {
   "blog.aspose.com": { owner: "aspose", repo: "aspose-blog", filePath: "Redirects.json" },
-  // TODO(repo-doctor): confirm and add this domain's redirects file path.
-  "blog.aspose.cloud": null,
+  "blog.aspose.cloud": { owner: "aspose-cloud", repo: "aspose-cloud-blog", filePath: "Redirects.json" },
   // TODO(repo-doctor): confirm and add this domain's redirects file path.
   "blog.groupdocs.com": null,
   // TODO(repo-doctor): confirm and add this domain's redirects file path.
