@@ -16,8 +16,7 @@ export const REPO_DOCTOR_REPOS: Record<string, RepoDoctorTarget | null> = {
   "blog.groupdocs.com": null,
   // TODO(repo-doctor): confirm and add this domain's redirects file path.
   "blog.groupdocs.cloud": null,
-  // TODO(repo-doctor): confirm and add this domain's redirects file path.
-  "blog.conholdate.com": null,
+  "blog.conholdate.com": { owner: "conholdate", repo: "conholdate-blog", filePath: "Redirects.json" },
   // TODO(repo-doctor): confirm and add this domain's redirects file path.
   "blog.conholdate.cloud": null,
 };
