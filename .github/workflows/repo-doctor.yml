@@ -16,6 +16,7 @@ on:
           - blog.aspose.cloud
           - blog.conholdate.com
           - blog.conholdate.cloud
+          - blog.groupdocs.cloud
           # TODO(repo-doctor): add other domains here once they're populated
           # in dashboard/lib/repo-doctor/repo-doctor-config.ts
 
@@ -29,7 +30,7 @@ jobs:
         run: |
           # TODO(repo-doctor): keep this list in sync with the populated
           # (non-null) entries in dashboard/lib/repo-doctor/repo-doctor-config.ts
-          ALL='["blog.aspose.com", "blog.aspose.cloud", "blog.conholdate.com", "blog.conholdate.cloud"]'
+          ALL='["blog.aspose.com", "blog.aspose.cloud", "blog.conholdate.com", "blog.conholdate.cloud", "blog.groupdocs.cloud"]'
           SELECTED="${{ github.event.inputs.domain }}"
           if [ -z "$SELECTED" ] || [ "$SELECTED" = "all" ]; then
             MATRIX=$(echo "$ALL" | jq -c '{include: [.[] | {domain: .}]}')

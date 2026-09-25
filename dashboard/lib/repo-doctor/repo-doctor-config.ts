@@ -14,8 +14,7 @@ export const REPO_DOCTOR_REPOS: Record<string, RepoDoctorTarget | null> = {
   "blog.aspose.cloud": { owner: "aspose-cloud", repo: "aspose-cloud-blog", filePath: "Redirects.json" },
   // TODO(repo-doctor): confirm and add this domain's redirects file path.
   "blog.groupdocs.com": null,
-  // TODO(repo-doctor): confirm and add this domain's redirects file path.
-  "blog.groupdocs.cloud": null,
+  "blog.groupdocs.cloud": { owner: "groupdocs-cloud", repo: "groupdocs-cloud-blog", filePath: "Redirects.json" },
   "blog.conholdate.com": { owner: "conholdate", repo: "conholdate-blog", filePath: "Redirects.json" },
   "blog.conholdate.cloud": { owner: "conholdate-cloud", repo: "blog.conholdate.cloud", filePath: "Redirects.json" },
 };
