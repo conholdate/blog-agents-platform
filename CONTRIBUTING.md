@@ -47,7 +47,7 @@ Use lowercase, present-tense verbs. No ticket numbers required.
 
 ## Code Style
 
-- **Dashboard**: TypeScript strict mode, ESLint (run `npm run lint` before pushing)
+- **Dashboard**: TypeScript strict mode, ESLint (run `npm run lint` before pushing), Vitest for pure logic (`npm test`) — CI runs all three (`lint`, `tsc --noEmit`, `test`) on every push/PR
 - **URL Validator**: PEP 8, pytest for tests (`pytest test_main.py`)
 - No new comments unless the *why* is genuinely non-obvious
 - No unused imports or dead code

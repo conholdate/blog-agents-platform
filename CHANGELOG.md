@@ -9,6 +9,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Repo Doctor** — new agent that scans a domain's redirects file (`Redirects.json`) for 6 deterministic issue types (duplicate keys, invalid JSON, empty/malformed/self-loop/chained redirects), phrases explanations via an internal LLM gateway (never used to decide what's broken), and offers a two-step Fix It flow — preview the exact diff, then confirm to open a PR. No fix is ever auto-merged. Runs on manual click, a weekly cron, and an opt-in on-commit webhook per content repo. Rolled out to all 6 domains, each verified against its real file first
+  - Durable Fix Log (Google Sheet) of confirmed fixes, shown on a new "Fixed" tab in the UI, and an in-app "How it works" panel
+  - Found and fixed two real bugs live during rollout: GitHub's Contents API silently omitting inline content for files over ~1MB, and self-loop/chain detection stripping *any* redirect target's host instead of only the domain's own — the latter had already produced a live false positive in `blog.conholdate.com`, which would have deleted a real working redirect if fixed
+- **CI/CD Status** dashboard screen (Workflows agent) — read-only GitHub Actions viewer: deployment status cards per environment/provider, cron schedules parsed from workflow YAML and folded into the matching card, a 14-day daily runs chart, a filterable run history table, and on-demand failed job/step lookup. Not an AI agent, no Sheet involved
 - **Translation Agent** dashboard screen — reads the consolidated translation scan sheet (one tab per domain + a shared `history` tab): "Missing Translations" view (post, author, missing/extra language chips) and a "History" view (`pending`/`partial`/`completed` status per post), with product/language filters, search, and sortable columns
 - Translation Agent card on the Overview "This Domain" view and a Translations column group on the "All Domains" table
 - GitHub Actions workflow (`.github/workflows/url-validator.yml`) to run URL Validator on a daily schedule or on demand, across all 6 domains via a matrix job that checks out each domain's content repo
@@ -19,9 +23,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - "Open Sheet" links deep-link to the active domain's tab (`#gid=`) instead of the spreadsheet root
 - CI workflow (`.github/workflows/ci.yml`) running `pytest`, `eslint`, and `tsc` on every push/PR to main
 - Retry with exponential backoff on Sheets writes (Python CLI and TS dashboard), and server-side validation of keyword brief `status` values against `STATUS_OPTIONS`
+- Vitest test suite for the dashboard (previously none): `lib/workflows/workflows.test.ts` and `lib/repo-doctor/repo-doctor.test.ts`, wired into `ci.yml` alongside lint/tsc
+
+### Changed
+- Reorganized `dashboard/components/dashboard/` and `dashboard/lib/` into one subfolder per agent (`optimization/`, `translation/`, `url-validator/`, `workflows/`, `repo-doctor/`), mirroring the existing per-agent structure already under `app/api/` — a new agent's files never touch another agent's
+- Split the oversized `Overview.tsx` (849 lines) and `Workflows.tsx` (523 lines) into focused per-view components (`overview/{Overview,SingleDomainView,AllDomainsView}`, `workflows/{Workflows,DeploymentCards,ScheduledWorkflowsList,RunsTable}`)
 
 ### Fixed
 - Overview "All Domains" view showing no data in production — `/api/overview/all` was self-fetching its own API routes via `NEXT_PUBLIC_BASE_URL`, which falls back to `http://localhost:3000` when unset; that fallback doesn't exist inside a Vercel serverless function, so every sub-fetch failed silently and every domain rendered blank. Each tool's summary logic was extracted into a shared `lib` function (`getKeywordSummary`, `getOptimizationSummary`, `getUrlValidatorSummary`, `getTranslationSummary`) and `/api/overview/all` now calls them in-process instead — no HTTP round trip, works identically in dev and production
+- Spurious "AbortError: signal is aborted without reason" surfacing in the dev console when switching domains quickly on Overview — passing an explicit reason to `controller.abort()` and checking `signal.aborted` instead of the rejection's `.name` (which stops matching once a reason is supplied)
 - 4 stale url-validator tests asserting the old `/zh-tw/` URL prefix for zh-hant content, instead of the current `/zh-hant/` prefix the site actually uses
 - All 7 dashboard ESLint errors and 3 warnings (dead code, `let`/`const`, justified effect patterns)
 - `pytest` was missing from `requirements.txt` entirely (only ever installed ad-hoc locally)

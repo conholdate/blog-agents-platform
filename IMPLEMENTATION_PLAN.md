@@ -1,6 +1,6 @@
 # Blog Agents Platform — Implementation Plan
 
-**Last updated:** 2026-06-21  
+**Last updated:** 2026-09-26  
 **Monorepo:** [github.com/conholdate/blog-agents-platform](https://github.com/conholdate/blog-agents-platform)  
 **Maintained by:** Shoaib Khan
 
@@ -27,7 +27,7 @@ Each agent and tool is self-contained and deployed independently. Google Sheets 
 
 ### What It Does
 
-The web control center for all blog agents. AI agents run autonomously and write output to Google Sheets — the platform reads those Sheets and lets the team monitor, review, and act on the output. Left sidebar navigation across 6 brand domains (Aspose, GroupDocs, Conholdate + Cloud variants) with sections for each agent: Overview, Keyword Agent, Post Generation Agent, Translation Agent, Optimization Agent, URL Validator.
+The web control center for all blog agents. AI agents run autonomously and write output to Google Sheets — the platform reads those Sheets and lets the team monitor, review, and act on the output. Left sidebar navigation across 6 brand domains (Aspose, GroupDocs, Conholdate + Cloud variants) with sections for each agent: Overview, Keyword Agent, Post Generation Agent, Translation Agent, Optimization Agent, URL Validator, CI/CD Status, Repo Doctor.
 
 ---
 
@@ -42,7 +42,7 @@ The web control center for all blog agents. AI agents run autonomously and write
 - [x] "Open Sheet" link — direct link to the Google Spreadsheet from the tab bar
 
 #### Dashboard Shell
-- [x] Left sidebar navigation — Overview, Keyword Agent, Translation Agent, Optimization Agent, Post Generation Agent, URL Validator
+- [x] Left sidebar navigation — Overview, Keyword Agent, Translation Agent, Optimization Agent, Post Generation Agent, URL Validator, CI/CD Status, Repo Doctor
 - [x] Active section highlighted with left accent border
 - [x] Mobile sidebar as hamburger-toggled overlay drawer
 - [x] Domain switcher pills in sticky header — always visible across all sections
@@ -112,6 +112,27 @@ The web control center for all blog agents. AI agents run autonomously and write
 - [x] Environment variables managed in Vercel dashboard
 - [x] Multi-remote git setup — GitHub org (`conholdate`), GitHub personal (`shoaibkhan-aspose`)
 
+#### CI/CD Status (Workflows agent)
+- [x] Read-only GitHub Actions viewer — not an AI agent, reads live via `GITHUB_READONLY_TOKEN` (no Sheet involved)
+- [x] Deployment status cards per (environment, provider) combo, classified from workflow display names (`prod`/`stag`, `aws`/`ceph`)
+- [x] Cron schedules parsed from each workflow's YAML (`cron:` lines regex-extracted, since GitHub's API doesn't surface them on the run/workflow-list endpoints) and folded into the matching deployment card as "next scheduled run"; leftover non-deploy schedules shown separately
+- [x] 14-day daily runs chart, zero-filled, with average build time
+- [x] Run history table with env/provider + per-workflow filter chips
+- [x] On-demand failed job/step lookup for a clicked failed run (separate, more expensive API call — fetched lazily, not eagerly for every run)
+- [x] Overview card + "CI/CD" column group on the All-Domains table
+- [x] Split into `Workflows.tsx` (orchestrator) + `DeploymentCards`/`ScheduledWorkflowsList`/`RunsTable` (owns its own filter/expand state) to keep individual files a manageable size
+
+#### Repo Doctor
+- [x] Scans a domain's `Redirects.json` for 6 deterministic issue types (`DUPLICATE_KEY`, `INVALID_JSON`, `EMPTY_TARGET`, `MALFORMED_TARGET`, `SELF_LOOP_REDIRECT`, `CHAINED_REDIRECT`) — detection is pure functions over raw text, no network/LLM involved in deciding what's broken
+- [x] LLM (internal "Professionalize" OpenAI-compatible gateway) phrases explanations and, for 2 issue types, drafts replacement text — always re-validated (`JSON.parse`) before it can be shown, let alone committed; degrades to plain rule-based wording if the gateway isn't configured
+- [x] Two-step Fix It flow: preview computes and shows the exact diff with zero GitHub writes; a separate Confirm step re-fetches to guard against a race, then branches/commits/opens a PR reusing the exact previewed patch (never re-drafted). PRs are never auto-merged
+- [x] Durable Fix Log (Google Sheet, `REPO_DOCTOR_LOG_SHEET_ID`) — one row appended per confirmed fix (type, source key, before/after, raw line, file, PR link), read back on a "Fixed" tab in the UI
+- [x] In-app "How it works" panel covering triggers, all 6 issue types, the two-click flow, and the safety properties
+- [x] Triggers: manual "Run Scan", weekly GitHub Actions cron (`repo-doctor.yml`), and an opt-in on-commit webhook per content repo (shared-secret authenticated)
+- [x] Rolled out to all 6 domains (blog.aspose.com, blog.aspose.cloud, blog.groupdocs.com, blog.groupdocs.cloud, blog.conholdate.com, blog.conholdate.cloud), each verified against its real file before being added to `repo-doctor-config.ts`
+- [x] Two real bugs found and fixed during that rollout, both covered by regression tests: GitHub's Contents API silently omitting file content over ~1MB (`fetchFileContent`'s raw-format fallback), and self-loop/chain detection stripping *any* host instead of only the domain's own — which had already produced one live false positive in `blog.conholdate.com` before it was caught
+- [x] Live end-to-end: real PRs opened and merged against `aspose/aspose-blog` during development (e.g. #150, #151, #152)
+
 ---
 
 ### Planned / Pending
@@ -126,6 +147,10 @@ The web control center for all blog agents. AI agents run autonomously and write
 - [ ] **Add new row** — create a new brief entry from the UI (currently sheet-only)
 - [ ] **Delete row** — soft-delete or remove a brief from the UI
 - [ ] **"All Missing Topics" card view** — currently shows a fallback message; could be rendered as a simplified card grid
+- [ ] **Repo Doctor: batch "Fix All" PRs** — deliberately deferred; V1 is one PR per issue only, to avoid the added complexity of a batched-commit flow before there's a real need for it
+- [ ] **Repo Doctor: on-commit webhook enablement** — the workflow file and dashboard endpoint exist, but no content repo has actually turned it on yet (manual scans + the weekly cron are considered sufficient for how infrequently `Redirects.json` changes)
+- [ ] **Repo Doctor: beyond `Redirects.json`** — the architecture (per-issue `filePath`, a `File` column already in the Fix Log) is shaped to support scanning more than one file per domain, but `repo-doctor-config.ts` only wires up a single file today; extending it needs a concrete second file/rule type in mind, not built speculatively
+- [ ] **Repo Doctor: cross-domain Overview table** — its card is "This Domain" only for now; not yet a column group on the All-Domains table like the other agents
 
 #### Longer Term / Nice to Have
 - [ ] **Virtual scrolling / pagination** — for sheets with 100+ rows, avoid rendering all cards at once

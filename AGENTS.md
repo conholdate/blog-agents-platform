@@ -2,7 +2,7 @@
 
 This file provides guidance for AI coding agents (Claude, Codex, Cursor, etc.) working in this monorepo.
 
-**What this project is:** A control center for AI agents that automate blog content operations (keyword research, post generation, translation, SEO optimization) across 6 brand domains. AI agents run autonomously and write output to Google Sheets. The platform reads those Sheets and lets the blog team monitor, review, and act on the output.
+**What this project is:** A control center for AI agents that automate blog content operations (keyword research, post generation, translation, SEO optimization, repo health checks) across 6 brand domains. Most agents run autonomously and write output to Google Sheets, which the platform reads so the blog team can monitor, review, and act on it. One exception: the Repo Doctor agent reads and writes GitHub directly (it can open pull requests) — see `dashboard/lib/repo-doctor/`.
 
 ## Repo Layout
 
@@ -31,7 +31,7 @@ Always read the relevant sub-project agent file before making changes inside tha
 
 - Do not install packages at the repo root — install inside the relevant sub-project folder.
 - Do not create new files at the repo root unless they are repo-level docs or config (`.github/`, `README.md`, etc.).
-- Follow existing code style within each sub-project. Run `npm run lint` in `dashboard/` before marking any dashboard task complete.
+- Follow existing code style within each sub-project. Run `npm run lint`, `npx tsc --noEmit`, and `npm test` in `dashboard/` before marking any dashboard task complete.
 - Do not add comments that describe *what* the code does — only add comments when the *why* is non-obvious.
 - Do not add error handling or validation for internal paths that cannot fail.
 
@@ -42,6 +42,12 @@ Always read the relevant sub-project agent file before making changes inside tha
 cd dashboard
 npm install
 npm run dev
+```
+
+### Run dashboard tests
+```bash
+cd dashboard
+npm test
 ```
 
 ### Run URL Validator

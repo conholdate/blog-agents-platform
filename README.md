@@ -2,13 +2,13 @@
 
 A Human-in-the-Loop (HITL) platform for AI agents that automate blog content operations across Aspose, GroupDocs, and Conholdate.
 
-Each agent runs independently and writes its output to a Google Sheet. The platform lets the team view and edit those Sheets. The edited Sheet is what the next agent reads as its input.
+Each agent runs independently and writes its output to a Google Sheet. The platform lets the team view and edit those Sheets. The edited Sheet is what the next agent reads as its input. (One exception: Repo Doctor reads and writes GitHub directly — see the table below.)
 
 ---
 
 ## How It Works
 
-All 5 agents are independent. Each writes its output to a Google Sheet. The platform lets the team view and edit those Sheets. The edited Sheet is what the next agent reads as its input.
+Each agent is independent. Most write their output to a Google Sheet — the platform lets the team view and edit those Sheets, and the edited Sheet is what the next agent reads as its input. Repo Doctor is the exception: it reads and writes GitHub directly instead.
 
 ```
 Agent runs  →  writes output to Google Sheet
@@ -39,6 +39,8 @@ Each agent has a dedicated section in the left sidebar. The platform reads each 
 | **Translation Agent** | Live | Missing-translation scan results per domain (post, author, missing/extra languages) plus a history log tracking each post to completion |
 | **Optimization Agent** | Live | Posts surfaced for SEO refresh, scored by priority using Search Console data. Shows exactly why each post is flagged. A separate agent reads this Sheet to perform the optimization |
 | **URL Validator** | Live | URL error scan results across all posts. Run on demand or on a schedule. Not an AI agent — a deterministic scanner that writes findings to a Sheet |
+| **CI/CD Status** | Live | Read-only GitHub Actions viewer — deployment status, run history, daily runs chart. Not an AI agent, no Sheet involved; reads live from GitHub |
+| **Repo Doctor** | Live (6/6 domains) | Scans a domain's redirects file for data-quality issues, explains each in plain English, and can open a fix PR on click. The only agent that writes to GitHub; confirmed fixes are logged to a Sheet for history |
 
 Built with Next.js · Tailwind CSS · Google Sheets API · Deployed on Vercel
 
