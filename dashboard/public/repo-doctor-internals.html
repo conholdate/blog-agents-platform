@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Repo Doctor Internals</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --paper: #F7F5F1;
+    --ink: #211C18;
+    --ink-dim: #6E655D;
+    --line: #DEDAD2;
+    --surface: #FFFFFF;
+    --surface-2: #EFEAE2;
+    --accent: #C8402A;
+    --accent-soft: #F5DCD5;
+    --llm: #93670E;
+    --llm-soft: #F1E3C7;
+    --safe: #2E6B49;
+    --safe-soft: #DCEBE1;
+    --danger: #A93226;
+    --danger-soft: #F3DAD6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #18140F;
+      --ink: #ECE6DE;
+      --ink-dim: #A79A8E;
+      --line: #38312A;
+      --surface: #211B16;
+      --surface-2: #29221C;
+      --accent: #E2694F;
+      --accent-soft: #3A241D;
+      --llm: #D9A94A;
+      --llm-soft: #362B15;
+      --safe: #6FB98D;
+      --safe-soft: #1C3126;
+      --danger: #E2695C;
+      --danger-soft: #3A211D;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #18140F;
+    --ink: #ECE6DE;
+    --ink-dim: #A79A8E;
+    --line: #38312A;
+    --surface: #211B16;
+    --surface-2: #29221C;
+    --accent: #E2694F;
+    --accent-soft: #3A241D;
+    --llm: #D9A94A;
+    --llm-soft: #362B15;
+    --safe: #6FB98D;
+    --safe-soft: #1C3126;
+    --danger: #E2695C;
+    --danger-soft: #3A211D;
+  }
+
+  * { box-sizing: border-box; }
+  html { background: var(--paper); }
+  body { background: var(--paper); color: var(--ink); margin: 0; }
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 56px 24px 80px;
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  h1 {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 700;
+    font-size: 34px;
+    line-height: 1.15;
+    margin: 2px 0 4px;
+    text-wrap: balance;
+  }
+  .lede {
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--ink-dim);
+    max-width: 66ch;
+    margin: 0 0 8px;
+  }
+  .lede code, p code, td code, li code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.9em;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.05em 0.4em;
+    color: var(--ink);
+  }
+  section { margin-top: 44px; display: flex; flex-direction: column; gap: 14px; }
+  h2 {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 600;
+    font-size: 20px;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .section-note { font-size: 14.5px; line-height: 1.6; color: var(--ink-dim); max-width: 66ch; margin: 0; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 2px 0 4px; }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--ink-dim); }
+  .swatch { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; border: 1.5px solid; }
+  .swatch.neutral { background: var(--surface); border-color: var(--ink-dim); }
+  .swatch.llm { background: var(--llm-soft); border-color: var(--llm); }
+  .swatch.safe { background: var(--safe-soft); border-color: var(--safe); }
+  .swatch.danger { background: var(--danger-soft); border-color: var(--danger); }
+  .swatch.accent { background: var(--accent-soft); border-color: var(--accent); }
+
+  figure { margin: 0; }
+  .diagram-frame {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px;
+    overflow-x: auto;
+  }
+  figure svg { display: block; width: 100%; height: auto; min-width: 640px; }
+  figcaption { font-size: 13px; color: var(--ink-dim); margin-top: 9px; line-height: 1.5; }
+
+  /* SVG node styling — inline SVG in an HTML doc takes page CSS via class selectors */
+  .box rect { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+  .box.accent rect { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.75; }
+  .box.llm rect { fill: var(--llm-soft); stroke: var(--llm); stroke-width: 1.5; }
+  .box.danger rect { fill: var(--danger-soft); stroke: var(--danger); stroke-width: 1.5; }
+  .box.safe rect { fill: var(--safe-soft); stroke: var(--safe); stroke-width: 1.5; }
+  .box .title { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 12px; fill: var(--ink); }
+  .box .sub { font-family: 'IBM Plex Sans', sans-serif; font-size: 10.5px; fill: var(--ink-dim); }
+  .flow { stroke: var(--ink-dim); stroke-width: 1.5; fill: none; }
+  .flow.accent { stroke: var(--accent); }
+  .flow.danger { stroke: var(--danger); stroke-dasharray: 4 3; }
+  .flow.dashed { stroke-dasharray: 4 3; }
+  .edge-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; fill: var(--ink-dim); }
+  .edge-label.danger { fill: var(--danger); }
+  .edge-label.safe { fill: var(--safe); }
+  .band rect { fill: var(--surface-2); }
+  .band text { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; fill: var(--ink-dim); }
+  .arrowhead-ink { fill: var(--ink-dim); }
+  .arrowhead-accent { fill: var(--accent); }
+  .arrowhead-danger { fill: var(--danger); }
+
+  table.ref {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  table.ref th, table.ref td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.ref th { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-dim); background: var(--surface-2); font-weight: 600; }
+  table.ref tr:last-child td { border-bottom: none; }
+  table.ref td:first-child { font-family: 'IBM Plex Mono', monospace; font-size: 12px; white-space: nowrap; }
+  .tag { display: inline-block; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 5px; border: 1px solid; }
+  .tag.deterministic { color: var(--safe); border-color: var(--safe); background: var(--safe-soft); }
+  .tag.llm-assisted { color: var(--llm); border-color: var(--llm); background: var(--llm-soft); }
+  .tag.manual { color: var(--ink-dim); border-color: var(--line); background: var(--surface-2); }
+
+  .props { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 4px; }
+  .prop { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
+  .prop .num { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--accent); font-weight: 600; }
+  .prop p { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--ink-dim); }
+  .prop strong { color: var(--ink); font-weight: 600; }
+
+  footer { margin-top: 52px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--ink-dim); font-family: 'IBM Plex Mono', monospace; }
+</style>
+</head>
+<body>
+<div class="page">
+  <span class="eyebrow">blog-agents-platform · repo doctor</span>
+  <h1>What actually happens in Repo Doctor</h1>
+  <p class="lede">
+    Two separate mechanisms, run end to end against the real <code>aspose/aspose-blog</code>
+    repo: how a scan turns <code>Redirects.json</code> into the issue list you see, and what
+    each of the two Fix It clicks actually does. Both diagrams below are the real code paths —
+    including the trailing-comma bug fixed live as PR&nbsp;#150. Live across all 6 domains as of
+    this writing; every example below is from the first domain it shipped to.
+  </p>
+
+  <section>
+    <h2>1 · Scanning — how an issue gets found</h2>
+    <p class="section-note">
+      Three different triggers all funnel into the same <code>scanDomain()</code> call. Detection
+      is six pure functions over the raw file text — no network, no LLM — so what counts as
+      broken can never be a hallucination.
+    </p>
+    <div class="legend">
+      <span class="legend-item"><span class="swatch neutral"></span>deterministic step</span>
+      <span class="legend-item"><span class="swatch accent"></span>the parse gate</span>
+      <span class="legend-item"><span class="swatch llm"></span>LLM — wording only</span>
+    </div>
+    <figure>
+      <div class="diagram-frame">
+        <svg viewBox="0 0 1180 400" role="img" aria-label="Three triggers — a manual Run Scan click, a weekly cron, and an on-commit webhook — all call scanDomain, which fetches Redirects.json from GitHub (falling back to a raw request for files over 1MB), runs it through six deterministic detection rules where an INVALID_JSON parse failure short-circuits the remaining rules, then an optional LLM step phrases the explanation and fix text before results are cached for six hours and shown on the dashboard.">
+          <defs>
+            <marker id="arrow-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" class="arrowhead-ink"/>
+            </marker>
+            <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/>
+            </marker>
+          </defs>
+
+          <!-- Triggers -->
+          <g class="box">
+            <rect x="20" y="40" width="210" height="50" rx="7"/>
+            <text x="125" y="60" class="title" text-anchor="middle">Click "Run Scan"</text>
+            <text x="125" y="76" class="sub" text-anchor="middle">manual, from the dashboard</text>
+          </g>
+          <g class="box">
+            <rect x="20" y="110" width="210" height="50" rx="7"/>
+            <text x="125" y="130" class="title" text-anchor="middle">Weekly cron</text>
+            <text x="125" y="146" class="sub" text-anchor="middle">Mon 04:00 UTC · GH Actions</text>
+          </g>
+          <g class="box">
+            <rect x="20" y="180" width="210" height="50" rx="7"/>
+            <text x="125" y="200" class="title" text-anchor="middle">On-commit webhook</text>
+            <text x="125" y="216" class="sub" text-anchor="middle">aspose-blog push → /webhook</text>
+          </g>
+
+          <path d="M230,65 L270,135" class="flow"/>
+          <path d="M230,135 L270,135" class="flow"/>
+          <path d="M230,205 L270,135" class="flow"/>
+          <path d="M270,135 L298,135" class="flow" marker-end="url(#arrow-ink)"/>
+
+          <!-- Fetch -->
+          <g class="box">
+            <rect x="300" y="95" width="190" height="80" rx="7"/>
+            <text x="395" y="128" class="title" text-anchor="middle">fetch file</text>
+            <text x="395" y="145" class="sub" text-anchor="middle">GitHub Contents API</text>
+            <text x="395" y="160" class="sub" text-anchor="middle">Redirects.json</text>
+          </g>
+          <path d="M395,175 L395,192" class="flow dashed" marker-end="url(#arrow-ink)"/>
+          <g class="box">
+            <rect x="300" y="194" width="190" height="52" rx="7" stroke-dasharray="4 3"/>
+            <text x="395" y="215" class="title" text-anchor="middle" font-size="11">size &gt; 1MB?</text>
+            <text x="395" y="231" class="sub" text-anchor="middle">raw-format request instead</text>
+          </g>
+
+          <path d="M490,135 L538,135" class="flow" marker-end="url(#arrow-ink)"/>
+
+          <!-- Detect band -->
+          <g class="band">
+            <rect x="540" y="20" width="230" height="360" rx="10" fill-opacity="0.5"/>
+          </g>
+          <text x="655" y="44" class="title" text-anchor="middle" font-size="12.5">detect(rawText)</text>
+          <text x="655" y="59" class="sub" text-anchor="middle">pure · no network · no LLM</text>
+
+          <g class="box">
+            <rect x="560" y="72" width="190" height="34" rx="6"/>
+            <text x="655" y="93" class="title" text-anchor="middle">1 · DUPLICATE_KEY</text>
+          </g>
+          <g class="box accent">
+            <rect x="560" y="116" width="190" height="34" rx="6"/>
+            <text x="655" y="137" class="title" text-anchor="middle">2 · INVALID_JSON — gate</text>
+          </g>
+          <g class="box">
+            <rect x="560" y="164" width="190" height="34" rx="6"/>
+            <text x="655" y="185" class="title" text-anchor="middle">3 · EMPTY_TARGET</text>
+          </g>
+          <g class="box">
+            <rect x="560" y="208" width="190" height="34" rx="6"/>
+            <text x="655" y="229" class="title" text-anchor="middle">4 · MALFORMED_TARGET</text>
+          </g>
+          <g class="box">
+            <rect x="560" y="252" width="190" height="34" rx="6"/>
+            <text x="655" y="273" class="title" text-anchor="middle">5 · SELF_LOOP_REDIRECT</text>
+          </g>
+          <g class="box">
+            <rect x="560" y="296" width="190" height="34" rx="6"/>
+            <text x="655" y="317" class="title" text-anchor="middle">6 · CHAINED_REDIRECT</text>
+          </g>
+
+          <path d="M750,133 C 800,133 800,150 770,150" class="flow accent" fill="none" marker-end="url(#arrow-accent)"/>
+          <text x="775" y="122" class="edge-label" text-anchor="start">invalid json →</text>
+          <text x="775" y="133" class="edge-label" text-anchor="start">stop, skip 3–6</text>
+
+          <path d="M750,313 L830,230" class="flow" marker-end="url(#arrow-ink)"/>
+          <text x="760" y="290" class="edge-label" text-anchor="start">valid json →</text>
+          <text x="760" y="301" class="edge-label" text-anchor="start">continue</text>
+
+          <!-- Explain -->
+          <g class="box llm">
+            <rect x="830" y="100" width="200" height="150" rx="8"/>
+            <text x="930" y="128" class="title" text-anchor="middle">explainIssue()</text>
+            <text x="930" y="150" class="sub" text-anchor="middle">LLM phrases the explanation</text>
+            <text x="930" y="164" class="sub" text-anchor="middle">+ drafts fix text (2 of 6 types)</text>
+            <text x="930" y="196" class="sub" text-anchor="middle" font-style="italic">optional — falls back to</text>
+            <text x="930" y="210" class="sub" text-anchor="middle" font-style="italic">rule-based wording if unset</text>
+          </g>
+
+          <path d="M930,250 C 930,280 1040,270 1040,298" class="flow" marker-end="url(#arrow-ink)"/>
+          <text x="945" y="278" class="edge-label" text-anchor="start">cache · 6h TTL</text>
+
+          <g class="box">
+            <rect x="940" y="300" width="200" height="80" rx="8"/>
+            <text x="1040" y="325" class="title" text-anchor="middle">Dashboard</text>
+            <text x="1040" y="341" class="sub" text-anchor="middle">"Open Issues" tab — cards with</text>
+            <text x="1040" y="354" class="sub" text-anchor="middle">the literal file line shown</text>
+            <text x="1040" y="370" class="sub" text-anchor="middle" font-style="italic">"Fixed" tab reads the Sheet, below</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>Fig. 1 — every trigger converges on one scan. The six rules run on raw file
+        text alone; an unparseable file short-circuits to just the one INVALID_JSON issue. The
+        LLM only ever phrases what the rules already found.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>2 · Fixing — what each click does</h2>
+    <p class="section-note">
+      Fix It is two clicks, not one, and the line between them is the line that matters:
+      <strong style="color:var(--ink)">nothing touches GitHub until you confirm.</strong> The
+      example below is the real self-loop at line 15176 in blog.aspose.com's Redirects.json.
+    </p>
+    <div class="legend">
+      <span class="legend-item"><span class="swatch neutral"></span>read-only</span>
+      <span class="legend-item"><span class="swatch llm"></span>LLM-drafted, then re-checked</span>
+      <span class="legend-item"><span class="swatch danger"></span>rejected — stops here</span>
+      <span class="legend-item"><span class="swatch accent"></span>writes to GitHub</span>
+    </div>
+    <figure>
+      <div class="diagram-frame">
+        <svg viewBox="0 0 900 960" role="img" aria-label="Clicking Fix It starts a read-only preview phase: fetch the file fresh, re-detect to confirm the issue still exists (otherwise a 409 error), compute a patch either deterministically or by asking the LLM, validate the patch by re-parsing it as JSON and reject it if invalid, then cache the preview for ten minutes and show the before and after diff with Confirm and Cancel buttons. Only clicking Confirm and Open PR crosses into the write phase: re-fetch and compare to the cached before text to catch a stale file, then create a branch, commit the patched file, open a pull request that is never auto-merged, and log the fix to the Fix Log sheet.">
+          <defs>
+            <marker id="arrow-ink-2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" class="arrowhead-ink"/>
+            </marker>
+            <marker id="arrow-accent-2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" class="arrowhead-accent"/>
+            </marker>
+            <marker id="arrow-danger-2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" class="arrowhead-danger"/>
+            </marker>
+          </defs>
+
+          <g class="box">
+            <rect x="330" y="16" width="240" height="46" rx="7"/>
+            <text x="450" y="44" class="title" text-anchor="middle">Click "Fix It"</text>
+          </g>
+          <path d="M450,62 L450,84" class="flow" marker-end="url(#arrow-ink-2)"/>
+
+          <g class="band"><rect x="20" y="90" width="860" height="510" rx="10" fill-opacity="0.4"/></g>
+          <text x="40" y="114" class="title" text-anchor="start" fill="var(--safe)">PHASE 1 · PREVIEW — read-only, nothing written to GitHub yet</text>
+
+          <g class="box">
+            <rect x="310" y="130" width="280" height="50" rx="7"/>
+            <text x="450" y="152" class="title" text-anchor="middle">fetch Redirects.json fresh</text>
+            <text x="450" y="167" class="sub" text-anchor="middle">ignores the 6h results cache</text>
+          </g>
+          <path d="M450,180 L450,202" class="flow" marker-end="url(#arrow-ink-2)"/>
+
+          <g class="box">
+            <rect x="310" y="204" width="280" height="54" rx="7"/>
+            <text x="450" y="227" class="title" text-anchor="middle">re-run detect(), find this issue</text>
+            <text x="450" y="243" class="sub" text-anchor="middle">by its id</text>
+          </g>
+          <path d="M590,231 L700,231" class="flow danger" marker-end="url(#arrow-danger-2)"/>
+          <g class="box danger">
+            <rect x="700" y="204" width="170" height="54" rx="7"/>
+            <text x="785" y="227" class="title" text-anchor="middle" font-size="11">409 — already fixed</text>
+            <text x="785" y="242" class="sub" text-anchor="middle">stop, show error</text>
+          </g>
+          <text x="600" y="222" class="edge-label danger">not found</text>
+
+          <path d="M450,258 L450,280" class="flow" marker-end="url(#arrow-ink-2)"/>
+          <text x="460" y="273" class="edge-label">found</text>
+
+          <g class="box">
+            <rect x="140" y="282" width="270" height="58" rx="7"/>
+            <text x="275" y="304" class="title" text-anchor="middle" font-size="11">fixStrategy: deterministic</text>
+            <text x="275" y="320" class="sub" text-anchor="middle">delete or replace one line by rule</text>
+          </g>
+          <g class="box llm">
+            <rect x="490" y="282" width="270" height="58" rx="7"/>
+            <text x="625" y="304" class="title" text-anchor="middle" font-size="11">fixStrategy: llm-assisted</text>
+            <text x="625" y="320" class="sub" text-anchor="middle">LLM drafts the replacement line</text>
+          </g>
+          <path d="M275,340 L440,366" class="flow" marker-end="url(#arrow-ink-2)"/>
+          <path d="M625,340 L460,366" class="flow" marker-end="url(#arrow-ink-2)"/>
+
+          <g class="box">
+            <rect x="330" y="368" width="240" height="52" rx="7"/>
+            <text x="450" y="389" class="title" text-anchor="middle" font-size="11">validatePatchedText()</text>
+            <text x="450" y="404" class="sub" text-anchor="middle">re-parse the whole file as JSON</text>
+          </g>
+          <path d="M330,394 L200,394" class="flow danger" marker-end="url(#arrow-danger-2)"/>
+          <g class="box danger">
+            <rect x="30" y="368" width="170" height="66" rx="7"/>
+            <text x="115" y="390" class="title" text-anchor="middle" font-size="11">invalid → reject</text>
+            <text x="115" y="404" class="sub" text-anchor="middle">"would leave file invalid"</text>
+            <text x="115" y="417" class="sub" text-anchor="middle" font-style="italic">hit live, once</text>
+          </g>
+          <text x="205" y="386" class="edge-label danger">invalid</text>
+
+          <path d="M450,420 L450,442" class="flow" marker-end="url(#arrow-ink-2)"/>
+          <text x="460" y="435" class="edge-label safe">valid</text>
+
+          <g class="box safe">
+            <rect x="300" y="444" width="300" height="52" rx="7"/>
+            <text x="450" y="465" class="title" text-anchor="middle">cache preview</text>
+            <text x="450" y="480" class="sub" text-anchor="middle">keyed by previewId · 10 min TTL</text>
+          </g>
+          <path d="M450,496 L450,518" class="flow" marker-end="url(#arrow-ink-2)"/>
+
+          <g class="box">
+            <rect x="250" y="520" width="400" height="60" rx="7"/>
+            <text x="450" y="542" class="title" text-anchor="middle">show before / after diff</text>
+            <text x="450" y="558" class="sub" text-anchor="middle">"Confirm &amp; Open PR" and "Cancel" buttons</text>
+          </g>
+
+          <path d="M650,550 C 740,550 740,510 740,470" class="flow dashed" marker-end="url(#arrow-ink-2)"/>
+          <text x="748" y="520" class="edge-label" text-anchor="start">Cancel →</text>
+          <text x="748" y="531" class="edge-label" text-anchor="start">discard,</text>
+          <text x="748" y="542" class="edge-label" text-anchor="start">back to idle</text>
+
+          <path d="M450,580 L450,614" class="flow accent" stroke-width="2" marker-end="url(#arrow-accent-2)"/>
+          <text x="465" y="602" class="edge-label" fill="var(--accent)" font-weight="600">Confirm &amp; Open PR</text>
+
+          <g class="band"><rect x="20" y="618" width="860" height="320" rx="10" fill="var(--accent-soft)" fill-opacity="0.35"/></g>
+          <text x="40" y="642" class="title" text-anchor="start" fill="var(--accent)">PHASE 2 · CONFIRM — writes to GitHub</text>
+
+          <g class="box">
+            <rect x="290" y="658" width="320" height="54" rx="7"/>
+            <text x="450" y="680" class="title" text-anchor="middle">re-fetch, compare to cached "before"</text>
+            <text x="450" y="696" class="sub" text-anchor="middle">catches a race since the preview</text>
+          </g>
+          <path d="M610,685 L720,685" class="flow danger" marker-end="url(#arrow-danger-2)"/>
+          <g class="box danger">
+            <rect x="720" y="658" width="150" height="54" rx="7"/>
+            <text x="795" y="680" class="title" text-anchor="middle" font-size="11">409 — file changed</text>
+            <text x="795" y="695" class="sub" text-anchor="middle">stop, re-scan needed</text>
+          </g>
+          <text x="620" y="678" class="edge-label danger" text-anchor="start">changed</text>
+
+          <path d="M450,712 L450,734" class="flow" marker-end="url(#arrow-ink-2)"/>
+          <text x="460" y="727" class="edge-label">unchanged</text>
+
+          <g class="box">
+            <rect x="290" y="736" width="320" height="50" rx="7"/>
+            <text x="450" y="757" class="title" text-anchor="middle" font-size="11.5">create branch</text>
+            <text x="450" y="772" class="sub" text-anchor="middle">repo-doctor/fix-&lt;type&gt;-&lt;timestamp&gt;</text>
+          </g>
+          <path d="M450,786 L450,808" class="flow" marker-end="url(#arrow-ink-2)"/>
+
+          <g class="box">
+            <rect x="290" y="810" width="320" height="46" rx="7"/>
+            <text x="450" y="838" class="title" text-anchor="middle" font-size="11.5">commit the patched file</text>
+          </g>
+          <path d="M400,856 L280,886" class="flow" marker-end="url(#arrow-ink-2)"/>
+          <path d="M500,856 L620,886" class="flow" marker-end="url(#arrow-ink-2)"/>
+
+          <g class="box accent">
+            <rect x="120" y="888" width="320" height="66" rx="7"/>
+            <text x="280" y="908" class="title" text-anchor="middle">open PR</text>
+            <text x="280" y="923" class="sub" text-anchor="middle">body includes the literal file line</text>
+            <text x="280" y="937" class="sub" text-anchor="middle">titled "Repo Doctor: fix …" · never auto-merged</text>
+          </g>
+          <g class="box">
+            <rect x="460" y="888" width="320" height="66" rx="7"/>
+            <text x="620" y="908" class="title" text-anchor="middle">log to Fix Log sheet</text>
+            <text x="620" y="923" class="sub" text-anchor="middle">timestamp, type, before/after, raw line,</text>
+            <text x="620" y="937" class="sub" text-anchor="middle">file, PR link — read by the "Fixed" tab</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>Fig. 2 — the boundary at "Confirm &amp; Open PR" is the only point that writes
+        anything. Everything above it can be clicked freely; everything below it is exactly what
+        produced PR&nbsp;#150.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Issue types at a glance</h2>
+    <p class="section-note">What each rule catches, and how confidently it can be fixed without you.</p>
+    <table class="ref">
+      <thead>
+        <tr><th>Type</th><th>Catches</th><th>Fix</th><th>Strategy</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>DUPLICATE_KEY</td>
+          <td>same source path appears more than once</td>
+          <td>delete every occurrence but the last</td>
+          <td><span class="tag deterministic">deterministic</span></td>
+        </tr>
+        <tr>
+          <td>INVALID_JSON</td>
+          <td>file fails <code>JSON.parse()</code></td>
+          <td>strip a trailing comma before a closer, if that's the cause</td>
+          <td><span class="tag deterministic">deterministic</span> or <span class="tag llm-assisted">llm-assisted</span></td>
+        </tr>
+        <tr>
+          <td>EMPTY_TARGET</td>
+          <td>target is <code>""</code></td>
+          <td>LLM proposes a destination, re-validated before use</td>
+          <td><span class="tag llm-assisted">llm-assisted</span></td>
+        </tr>
+        <tr>
+          <td>MALFORMED_TARGET</td>
+          <td>target has no leading <code>/</code> and no scheme</td>
+          <td>prepend <code>/</code>, or <code>https://</code> for a bare hostname</td>
+          <td><span class="tag deterministic">deterministic</span></td>
+        </tr>
+        <tr>
+          <td>SELF_LOOP_REDIRECT</td>
+          <td>source and target are the same path <em>on this domain's own host</em></td>
+          <td>delete the entry</td>
+          <td><span class="tag deterministic">deterministic</span></td>
+        </tr>
+        <tr>
+          <td>CHAINED_REDIRECT</td>
+          <td>target is itself another entry's source</td>
+          <td>point straight at the final destination</td>
+          <td><span class="tag deterministic">deterministic</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>What keeps this safe to run unattended</h2>
+    <div class="props">
+      <div class="prop">
+        <span class="num">01</span>
+        <p><strong>The LLM never decides what's broken.</strong> All six rules run on raw text alone; the LLM only phrases wording and, for two rule types, drafts replacement text.</p>
+      </div>
+      <div class="prop">
+        <span class="num">02</span>
+        <p><strong>Every draft is re-parsed before it can be shown.</strong> A bad LLM suggestion gets rejected in Phase&nbsp;1 — this happened on the first real run against <code>Redirects.json</code>.</p>
+      </div>
+      <div class="prop">
+        <span class="num">03</span>
+        <p><strong>Preview and commit use the same bytes.</strong> Confirm never re-asks the LLM — it commits exactly what Phase&nbsp;1 already validated and showed you.</p>
+      </div>
+      <div class="prop">
+        <span class="num">04</span>
+        <p><strong>A PR is the ceiling, not a commit.</strong> Nothing reaches <code>master</code> without a human merging it — same as PR&nbsp;#150.</p>
+      </div>
+      <div class="prop">
+        <span class="num">05</span>
+        <p><strong>Self-loop/chain checks only strip a domain's own host.</strong> A deliberate cross-subdomain redirect (blog → about) is left as a full URL instead of being collapsed to a bare path — found live in two different domains' files, where the old behavior would have deleted a real, working redirect.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>scanDomain() · previewFix() · confirmFix() — dashboard/lib/repo-doctor/</footer>
+</div>
+</body>
+</html>

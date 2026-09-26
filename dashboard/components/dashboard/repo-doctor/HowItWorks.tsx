@@ -1,6 +1,6 @@
 "use client";
 
-import { X, Search, Wrench, ShieldCheck } from "lucide-react";
+import { X, Search, Wrench, ShieldCheck, ExternalLink } from "lucide-react";
 import { ISSUE_TYPE_COLORS, type RepoIssueType } from "./shared";
 
 const ISSUE_TYPES: { type: RepoIssueType; catches: string; fix: string; strategy: string }[] = [
@@ -90,6 +90,15 @@ export function HowItWorks({ open, onClose }: Props) {
               <li>A pull request is the ceiling. Nothing reaches the live branch without a human merging it.</li>
             </ul>
           </section>
+
+          <a
+            href="/repo-doctor-internals.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-1.5 pt-3 mt-1 border-t border-slate-100 dark:border-slate-700 text-[12px] font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+          >
+            View the full architecture diagrams <ExternalLink className="h-3 w-3" />
+          </a>
         </div>
       </div>
     </div>

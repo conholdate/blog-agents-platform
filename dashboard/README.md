@@ -94,7 +94,7 @@ A same-site comparison only strips the host when it matches the domain's *own* h
 
 **Fixing is two clicks, not one.** "Fix It" only computes and previews the exact diff — nothing is written to GitHub yet. "Confirm & Open PR" is the only action that writes anything: it re-fetches the file to guard against a race, creates a branch, commits the fix, and opens a PR titled and described automatically. **PRs are never auto-merged** — review and merge is a human action, same as any other PR. Every computed fix (deterministic or AI-drafted) is re-parsed as JSON before it can even be shown as a preview, so a bad suggestion is rejected before it's ever seen, let alone committed.
 
-- **"How it works" panel** (`?` button) explains all of the above in-app
+- **"How it works" panel** (`?` button) explains all of the above in-app, with a link out to a [detailed architecture diagram](https://blog-agents-platform.vercel.app/repo-doctor-internals.html) (`public/repo-doctor-internals.html`) covering both the scan and fix flows step by step
 - **Open Issues / Fixed toggle** — Fixed reads back the durable Fix Log (a Google Sheet `logFixedIssue()` appends to on every confirmed fix), showing each fix's type, the literal file line that was removed or changed, when, and a link to its PR
 - **Triggers**: a "Run Scan" button, a weekly GitHub Actions cron (`repo-doctor.yml`, Monday 04:00 UTC), and — for domains that opt in — an on-commit webhook from the content repo. All three call the same scan path
 
