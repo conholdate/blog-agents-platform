@@ -8,6 +8,7 @@ import {
   deleteEntryLine,
   replaceRawLine,
 } from "./detect";
+import { extractPostUrls, shortlistCandidates, tokenize } from "./sitemap";
 import type { RepoIssue } from "./types";
 
 const DOMAIN = "blog.aspose.com";
@@ -270,5 +271,39 @@ describe("replaceEntryLine / replaceRawLine / deleteEntryLine (llm-assisted fix 
 
   it("deleteEntryLine rejects an out-of-range line", () => {
     expect(() => deleteEntryLine("{}", 99)).toThrow();
+  });
+});
+
+describe("sitemap shortlist", () => {
+  const SITEMAP = `<urlset>
+    <url><loc>https://blog.aspose.com/</loc></url>
+    <url><loc>https://blog.aspose.com/page/2/</loc></url>
+    <url><loc>https://blog.aspose.com/archives/</loc></url>
+    <url><loc>https://blog.aspose.com/pdf/convert-pdf-to-jpg-online/</loc></url>
+    <url><loc>https://blog.aspose.com/pdf/convert-pdf-to-jpg-images-in-java/</loc></url>
+    <url><loc>https://blog.aspose.com/words/merge-word-documents-in-python/</loc></url>
+    <url><loc>https://other.example.com/pdf/convert-pdf-to-jpg/</loc></url>
+  </urlset>`;
+
+  it("keeps only this domain's category/slug post URLs", () => {
+    expect(extractPostUrls(SITEMAP, DOMAIN)).toEqual([
+      "https://blog.aspose.com/pdf/convert-pdf-to-jpg-online/",
+      "https://blog.aspose.com/pdf/convert-pdf-to-jpg-images-in-java/",
+      "https://blog.aspose.com/words/merge-word-documents-in-python/",
+    ]);
+  });
+
+  it("drops legacy-path noise words and dates, and folds jpeg into jpg", () => {
+    const tokens = tokenize("/aspose-products/aspose-pdf-product-family/archive/2014/06/26/convert-pdf-document-to-jpeg-images-in-php-application.html");
+    expect([...tokens].sort()).toEqual(["convert", "images", "jpg", "pdf", "php"]);
+  });
+
+  it("shortlists only posts sharing topic words with the dead source path (real aspose-blog case)", () => {
+    const shortlist = shortlistCandidates(
+      "/aspose-products/aspose-pdf-product-family/archive/2014/06/26/convert-pdf-document-to-jpg-images-in-php-application.html",
+      extractPostUrls(SITEMAP, DOMAIN)
+    );
+    expect(shortlist).toContain("https://blog.aspose.com/pdf/convert-pdf-to-jpg-online/");
+    expect(shortlist).not.toContain("https://blog.aspose.com/words/merge-word-documents-in-python/");
   });
 });

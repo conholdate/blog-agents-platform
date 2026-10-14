@@ -6,6 +6,7 @@ export const TTL_WORKFLOWS = 5 * 60 * 1000; // 5 minutes — CI runs change on t
 export const TTL_WORKFLOW_SCHEDULES = 6 * 60 * 60 * 1000; // 6 hours — cron schedules only change when a workflow YAML is edited
 export const TTL_REPO_DOCTOR = 6 * 60 * 60 * 1000; // 6 hours — scan results; weekly cron/webhook explicitly invalidate on change
 export const TTL_REPO_DOCTOR_PREVIEW = 10 * 60 * 1000; // 10 minutes — short-lived fix preview, so confirm commits exactly what was shown
+export const TTL_REPO_DOCTOR_SITEMAP = 24 * 60 * 60 * 1000; // 24 hours — live post list used to shortlist empty-target candidates
 
 interface Entry<T> { data: T; ts: number }
 

@@ -74,31 +74,28 @@ export async function explainIssue(
   }
 }
 
-// Only called for fixStrategy: "llm-assisted" issues (INVALID_JSON, EMPTY_TARGET).
+// Only called for INVALID_JSON issues with fixStrategy "llm-assisted".
 // Returns null if the LLM can't propose safe replacement text (or isn't configured) —
 // callers must treat that as "no fix available", never fall back to guessing.
 export async function proposeFixText(issue: RepoIssue, context: string): Promise<string | null> {
   const client = getLlmClient();
   if (!client) return null;
 
-  const instructions =
-    issue.type === "INVALID_JSON"
-      ? "The file has a JSON syntax error at this line. Reply with a JSON object " +
-        '{"fixedLine": "the corrected single line of raw JSON text, exactly as it should appear in the file"}. ' +
-        "Fix only the syntax problem (e.g. a missing/extra comma or quote) — do not change any key or value content. JSON only, no markdown."
-      : "This redirect entry has an empty target. Reply with a JSON object " +
-        '{"targetUrl": "a single proposed destination URL or path for this redirect, or null if none can be confidently inferred"}. ' +
-        "Only propose a value if you can infer a highly plausible destination from the source key and surrounding entries — otherwise use null. JSON only, no markdown.";
-
   try {
     const res = await client.chat.completions.create({
       model: getModel(),
       temperature: 0,
       messages: [
-        { role: "system", content: instructions },
+        {
+          role: "system",
+          content:
+            "The file has a JSON syntax error at this line. Reply with a JSON object " +
+            '{"fixedLine": "the corrected single line of raw JSON text, exactly as it should appear in the file"}. ' +
+            "Fix only the syntax problem (e.g. a missing/extra comma or quote) — do not change any key or value content. JSON only, no markdown.",
+        },
         {
           role: "user",
-          content: `Issue type: ${issue.type}\nSource key: ${issue.sourceKey ?? "(file-level)"}\nCurrent value: ${issue.currentValue ?? "(none)"}\nSurrounding context:\n${context}`,
+          content: `Issue type: ${issue.type}\nCurrent value: ${issue.currentValue ?? "(none)"}\nSurrounding context:\n${context}`,
         },
       ],
       response_format: { type: "json_object" },
@@ -106,9 +103,44 @@ export async function proposeFixText(issue: RepoIssue, context: string): Promise
 
     const raw = res.choices[0]?.message?.content;
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { fixedLine?: string | null; targetUrl?: string | null };
-    const value = issue.type === "INVALID_JSON" ? parsed.fixedLine : parsed.targetUrl;
-    return typeof value === "string" && value.trim() ? value.trim() : null;
+    const parsed = JSON.parse(raw) as { fixedLine?: string | null };
+    return typeof parsed.fixedLine === "string" && parsed.fixedLine.trim() ? parsed.fixedLine.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+// For EMPTY_TARGET: picks one URL from a shortlist of real, live posts. Left free to
+// answer, the model invented plausible slugs that 404'd, so any answer not
+// literally in `candidates` is discarded.
+export async function pickRedirectTarget(sourceKey: string, candidates: string[]): Promise<string | null> {
+  const client = getLlmClient();
+  if (!client || candidates.length === 0) return null;
+
+  try {
+    const res = await client.chat.completions.create({
+      model: getModel(),
+      temperature: 0,
+      messages: [
+        {
+          role: "system",
+          content:
+            "A blog redirect has an empty target. The source path is an old, deleted post. Choose the ONE candidate " +
+            "post a reader of the old post would most want instead. Match the task first (e.g. same input and output " +
+            "formats in the same direction: PDF to JPG is not JPG to PDF); only then prefer the same programming language " +
+            "or platform. If no candidate covers the same task, answer null. Reply with a JSON object " +
+            '{"targetUrl": "<one candidate URL copied exactly>"} or {"targetUrl": null}. JSON only, no markdown.',
+        },
+        { role: "user", content: `Source path: ${sourceKey}\nCandidates:\n${candidates.join("\n")}` },
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    const raw = res.choices[0]?.message?.content;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { targetUrl?: string | null };
+    const value = parsed.targetUrl?.trim();
+    return value && candidates.includes(value) ? value : null;
   } catch {
     return null;
   }

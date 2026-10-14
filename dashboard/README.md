@@ -85,7 +85,7 @@ Scans a domain's redirects config file (`Redirects.json`) for data-quality issue
 |---|---|---|
 | `DUPLICATE_KEY` | the same source path appears more than once | delete every occurrence but the last |
 | `INVALID_JSON` | the file fails to parse | strip a trailing comma before a closing bracket, if that's the cause (the single most common real-world break — confirmed live) |
-| `EMPTY_TARGET` | a redirect's target is blank | AI proposes a destination, re-validated before use |
+| `EMPTY_TARGET` | a redirect's target is blank | AI picks from a shortlist of live posts (from the domain's sitemap), then confirms it loads |
 | `MALFORMED_TARGET` | target has no leading `/` and no scheme | prepend `/`, or `https://` for a bare hostname |
 | `SELF_LOOP_REDIRECT` | source and target are the same path *on this domain's own host* | delete the entry |
 | `CHAINED_REDIRECT` | target is itself another entry's source | point straight at the final destination |

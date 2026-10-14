@@ -1,7 +1,8 @@
 import { getCached, setCached, invalidateCache, TTL_REPO_DOCTOR_PREVIEW } from "@/lib/cache";
 import { getRepoDoctorTarget } from "./repo-doctor-config";
 import { detectIssues, applyDeterministicFix, replaceEntryLine, replaceRawLine, validatePatchedText } from "./detect";
-import { explainIssue, proposeFixText } from "./llm";
+import { explainIssue, proposeFixText, pickRedirectTarget } from "./llm";
+import { fetchPostUrls, shortlistCandidates } from "./sitemap";
 import { fetchFileContent, getDefaultBranch, createBranch, commitFile, openPullRequest } from "./github";
 import { logFixedIssue } from "./repo-doctor-sheets";
 import type { RepoIssue, RepoDoctorScanResult, FixPreview } from "./types";
@@ -105,23 +106,23 @@ export async function previewFix(domain: string, issueId: string): Promise<FixPr
   let patched: string;
   if (issue.fixStrategy === "deterministic") {
     patched = applyDeterministicFix(content, issue);
+  } else if (issue.type === "EMPTY_TARGET") {
+    const candidates = shortlistCandidates(issue.sourceKey!, await fetchPostUrls(domain));
+    const picked = await pickRedirectTarget(issue.sourceKey!, candidates);
+    if (!picked) {
+      throw new RepoDoctorError("No existing post on the live site is a close enough match for this redirect.", "NO_FIX_AVAILABLE");
+    }
+    // The sitemap can list a post that has since been removed.
+    if (!(await urlResolves(picked, domain))) {
+      throw new RepoDoctorError(`The best-matching post "${picked}" doesn't load on the live site.`, "NO_FIX_AVAILABLE");
+    }
+    patched = replaceEntryLine(content, issue.line!, issue.sourceKey!, picked);
   } else {
     const proposed = await proposeFixText(issue, contextAround(content, issue.line));
     if (!proposed) {
       throw new RepoDoctorError("No confident automated fix is available for this issue.", "NO_FIX_AVAILABLE");
     }
-    // The LLM infers EMPTY_TARGET destinations from the source key alone and
-    // happily invents plausible-looking slugs that 404 on the live blog.
-    if (issue.type === "EMPTY_TARGET" && !(await urlResolves(proposed, domain))) {
-      throw new RepoDoctorError(
-        `No confident automated fix is available — the guessed destination "${proposed}" doesn't exist on the live site.`,
-        "NO_FIX_AVAILABLE"
-      );
-    }
-    patched =
-      issue.type === "INVALID_JSON"
-        ? replaceRawLine(content, issue.line!, proposed)
-        : replaceEntryLine(content, issue.line!, issue.sourceKey!, proposed);
+    patched = replaceRawLine(content, issue.line!, proposed);
   }
 
   const validation = validatePatchedText(patched);
