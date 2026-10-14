@@ -63,12 +63,13 @@ dashboard/
 │       │   └── webhook/            # POST — inbound, shared-secret-authenticated on-commit trigger
 │       └── overview/all/       # GET — aggregated stats across all agents
 ├── components/
-│   └── dashboard/          # Sidebar, Overview (shell) + one subfolder per agent:
+│   └── dashboard/          # Sidebar.tsx (nav) + one subfolder per agent/screen:
+│       ├── overview/           # Overview.tsx (shell) + SingleDomainView.tsx, AllDomainsView.tsx
 │       ├── optimization/       # OptimizationAgent.tsx
 │       ├── translation/        # TranslationAgent.tsx
 │       ├── url-validator/      # UrlValidator.tsx
-│       ├── workflows/          # Workflows.tsx + its DailyRunsChart/DeployTag/etc. helpers
-│       └── repo-doctor/        # RepoDoctor.tsx, FixedIssuesList.tsx, HowItWorks.tsx, shared.ts
+│       ├── workflows/          # Workflows.tsx + DeploymentCards/ScheduledWorkflowsList/RunsTable/DailyRunsChart/etc.
+│       └── repo-doctor/        # RepoDoctor.tsx, FixedIssuesList.tsx, HowItWorks.tsx
 └── lib/
     ├── sheets.ts           # Google Sheets API wrappers + getKeywordSummary
     ├── config.ts           # Domain → Sheet ID map, brand colors, platform colors
@@ -83,8 +84,8 @@ dashboard/
 Each per-agent subfolder under components/dashboard/ and lib/ is owned by
 that agent alone — a new agent (e.g. Post Generation) gets its own
 components/dashboard/post-generation/ and lib/post-generation/ without
-touching another agent's files. Only Overview.tsx (summary tiles) and
-Sidebar.tsx (nav entry) are shared integration points every agent touches.
+touching another agent's files. Only components/dashboard/overview/ (summary
+tiles) and Sidebar.tsx (nav entry) are shared integration points every agent touches.
 ```
 
 ### Data Flow
@@ -141,6 +142,7 @@ Every other tool in the dashboard is Sheets-in/Sheets-out (or, for CI/CD Status,
 - **GitHub's Contents API omits inline file content over ~1MB** (`aspose-blog/Redirects.json` is 2.4MB) — `lib/repo-doctor/github.ts`'s `fetchFileContent()` falls back to a raw-media-type request when the JSON response's `content` field comes back empty, rather than silently treating a large file as blank.
 - **Self-loop/chain detection only strips a redirect target's host when it matches the domain's own hostname** (`normalizePath(value, domain)`) — a deliberate cross-subdomain redirect (blog → about, confirmed live in two different domains' files) is left as a full URL rather than being collapsed to a bare path and mistaken for a self-loop.
 - **Triggers**: manual "Run Scan" click, a weekly GitHub Actions cron (`repo-doctor.yml` at the repo root, curling the deployed dashboard), and — per opted-in content repo — an on-commit webhook (`app/api/repo-doctor/webhook/route.ts`, shared-secret auth via `crypto.timingSafeEqual`) triggered by a workflow file living in that *content* repo, not this one.
+- **`public/repo-doctor-internals.html`** is a standalone, static deep-dive page (not part of the React app) linked from the in-app `HowItWorks.tsx` panel — same content at a greater level of technical detail, for anyone who wants the full mechanism without reading the source.
 
 ### Deployment
 

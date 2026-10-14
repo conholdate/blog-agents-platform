@@ -18,6 +18,8 @@ Other repo-level docs (not duplicated here — read directly if relevant):
 
 The control center for AI agents that automate blog content operations (keyword research, post generation, translation, SEO optimization) across 6 brand domains. AI agents run autonomously and write output to Google Sheets. The platform reads those Sheets and lets the blog team monitor, review, and act on the output.
 
+Two dashboard screens are not Sheets-backed agents: **CI/CD Status** (read-only GitHub Actions viewer for each domain's deploy workflows) and **Repo Doctor** (scans each domain's `Redirects.json` for issues and can open fix PRs — the one tool in this platform that writes to GitHub). See `ARCHITECTURE.md` for both.
+
 ## Repo Structure
 
 ```
@@ -35,11 +37,12 @@ blog-agents-platform/
 ## Dashboard (Next.js)
 
 - Stack: **Next.js 16 App Router · React 19 · Tailwind CSS v4 · TypeScript strict**
-- All Google Sheets calls go through `dashboard/lib/sheets.ts` — do not use the Sheets API directly anywhere else
-- Domain config (sheet IDs, colors) lives in `dashboard/lib/config.ts` — all domain additions go here
+- Google Sheets calls go through `dashboard/lib/sheets.ts` (Keyword Agent) or each agent's own `lib/<agent>/*Sheets.ts` (e.g. `lib/translation/translationSheets.ts`) — never call the Sheets API directly outside these
+- Domain config (sheet IDs, colors) lives in `dashboard/lib/config.ts` — all domain additions go here; GitHub-repo-per-domain maps for CI/CD Status and Repo Doctor live in their own `lib/<agent>/*-config.ts` instead (see `dashboard/AGENTS.md`)
 - API routes live under `dashboard/app/api/` — they are all server-side Route Handlers
-- Run `npm run lint` inside `dashboard/` before completing any dashboard task
+- Run `npm run lint` and `npm test` inside `dashboard/` before completing any dashboard task
 - The app is a **single-page shell** — `app/page.tsx` renders the active section based on state, not route changes
+- New dashboard code for a given agent goes under `components/dashboard/<agent>/` and `lib/<agent>/` — see the per-agent folder rule in `dashboard/AGENTS.md` before adding a new agent or screen
 
 ### Dev server
 ```bash
