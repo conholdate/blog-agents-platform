@@ -8,10 +8,6 @@ const nextConfig: NextConfig = {
   env: {
     BUILD_TIME: onVercel ? new Date().toISOString() : "",
     BUILD_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA ?? "",
-    BUILD_REPO_URL:
-      process.env.VERCEL_GIT_REPO_OWNER && process.env.VERCEL_GIT_REPO_SLUG
-        ? `https://github.com/${process.env.VERCEL_GIT_REPO_OWNER}/${process.env.VERCEL_GIT_REPO_SLUG}`
-        : "",
   },
 };
 

@@ -54,7 +54,6 @@ const BUILD_TZ = "Asia/Karachi";
 export function BuildVersion() {
   const builtAt = process.env.BUILD_TIME;
   const sha = process.env.BUILD_COMMIT_SHA?.slice(0, 7);
-  const repoUrl = process.env.BUILD_REPO_URL;
 
   if (!builtAt) {
     return <div className="mt-auto px-4 py-3 text-[11px] text-slate-400 dark:text-slate-500">dev</div>;
@@ -73,13 +72,7 @@ export function BuildVersion() {
         {sha && (
           <>
             {" · "}
-            {repoUrl ? (
-              <a href={`${repoUrl}/commit/${process.env.BUILD_COMMIT_SHA}`} target="_blank" rel="noopener noreferrer" className="font-mono hover:text-slate-600 dark:hover:text-slate-300">
-                {sha}
-              </a>
-            ) : (
-              <span className="font-mono">{sha}</span>
-            )}
+            <span className="font-mono">{sha}</span>
           </>
         )}
       </div>
