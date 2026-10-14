@@ -30,6 +30,21 @@ function contextAround(rawText: string, line: number | null, radius = 3): string
   return lines.slice(start, end).join("\n");
 }
 
+async function urlResolves(target: string, domain: string): Promise<boolean> {
+  let url: URL;
+  try {
+    url = new URL(target, `https://${domain}`);
+  } catch {
+    return false;
+  }
+  try {
+    const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(10_000) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function scanDomain(domain: string): Promise<RepoDoctorScanResult> {
   const target = requireTarget(domain);
   const { content } = await fetchFileContent(target.owner, target.repo, target.filePath);
@@ -94,6 +109,14 @@ export async function previewFix(domain: string, issueId: string): Promise<FixPr
     const proposed = await proposeFixText(issue, contextAround(content, issue.line));
     if (!proposed) {
       throw new RepoDoctorError("No confident automated fix is available for this issue.", "NO_FIX_AVAILABLE");
+    }
+    // The LLM infers EMPTY_TARGET destinations from the source key alone and
+    // happily invents plausible-looking slugs that 404 on the live blog.
+    if (issue.type === "EMPTY_TARGET" && !(await urlResolves(proposed, domain))) {
+      throw new RepoDoctorError(
+        `No confident automated fix is available — the guessed destination "${proposed}" doesn't exist on the live site.`,
+        "NO_FIX_AVAILABLE"
+      );
     }
     patched =
       issue.type === "INVALID_JSON"
