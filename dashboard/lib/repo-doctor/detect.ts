@@ -400,6 +400,13 @@ export function applyDeterministicFix(rawText: string, issue: RepoIssue): string
   }
 }
 
+// INVALID_JSON fixes come from the LLM as a whole replacement line; it must only
+// touch JSON punctuation, never the key or URL text a reviewer might skim past.
+export function onlyPunctuationChanged(before: string, after: string): boolean {
+  const strip = (s: string) => s.replace(/[\s"',:{}[\]]/g, "");
+  return strip(before) === strip(after);
+}
+
 export function validatePatchedText(rawText: string): { ok: true } | { ok: false; error: string } {
   try {
     JSON.parse(rawText);

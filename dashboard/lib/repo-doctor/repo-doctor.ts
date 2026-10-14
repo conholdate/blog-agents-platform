@@ -1,6 +1,6 @@
 import { getCached, setCached, invalidateCache, TTL_REPO_DOCTOR_PREVIEW } from "@/lib/cache";
 import { getRepoDoctorTarget } from "./repo-doctor-config";
-import { detectIssues, applyDeterministicFix, replaceEntryLine, replaceRawLine, validatePatchedText } from "./detect";
+import { detectIssues, applyDeterministicFix, replaceEntryLine, replaceRawLine, validatePatchedText, onlyPunctuationChanged } from "./detect";
 import { explainIssue, proposeFixText, pickRedirectTarget } from "./llm";
 import { fetchPostUrls, shortlistCandidates } from "./sitemap";
 import { fetchFileContent, getDefaultBranch, createBranch, commitFile, openPullRequest } from "./github";
@@ -105,6 +105,20 @@ export async function previewFix(domain: string, issueId: string): Promise<FixPr
 
   let patched: string;
   if (issue.fixStrategy === "deterministic") {
+    // Both rewrite the target to a URL nobody has checked: MALFORMED_TARGET's is a
+    // syntactic guess, CHAINED_REDIRECT's is the chain's last hop, which may be dead.
+    if (issue.type === "MALFORMED_TARGET" && !(await urlResolves(issue.suggestedValue!, domain))) {
+      throw new RepoDoctorError(
+        `The corrected target "${issue.suggestedValue}" doesn't load on the live site, so this needs a human to pick the right destination.`,
+        "NO_FIX_AVAILABLE"
+      );
+    }
+    if (issue.type === "CHAINED_REDIRECT" && !(await urlResolves(issue.suggestedValue!, domain))) {
+      throw new RepoDoctorError(
+        `This chain ends at a dead page ("${issue.suggestedValue}"). Fix the redirect for that page first.`,
+        "NO_FIX_AVAILABLE"
+      );
+    }
     patched = applyDeterministicFix(content, issue);
   } else if (issue.type === "EMPTY_TARGET") {
     const candidates = shortlistCandidates(issue.sourceKey!, await fetchPostUrls(domain));
@@ -121,6 +135,12 @@ export async function previewFix(domain: string, issueId: string): Promise<FixPr
     const proposed = await proposeFixText(issue, contextAround(content, issue.line));
     if (!proposed) {
       throw new RepoDoctorError("No confident automated fix is available for this issue.", "NO_FIX_AVAILABLE");
+    }
+    if (!onlyPunctuationChanged(content.split("\n")[issue.line! - 1] ?? "", proposed)) {
+      throw new RepoDoctorError(
+        "The suggested syntax fix also changed the redirect's text (not just commas or quotes), so it was rejected.",
+        "NO_FIX_AVAILABLE"
+      );
     }
     patched = replaceRawLine(content, issue.line!, proposed);
   }

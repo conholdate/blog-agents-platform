@@ -132,12 +132,14 @@ The web control center for all blog agents. AI agents run autonomously and write
 - [x] Rolled out to all 6 domains (blog.aspose.com, blog.aspose.cloud, blog.groupdocs.com, blog.groupdocs.cloud, blog.conholdate.com, blog.conholdate.cloud), each verified against its real file before being added to `repo-doctor-config.ts`
 - [x] Two real bugs found and fixed during that rollout, both covered by regression tests: GitHub's Contents API silently omitting file content over ~1MB (`fetchFileContent`'s raw-format fallback), and self-loop/chain detection stripping *any* host instead of only the domain's own — which had already produced one live false positive in `blog.conholdate.com` before it was caught
 - [x] Live end-to-end: real PRs opened and merged against `aspose/aspose-blog` during development (e.g. #150, #151, #152)
+- [x] No dead links in fix previews (2026-10-14, after a human reviewer caught an LLM-invented `EMPTY_TARGET` URL that 404'd): `EMPTY_TARGET` now picks only from ~20 live posts shortlisted from the domain's `/en/sitemap.xml`; `EMPTY_TARGET`, `MALFORMED_TARGET` and `CHAINED_REDIRECT` previews must load (HTTP 200) or fall back to manual; LLM `INVALID_JSON` lines are rejected if they change anything but punctuation
 
 ---
 
 ### Planned / Pending
 
 #### Near Term
+- [ ] **Repo Doctor: dead-target check as a scheduled job (high priority)** — fix previews now refuse dead URLs, but a scan still can't tell which *existing* redirects point to pages that 404. Checking thousands of targets on every scan would be slow and hammer the blogs, so this needs its own scheduled job (e.g. weekly, throttled, results cached/logged) that reports a new `DEAD_TARGET` issue type. A dead target is also what blocks a `CHAINED_REDIRECT` fix today ("this chain ends at a dead page")
 - [ ] **GitLab push** — remote added but push via HTTPS + PAT not yet confirmed working
 - [ ] **Search / filter** — filter cards by title, keyword, or status without leaving the page
 - [ ] **Status filter** — quick-filter buttons to show only `pending`, `ok`, or `rejected` cards

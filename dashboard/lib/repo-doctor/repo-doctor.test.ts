@@ -7,6 +7,7 @@ import {
   replaceEntryLine,
   deleteEntryLine,
   replaceRawLine,
+  onlyPunctuationChanged,
 } from "./detect";
 import { extractPostUrls, shortlistCandidates, tokenize } from "./sitemap";
 import type { RepoIssue } from "./types";
@@ -305,5 +306,17 @@ describe("sitemap shortlist", () => {
     );
     expect(shortlist).toContain("https://blog.aspose.com/pdf/convert-pdf-to-jpg-online/");
     expect(shortlist).not.toContain("https://blog.aspose.com/words/merge-word-documents-in-python/");
+  });
+});
+
+describe("onlyPunctuationChanged", () => {
+  const broken = `    "/old-post" "https://blog.aspose.com/pdf/new-post/",`;
+
+  it("accepts a fix that only adds the missing colon", () => {
+    expect(onlyPunctuationChanged(broken, `    "/old-post": "https://blog.aspose.com/pdf/new-post/",`)).toBe(true);
+  });
+
+  it("rejects a fix that also rewrites the target URL", () => {
+    expect(onlyPunctuationChanged(broken, `    "/old-post": "https://blog.aspose.com/pdf/other-post/",`)).toBe(false);
   });
 });
