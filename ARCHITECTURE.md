@@ -63,7 +63,7 @@ dashboard/
 │       │   └── webhook/            # POST — inbound, shared-secret-authenticated on-commit trigger
 │       └── overview/all/       # GET — aggregated stats across all agents
 ├── components/
-│   └── dashboard/          # Sidebar.tsx (nav) + one subfolder per agent/screen:
+│   └── dashboard/          # Sidebar.tsx (nav + build version footer, stamped per Vercel build in next.config.ts) + one subfolder per agent/screen:
 │       ├── overview/           # Overview.tsx (shell) + SingleDomainView.tsx, AllDomainsView.tsx
 │       ├── optimization/       # OptimizationAgent.tsx
 │       ├── translation/        # TranslationAgent.tsx
@@ -78,7 +78,7 @@ dashboard/
     ├── translation/translationSheets.ts    # Translation scan/history parsing + getTranslationSummary
     ├── url-validator/url-validator-sheets.ts # URL Validator sheet I/O + getUrlValidatorSummary
     ├── workflows/workflows.ts              # CI/CD run + schedule parsing + getWorkflowsSummary
-    └── repo-doctor/                         # see "Repo Doctor" below — detect.ts, github.ts, llm.ts,
+    └── repo-doctor/                         # see "Repo Doctor" below — detect.ts, github.ts, llm.ts, sitemap.ts,
                                               # repo-doctor.ts, repo-doctor-config.ts, repo-doctor-sheets.ts
 
 Each per-agent subfolder under components/dashboard/ and lib/ is owned by
@@ -134,7 +134,7 @@ API routes use a server-side in-memory cache (`lib/cache.ts`), with a TTL per to
 
 Every other tool in the dashboard is Sheets-in/Sheets-out (or, for CI/CD Status, GitHub-read-only). Repo Doctor is the exception: it can open pull requests.
 
-- **Detection is deterministic, isolated from GitHub/LLM I/O** — `lib/repo-doctor/detect.ts` operates on raw file text with no network calls, so it's fully unit-testable (`repo-doctor.test.ts`) and can never hallucinate what counts as an issue. The LLM (`lib/repo-doctor/llm.ts`, an internal OpenAI-compatible gateway) only phrases an already-detected issue and, for two issue types, drafts replacement text — which is always re-validated (`JSON.parse`) before it can be shown as a preview, let alone committed.
+- **Detection is deterministic, isolated from GitHub/LLM I/O** — `lib/repo-doctor/detect.ts` operates on raw file text with no network calls, so it's fully unit-testable (`repo-doctor.test.ts`) and can never hallucinate what counts as an issue. The LLM (`lib/repo-doctor/llm.ts`, an internal OpenAI-compatible gateway) only phrases an already-detected issue, drafts a punctuation-only `INVALID_JSON` line (rejected if any non-punctuation text changes), and for `EMPTY_TARGET` picks one URL from ~20 live posts that `lib/repo-doctor/sitemap.ts` shortlists from the domain's `/en/sitemap.xml` (an answer outside that list is discarded). Every fix is re-validated (`JSON.parse`) before it can be shown as a preview, and any fix writing a new target URL (`EMPTY_TARGET`, `MALFORMED_TARGET`, `CHAINED_REDIRECT`) must also load (HTTP 200) on the live site. Checking *existing* targets for 404s is not done per scan (too many URLs) — planned as a scheduled job, see `IMPLEMENTATION_PLAN.md`.
 - **Two GitHub tokens, deliberately not one.** `GITHUB_READONLY_TOKEN` (Workflows/CI-CD Status) and `GITHUB_WRITE_TOKEN` (Repo Doctor, in `lib/repo-doctor/repo-doctor-config.ts`) are separate env vars precisely so a read path accidentally importing the write-scoped getter — or vice versa — fails obviously in review, rather than silently working with more privilege than intended.
 - **Fix It is two requests, not one**, matching the two-phase UI: `previewFix()` fetches the file fresh, re-detects to guard against staleness, computes the patch, and caches it (keyed by a `previewId`, 10-minute TTL) — no GitHub write happens here. `confirmFix()` re-fetches once more to catch a race since the preview, then creates a branch, commits, and opens the PR, reusing the *exact same* cached patch rather than recomputing (so what's committed is byte-identical to what was previewed). PRs are never auto-merged.
 - **A durable Fix Log, separate from the live issue list.** The current issue list is never persisted — it's always re-derived fresh from GitHub (cheap: one file fetch + six pure functions), matching CI/CD Status's philosophy of not duplicating a source of truth that's already durable elsewhere. Confirmed *fixes*, however, have no other durable record a non-engineer can browse, so `logFixedIssue()` appends one row per fix to a dedicated Google Sheet (`REPO_DOCTOR_LOG_SHEET_ID`) — the one piece of this feature that *is* Sheets-backed.

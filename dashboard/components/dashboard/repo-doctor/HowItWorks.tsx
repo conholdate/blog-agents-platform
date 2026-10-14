@@ -6,10 +6,10 @@ import { ISSUE_TYPE_COLORS, type RepoIssueType } from "./shared";
 const ISSUE_TYPES: { type: RepoIssueType; catches: string; fix: string; strategy: string }[] = [
   { type: "DUPLICATE_KEY", catches: "the same source path appears more than once", fix: "delete every occurrence but the last", strategy: "Automatic" },
   { type: "INVALID_JSON", catches: "the file fails to parse as JSON", fix: "strip a trailing comma before a closing bracket, if that's the cause", strategy: "Automatic, or AI-assisted" },
-  { type: "EMPTY_TARGET", catches: "a redirect's target is blank", fix: "AI proposes a destination, re-checked before use", strategy: "AI-assisted" },
-  { type: "MALFORMED_TARGET", catches: "a target has no leading “/” and no URL scheme", fix: "prepend “/”, or “https://” for a bare hostname", strategy: "Automatic" },
+  { type: "EMPTY_TARGET", catches: "a redirect's target is blank", fix: "AI picks one of ~20 real posts from the blog's sitemap; it must load", strategy: "AI-assisted" },
+  { type: "MALFORMED_TARGET", catches: "a target has no leading “/” and no URL scheme", fix: "prepend “/”, or “https://” for a bare hostname — only if the result loads", strategy: "Automatic" },
   { type: "SELF_LOOP_REDIRECT", catches: "a redirect points to itself", fix: "delete the entry", strategy: "Automatic" },
-  { type: "CHAINED_REDIRECT", catches: "a redirect's target is itself another redirect", fix: "point straight at the final destination", strategy: "Automatic" },
+  { type: "CHAINED_REDIRECT", catches: "a redirect's target is itself another redirect", fix: "point straight at the final destination — only if that page loads", strategy: "Automatic" },
 ];
 
 interface Props {
@@ -86,6 +86,7 @@ export function HowItWorks({ open, onClose }: Props) {
             <ul className="flex flex-col gap-1.5 list-disc pl-5">
               <li>The AI never decides what counts as an issue — only the six deterministic rules do.</li>
               <li>Every computed fix is re-parsed as JSON before it can even be shown as a preview.</li>
+              <li>Any new target URL in a fix must load on the live site first — a dead link is never offered.</li>
               <li>What you confirm is byte-identical to what you previewed — nothing is re-drafted at commit time.</li>
               <li>A pull request is the ceiling. Nothing reaches the live branch without a human merging it.</li>
             </ul>

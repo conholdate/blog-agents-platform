@@ -9,6 +9,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Build version in the sidebar** — bottom of the left panel (and the mobile menu) shows e.g. `v2026.10.14 · 7501768` / `Updated 6:31 PM GMT+5`, stamped automatically at each Vercel build from the build time (GMT+5) and commit id; shows `dev` locally. The desktop sidebar is now sticky so it stays visible on long pages
+- **Repo Doctor: no dead links in fix previews** — prompted by an `EMPTY_TARGET` preview whose LLM-invented URL 404'd (caught in human review, never committed). `EMPTY_TARGET` now picks only from ~20 live posts shortlisted from the domain's sitemap; `EMPTY_TARGET`, `MALFORMED_TARGET` and `CHAINED_REDIRECT` fixes must load (HTTP 200) or fall back to manual with a reason; AI-written `INVALID_JSON` lines are rejected if they change anything but punctuation
 - **Repo Doctor** — new agent that scans a domain's redirects file (`Redirects.json`) for 6 deterministic issue types (duplicate keys, invalid JSON, empty/malformed/self-loop/chained redirects), phrases explanations via an internal LLM gateway (never used to decide what's broken), and offers a two-step Fix It flow — preview the exact diff, then confirm to open a PR. No fix is ever auto-merged. Runs on manual click, a weekly cron, and an opt-in on-commit webhook per content repo. Rolled out to all 6 domains, each verified against its real file first
   - Durable Fix Log (Google Sheet) of confirmed fixes, shown on a new "Fixed" tab in the UI, and an in-app "How it works" panel
   - A standalone `public/repo-doctor-internals.html` deep-dive guide, linked from the in-app panel, covering the full mechanism in more technical detail than fits in the UI

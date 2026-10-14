@@ -298,7 +298,7 @@
             <rect x="830" y="100" width="200" height="150" rx="8"/>
             <text x="930" y="128" class="title" text-anchor="middle">explainIssue()</text>
             <text x="930" y="150" class="sub" text-anchor="middle">LLM phrases the explanation</text>
-            <text x="930" y="164" class="sub" text-anchor="middle">+ drafts fix text (2 of 6 types)</text>
+            <text x="930" y="164" class="sub" text-anchor="middle">+ fix text / picks a live post (2 of 6)</text>
             <text x="930" y="196" class="sub" text-anchor="middle" font-style="italic">optional — falls back to</text>
             <text x="930" y="210" class="sub" text-anchor="middle" font-style="italic">rule-based wording if unset</text>
           </g>
@@ -514,7 +514,7 @@
         <tr>
           <td>MALFORMED_TARGET</td>
           <td>target has no leading <code>/</code> and no scheme</td>
-          <td>prepend <code>/</code>, or <code>https://</code> for a bare hostname</td>
+          <td>prepend <code>/</code>, or <code>https://</code> for a bare hostname — only if the result returns HTTP 200</td>
           <td><span class="tag deterministic">deterministic</span></td>
         </tr>
         <tr>
@@ -526,7 +526,7 @@
         <tr>
           <td>CHAINED_REDIRECT</td>
           <td>target is itself another entry's source</td>
-          <td>point straight at the final destination</td>
+          <td>point straight at the final destination — only if that page returns HTTP 200</td>
           <td><span class="tag deterministic">deterministic</span></td>
         </tr>
       </tbody>
@@ -538,11 +538,11 @@
     <div class="props">
       <div class="prop">
         <span class="num">01</span>
-        <p><strong>The LLM never decides what's broken.</strong> All six rules run on raw text alone; the LLM only phrases wording and, for two rule types, drafts replacement text.</p>
+        <p><strong>The LLM never decides what's broken.</strong> All six rules run on raw text alone; the LLM only phrases wording, fixes JSON punctuation, and for empty targets picks one of ~20 real posts shortlisted from the sitemap — it never invents a URL.</p>
       </div>
       <div class="prop">
         <span class="num">02</span>
-        <p><strong>Every draft is re-parsed before it can be shown.</strong> A bad LLM suggestion gets rejected in Phase&nbsp;1 — this happened on the first real run against <code>Redirects.json</code>.</p>
+        <p><strong>Every draft is re-parsed before it can be shown.</strong> A bad LLM suggestion gets rejected in Phase&nbsp;1 — this happened on the first real run against <code>Redirects.json</code>. Any fix that writes a new target URL must also load (HTTP 200) on the live site, after an LLM-invented URL that 404'd was caught in review.</p>
       </div>
       <div class="prop">
         <span class="num">03</span>

@@ -86,13 +86,13 @@ Scans a domain's redirects config file (`Redirects.json`) for data-quality issue
 | `DUPLICATE_KEY` | the same source path appears more than once | delete every occurrence but the last |
 | `INVALID_JSON` | the file fails to parse | strip a trailing comma before a closing bracket, if that's the cause (the single most common real-world break — confirmed live) |
 | `EMPTY_TARGET` | a redirect's target is blank | AI picks from a shortlist of live posts (from the domain's sitemap), then confirms it loads |
-| `MALFORMED_TARGET` | target has no leading `/` and no scheme | prepend `/`, or `https://` for a bare hostname |
+| `MALFORMED_TARGET` | target has no leading `/` and no scheme | prepend `/`, or `https://` for a bare hostname — only offered if the result loads on the live site |
 | `SELF_LOOP_REDIRECT` | source and target are the same path *on this domain's own host* | delete the entry |
-| `CHAINED_REDIRECT` | target is itself another entry's source | point straight at the final destination |
+| `CHAINED_REDIRECT` | target is itself another entry's source | point straight at the final destination — only offered if that page loads; otherwise you're told the chain ends at a dead page |
 
 A same-site comparison only strips the host when it matches the domain's *own* hostname — a deliberate cross-subdomain redirect (e.g. blog → about) is left as a full URL so it's never mistaken for a self-loop.
 
-**Fixing is two clicks, not one.** "Fix It" only computes and previews the exact diff — nothing is written to GitHub yet. "Confirm & Open PR" is the only action that writes anything: it re-fetches the file to guard against a race, creates a branch, commits the fix, and opens a PR titled and described automatically. **PRs are never auto-merged** — review and merge is a human action, same as any other PR. Every computed fix (deterministic or AI-drafted) is re-parsed as JSON before it can even be shown as a preview, so a bad suggestion is rejected before it's ever seen, let alone committed.
+**Fixing is two clicks, not one.** "Fix It" only computes and previews the exact diff — nothing is written to GitHub yet. "Confirm & Open PR" is the only action that writes anything: it re-fetches the file to guard against a race, creates a branch, commits the fix, and opens a PR titled and described automatically. **PRs are never auto-merged** — review and merge is a human action, same as any other PR. Every computed fix (deterministic or AI-drafted) is re-parsed as JSON before it can even be shown as a preview, so a bad suggestion is rejected before it's ever seen, let alone committed. Any fix that writes a new target URL (`EMPTY_TARGET`, `MALFORMED_TARGET`, `CHAINED_REDIRECT`) must also load (HTTP 200) on the live site, and an AI-written `INVALID_JSON` line is rejected if it changes anything but punctuation.
 
 - **"How it works" panel** (`?` button) explains all of the above in-app, with a link out to a [detailed architecture diagram](https://blog-agents-platform.vercel.app/repo-doctor-internals.html) (`public/repo-doctor-internals.html`) covering both the scan and fix flows step by step
 - **Open Issues / Fixed toggle** — Fixed reads back the durable Fix Log (a Google Sheet `logFixedIssue()` appends to on every confirmed fix), showing each fix's type, the literal file line that was removed or changed, when, and a link to its PR
