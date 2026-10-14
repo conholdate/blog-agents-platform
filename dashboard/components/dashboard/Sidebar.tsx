@@ -22,7 +22,7 @@ interface SidebarProps {
 
 export function Sidebar({ activeSection, onSelect }: SidebarProps) {
   return (
-    <aside className="hidden md:flex flex-col w-56 bg-white border-r border-slate-200 dark:bg-slate-900 dark:border-slate-700 shrink-0">
+    <aside className="hidden md:flex md:sticky md:top-0 md:h-screen flex-col w-56 bg-white border-r border-slate-200 dark:bg-slate-900 dark:border-slate-700 shrink-0">
       <nav className="flex flex-col pt-2 pb-4">
         {NAV_ITEMS.map(({ key, label, icon: Icon }) => {
           const isActive = key === activeSection;
@@ -42,6 +42,48 @@ export function Sidebar({ activeSection, onSelect }: SidebarProps) {
           );
         })}
       </nav>
+      <BuildVersion />
     </aside>
+  );
+}
+
+// Fixed to GMT+5 (the team's timezone) rather than the viewer's, so everyone
+// quotes the same version and server/client renders match.
+const BUILD_TZ = "Asia/Karachi";
+
+export function BuildVersion() {
+  const builtAt = process.env.BUILD_TIME;
+  const sha = process.env.BUILD_COMMIT_SHA?.slice(0, 7);
+  const repoUrl = process.env.BUILD_REPO_URL;
+
+  if (!builtAt) {
+    return <div className="mt-auto px-4 py-3 text-[11px] text-slate-400 dark:text-slate-500">dev</div>;
+  }
+
+  const date = new Date(builtAt);
+  const version = new Intl.DateTimeFormat("en-CA", { timeZone: BUILD_TZ, year: "numeric", month: "2-digit", day: "2-digit" })
+    .format(date)
+    .replaceAll("-", ".");
+  const time = new Intl.DateTimeFormat("en-US", { timeZone: BUILD_TZ, hour: "numeric", minute: "2-digit" }).format(date);
+
+  return (
+    <div className="mt-auto px-4 py-3 text-[11px] leading-relaxed text-slate-400 dark:text-slate-500">
+      <div>
+        v{version}
+        {sha && (
+          <>
+            {" · "}
+            {repoUrl ? (
+              <a href={`${repoUrl}/commit/${process.env.BUILD_COMMIT_SHA}`} target="_blank" rel="noopener noreferrer" className="font-mono hover:text-slate-600 dark:hover:text-slate-300">
+                {sha}
+              </a>
+            ) : (
+              <span className="font-mono">{sha}</span>
+            )}
+          </>
+        )}
+      </div>
+      <div>Updated {time} GMT+5</div>
+    </div>
   );
 }

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { DOMAINS, DOMAIN_LABELS } from "@/lib/config";
 import { Loader2, ExternalLink, Menu, X, RefreshCw } from "lucide-react";
 import { CardGrid } from "./CardGrid";
-import { Sidebar, type Section } from "@/components/dashboard/Sidebar";
+import { Sidebar, BuildVersion, type Section } from "@/components/dashboard/Sidebar";
 import { Overview } from "@/components/dashboard/overview/Overview";
 import { WorkInProgress } from "@/components/dashboard/WorkInProgress";
 import { UrlValidator } from "@/components/dashboard/url-validator/UrlValidator";
@@ -163,6 +163,7 @@ export function AppShell() {
                 </button>
               ))}
             </nav>
+            <BuildVersion />
           </aside>
         </div>
       )}
