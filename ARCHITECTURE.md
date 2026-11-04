@@ -128,7 +128,7 @@ Each domain maps to one or more Google Spreadsheet IDs, configured in `lib/confi
 
 ### Caching
 
-API routes use a server-side in-memory cache (`lib/cache.ts`), with a TTL per tool matching its update cadence: Keyword Agent 2h, Optimization Agent 4h, Translation Agent 4h, URL Validator 6h, CI/CD Status 5min (run status changes fast) / 6h for parsed cron schedules, Repo Doctor 6h for scan results and 10min for a pending fix preview (see below). Cache can be force-busted by the "Refresh" button in the UI, which sends `?refresh=1` on the next API call. Because the cache is an in-memory `Map`, it does not persist across separate serverless invocations on Vercel — each cold-started function starts with an empty cache, refilled on first request.
+API routes use a server-side in-memory cache (`lib/cache.ts`), with a TTL per tool matching its update cadence: Keyword Agent 2h, Optimization Agent 4h, Translation Agent 4h, URL Validator 6h, CI/CD Status 5min (run status changes fast) / 6h for parsed cron schedules and each completed run's jobs (their outcomes never change), Repo Doctor 6h for scan results and 10min for a pending fix preview (see below). Cache can be force-busted by the "Refresh" button in the UI, which sends `?refresh=1` on the next API call. Because the cache is an in-memory `Map`, it does not persist across separate serverless invocations on Vercel — each cold-started function starts with an empty cache, refilled on first request.
 
 ### Repo Doctor — the one agent that writes to GitHub
 

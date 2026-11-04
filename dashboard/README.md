@@ -71,8 +71,9 @@ Read-only view of each domain's GitHub Actions activity — not an AI agent, a l
 
 - **Deployment cards** — one card per (environment, provider) combo actually seen in the recent run window (e.g. Production/AWS, Production/Ceph, Staging/Ceph), classified from the workflow's display name (`prod`/`stag`, `aws`/`ceph`). Each shows the latest run's status badge, duration, time ago, success/fail counts, and — folded in from the separate schedules API — its next scheduled run if one exists
 - **Scheduled Workflows** — whatever's left over after deploy schedules are folded into the cards above (e.g. a translation-scan cron with no matching recent run)
-- **Daily Runs chart** — 14-day bar strip, zero-filled, with average build time
-- **Run history table** — every recent run with workflow name, status, branch, actor, duration, updated-at; env/provider filter chips plus a per-workflow filter; click a failed row to fetch its failed job/step on demand (a separate, more expensive GitHub API call, fetched lazily rather than for every run)
+- **Daily Runs chart** — 14-day bar strip, zero-filled, with average build time over the last 40 runs, leaving out runs skipped for no changes
+- **Run history table** — the latest 20 runs with workflow name, trigger (scheduled or manual), status, comment, duration bar, started and updated times. Title, branch and actor appear only when they vary. Filter by status, environment, provider or workflow; click a failed row to see its failed job/step. Below 1280px, runs show as stacked cards instead
+- **Comments and no-change runs** — GitHub reports a scheduled run that found nothing to deploy as plain `success`, so each completed run's jobs are read (cached 6h) to tell the difference. Those runs show as `skipped` with "Skipped - No changes found" and don't count towards success totals or averages. Other comments name the failed job or a redeploy after a failed build
 
 Requires `GITHUB_READONLY_TOKEN` (classic PAT, `repo` scope, read-only usage) — the token can read Actions runs across all 6 domains' workflow repos (three `.com` domains use a dedicated `-workflows` repo; the three `.cloud` domains run CI inside their content repo directly).
 
@@ -207,8 +208,8 @@ A virtual tab at the end of the tab bar aggregates all rows with `status=generat
 1. Select a **domain** from the top nav
 2. Click **CI/CD Status** in the sidebar
 3. Deployment cards at the top show the latest production/staging run per provider
-4. Use the env/provider filter chips and per-workflow chips to narrow the run history table below
-5. Click a failed run's row to expand its failed job/step detail (fetched on demand)
+4. Use the status, environment, provider and workflow filters to narrow the run history below
+5. Click a failed run's row (or **Failure detail** on a stacked card) to see its failed job/step
 
 ### Repo Doctor — Scanning and Fixing
 1. Select a **domain** from the top nav

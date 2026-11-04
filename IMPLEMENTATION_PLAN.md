@@ -117,9 +117,11 @@ The web control center for all blog agents. AI agents run autonomously and write
 - [x] Deployment status cards per (environment, provider) combo, classified from workflow display names (`prod`/`stag`, `aws`/`ceph`)
 - [x] Cron schedules parsed from each workflow's YAML (`cron:` lines regex-extracted, since GitHub's API doesn't surface them on the run/workflow-list endpoints) and folded into the matching deployment card as "next scheduled run"; leftover non-deploy schedules shown separately
 - [x] 14-day daily runs chart, zero-filled, with average build time
-- [x] Run history table with env/provider + per-workflow filter chips
+- [x] Run history table with status/env/provider + per-workflow filters; counts reflect the other active filters; stacked cards below 1280px
+- [x] Scheduled/manual trigger tag and duration bar on each run
+- [x] Per-run comment derived from its jobs (`describeRun`). GitHub reports a no-change run as plain `success`, so the summary and runs routes fetch each completed run's jobs (up to 40 calls per domain on a cold cache, batched and cached 6h) and report those runs as `skipped`, which keeps them out of success counts and averages
 - [x] Scheduled times in GMT+5 with UTC on hover; runs table shows when each run started and how late GitHub started scheduled runs (cron slot derived server-side, since GitHub doesn't record it)
-- [x] On-demand failed job/step lookup for a clicked failed run (separate, more expensive API call — fetched lazily, not eagerly for every run)
+- [x] Failed job/step detail for a clicked failed run, read from the same cached job data as the comments
 - [x] Overview card + "CI/CD" column group on the All-Domains table
 - [x] Split into `Workflows.tsx` (orchestrator) + `DeploymentCards`/`ScheduledWorkflowsList`/`RunsTable` (owns its own filter/expand state) to keep individual files a manageable size
 
