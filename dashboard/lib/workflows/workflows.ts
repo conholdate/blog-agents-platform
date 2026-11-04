@@ -3,13 +3,27 @@ import { toString as cronToString } from "cronstrue";
 import { getWorkflowsRepo, getGithubToken } from "./workflows-config";
 import { getCached, setCached, TTL_WORKFLOW_SCHEDULES } from "../cache";
 
-// Cron fields in GitHub Actions schedules are always UTC, so the description
-// describes UTC clock times regardless of where this runs.
-function describeCrons(crons: string[]): string {
+const GMT5_OFFSET_HOURS = 5;
+
+// Cron fields in GitHub Actions schedules are always UTC, and cronstrue no longer
+// supports a timezone offset, so the hour is shifted before describing it. Returns
+// null when a shift isn't a simple hour change: a step or list in the hour field,
+// or a time that crosses midnight on a schedule restricted to certain days.
+function cronToGmt5(cron: string): string | null {
+  const [minute, hour, dayOfMonth, month, dayOfWeek] = cron.trim().split(/\s+/);
+  if (!/^\d+$/.test(hour)) return null;
+  const shifted = Number(hour) + GMT5_OFFSET_HOURS;
+  if (shifted >= 24 && (dayOfMonth !== "*" || month !== "*" || dayOfWeek !== "*")) return null;
+  return [minute, shifted % 24, dayOfMonth, month, dayOfWeek].join(" ");
+}
+
+export function describeCrons(crons: string[]): string {
   return crons
     .map((c) => {
       try {
-        return cronToString(c, { use24HourTimeFormat: true, verbose: false });
+        const gmt5 = cronToGmt5(c);
+        const options = { use24HourTimeFormat: true, verbose: false };
+        return gmt5 ? `${cronToString(gmt5, options)} (GMT+5)` : `${cronToString(c, options)} (UTC)`;
       } catch {
         return c;
       }
@@ -54,6 +68,7 @@ export interface WorkflowRun {
   createdAt: string;
   updatedAt: string;
   runStartedAt: string;
+  scheduledFor?: string | null; // the cron time a scheduled run belongs to, when known
   durationSeconds: number | null; // null until the run completes
   env: RunEnv;
   provider: RunProvider;
@@ -202,6 +217,29 @@ export async function getWorkflowSchedules(domain: string): Promise<WorkflowSche
 
   setCached(cacheKey, schedules);
   return schedules;
+}
+
+// GitHub doesn't record which cron time a run belongs to, and often starts scheduled
+// runs hours late. The latest cron time at or before the trigger is that run's slot.
+function latestCronSlot(crons: string[], triggeredAt: string): string | null {
+  let latest: Date | null = null;
+  for (const cron of crons) {
+    try {
+      const slot = CronExpressionParser.parse(cron, { tz: "UTC", currentDate: triggeredAt }).prev().toDate();
+      if (!latest || slot > latest) latest = slot;
+    } catch {
+      // Same as earliestNextRun: a schedule we can't parse just gets no slot.
+    }
+  }
+  return latest ? latest.toISOString() : null;
+}
+
+export function withScheduledSlots(runs: WorkflowRun[], schedules: WorkflowSchedule[]): WorkflowRun[] {
+  const cronsByWorkflow = new Map(schedules.map((s) => [s.workflowName, s.crons]));
+  return runs.map((r) => {
+    const crons = r.event === "schedule" ? cronsByWorkflow.get(r.workflowName) : undefined;
+    return crons?.length ? { ...r, scheduledFor: latestCronSlot(crons, r.createdAt) } : r;
+  });
 }
 
 export interface WorkflowRunTick {

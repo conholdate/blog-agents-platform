@@ -5,7 +5,10 @@ import {
   buildDailyStats,
   latestDeployment,
   deploymentFailureCount,
+  describeCrons,
+  withScheduledSlots,
   type WorkflowRun,
+  type WorkflowSchedule,
   type DeploymentStatus,
 } from "./workflows";
 
@@ -30,6 +33,39 @@ function makeRun(overrides: Partial<WorkflowRun> = {}): WorkflowRun {
     ...overrides,
   };
 }
+
+describe("describeCrons", () => {
+  it("describes the schedules the blog repos use in GMT+5", () => {
+    expect(describeCrons(["0 3 * * 1-5"])).toBe("At 08:00, Monday through Friday (GMT+5)");
+    expect(describeCrons(["30 2 * * *"])).toBe("At 07:30 (GMT+5)");
+  });
+
+  it("wraps past midnight when no days are restricted", () => {
+    expect(describeCrons(["30 22 * * *"])).toBe("At 03:30 (GMT+5)");
+  });
+
+  it("stays in UTC when shifting would need a day change or the hour isn't a single value", () => {
+    expect(describeCrons(["0 21 * * 1-5"])).toBe("At 21:00, Monday through Friday (UTC)");
+    expect(describeCrons(["0 */6 * * *"])).toBe("On the hour, every 6 hours (UTC)");
+  });
+});
+
+describe("withScheduledSlots", () => {
+  const schedule = { workflowName: "AWS Production - Pipeline", crons: ["0 3 * * 1-5"] } as WorkflowSchedule;
+
+  it("matches a late scheduled run to the cron time it belongs to", () => {
+    const run = makeRun({ workflowName: "AWS Production - Pipeline", event: "schedule", createdAt: "2026-11-03T10:28:14Z" });
+    expect(withScheduledSlots([run], [schedule])[0].scheduledFor).toBe("2026-11-03T03:00:00.000Z");
+  });
+
+  it("leaves manual runs and workflows without a schedule alone", () => {
+    const manual = makeRun({ workflowName: "AWS Production - Pipeline", event: "workflow_dispatch" });
+    const unscheduled = makeRun({ workflowName: "Other", event: "schedule" });
+    const [a, b] = withScheduledSlots([manual, unscheduled], [schedule]);
+    expect(a.scheduledFor).toBeUndefined();
+    expect(b.scheduledFor).toBeUndefined();
+  });
+});
 
 describe("classifyWorkflowName", () => {
   it("detects production + aws from a real deploy workflow name", () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { Clock } from "lucide-react";
-import { formatScheduleTime } from "@/lib/format-time";
+import { formatScheduleTime, formatScheduleTimeUtc } from "@/lib/format-time";
 import type { WorkflowSchedule } from "./Workflows";
 
 function timeUntil(iso: string): string {
@@ -32,12 +32,11 @@ export function ScheduledWorkflowsList({ schedules }: { schedules: WorkflowSched
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="font-medium text-slate-700 dark:text-slate-300 text-[13px] truncate">{s.workflowName}</span>
-                <span className="font-mono text-[10px] text-slate-400 dark:text-slate-500 shrink-0">{s.crons.join(", ")}</span>
               </div>
-              {s.description && <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{s.description}</p>}
+              {s.description && <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5" title={`Cron (UTC): ${s.crons.join(", ")}`}>{s.description}</p>}
             </div>
             <div className="text-[12px] text-slate-500 dark:text-slate-400 shrink-0">
-              <div className="font-medium text-slate-700 dark:text-slate-300">{formatScheduleTime(s.nextRunAt!)}</div>
+              <div className="font-medium text-slate-700 dark:text-slate-300" title={formatScheduleTimeUtc(s.nextRunAt!)}>{formatScheduleTime(s.nextRunAt!)}</div>
               <div className="text-slate-400 dark:text-slate-500 text-right">{timeUntil(s.nextRunAt!)}</div>
             </div>
           </div>

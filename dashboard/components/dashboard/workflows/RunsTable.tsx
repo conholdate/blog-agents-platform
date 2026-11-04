@@ -5,6 +5,7 @@ import { Loader2, ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
 import { WorkflowStatusBadge } from "./WorkflowStatusBadge";
 import { formatDuration } from "./DailyRunsChart";
 import { EnvTag, ProviderTag } from "./DeployTag";
+import { formatClockTime, formatDelay, formatScheduleTime, formatScheduleTimeUtc } from "@/lib/format-time";
 import type { FailedStep } from "@/lib/workflows/workflows";
 import type { WorkflowRun } from "./Workflows";
 
@@ -137,6 +138,7 @@ export function RunsTable({ domain, runs }: Props) {
                 <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Branch</th>
                 <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Actor</th>
                 <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Duration</th>
+                <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Started</th>
                 <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Updated</th>
                 <th className="px-3 py-2.5"></th>
               </tr>
@@ -175,6 +177,20 @@ export function RunsTable({ domain, runs }: Props) {
                       <td className="px-3 py-2 font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{run.branch}</td>
                       <td className="px-3 py-2 text-slate-500 dark:text-slate-400 whitespace-nowrap">{run.actor ?? "—"}</td>
                       <td className="px-3 py-2 font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{formatDuration(run.durationSeconds)}</td>
+                      <td
+                        className="px-3 py-2 text-slate-500 dark:text-slate-400 whitespace-nowrap"
+                        title={[
+                          run.scheduledFor && `Scheduled: ${formatScheduleTimeUtc(run.scheduledFor)}`,
+                          `Started: ${formatScheduleTimeUtc(run.runStartedAt)}`,
+                        ].filter(Boolean).join("\n")}
+                      >
+                        <div>{formatScheduleTime(run.runStartedAt)}</div>
+                        {run.scheduledFor && (
+                          <div className="text-[11px] text-slate-400 dark:text-slate-500">
+                            Scheduled {formatClockTime(run.scheduledFor)} · {formatDelay(run.scheduledFor, run.createdAt)} late
+                          </div>
+                        )}
+                      </td>
                       <td className="px-3 py-2 text-slate-400 dark:text-slate-500 whitespace-nowrap">{timeAgo(run.updatedAt)}</td>
                       <td className="px-3 py-2 whitespace-nowrap">
                         <a
@@ -191,7 +207,7 @@ export function RunsTable({ domain, runs }: Props) {
                     {failed && expanded && (
                       <tr className="bg-red-50/50 dark:bg-red-900/10">
                         <td></td>
-                        <td colSpan={8} className="px-3 py-2.5 text-[12px]">
+                        <td colSpan={9} className="px-3 py-2.5 text-[12px]">
                           {steps === "loading" && (
                             <span className="flex items-center gap-1.5 text-slate-400"><Loader2 className="h-3 w-3 animate-spin" />Loading failure detail…</span>
                           )}

@@ -19,6 +19,8 @@ export interface WorkflowRun {
   actor: string | null;
   createdAt: string;
   updatedAt: string;
+  runStartedAt: string;
+  scheduledFor?: string | null;
   durationSeconds: number | null;
   env: RunEnv;
   provider: RunProvider;

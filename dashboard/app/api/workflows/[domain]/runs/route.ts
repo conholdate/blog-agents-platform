@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCached, setCached, TTL_WORKFLOWS } from "@/lib/cache";
-import { getRecentWorkflowRuns } from "@/lib/workflows/workflows";
+import { getRecentWorkflowRuns, getWorkflowSchedules, withScheduledSlots } from "@/lib/workflows/workflows";
 import { isGithubWorkflowsConfigured, getWorkflowsRepo } from "@/lib/workflows/workflows-config";
 
 type Params = Promise<{ domain: string }>;
@@ -22,9 +22,13 @@ export async function GET(req: NextRequest, { params }: { params: Params }) {
   }
 
   try {
-    const result = await getRecentWorkflowRuns(decoded);
+    // Scheduled times only add detail to the runs table, so a failed lookup shouldn't hide the runs.
+    const [result, schedules] = await Promise.all([
+      getRecentWorkflowRuns(decoded),
+      getWorkflowSchedules(decoded).catch(() => []),
+    ]);
     const repo = getWorkflowsRepo(decoded);
-    const payload = { ...result, repo: repo ? `${repo.owner}/${repo.repo}` : null };
+    const payload = { ...result, runs: withScheduledSlots(result.runs, schedules), repo: repo ? `${repo.owner}/${repo.repo}` : null };
     setCached(key, payload);
     return NextResponse.json(payload);
   } catch (e) {

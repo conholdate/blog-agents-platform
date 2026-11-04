@@ -10,7 +10,7 @@ import { WorkflowStatusBadge } from "../workflows/WorkflowStatusBadge";
 import { RunHistoryStrip } from "../workflows/RunHistoryStrip";
 import { DailyRunsChart, formatDuration } from "../workflows/DailyRunsChart";
 import { EnvTag, ProviderTag } from "../workflows/DeployTag";
-import { formatScheduleTime } from "@/lib/format-time";
+import { formatScheduleTime, formatScheduleTimeUtc } from "@/lib/format-time";
 import { domainHealth } from "./shared";
 
 type TabSummary = { name: string; total: number; queued: number; approved: number; rejected: number; generated: number };
@@ -301,7 +301,7 @@ export function SingleDomainView({ domain, onNavigate }: { domain: string; onNav
                   <div className="flex items-start gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 pt-1 border-t border-slate-100 dark:border-slate-700/60 min-w-0">
                     <Clock className="h-3 w-3 shrink-0 mt-0.5" />
                     <span className="min-w-0">
-                      Next scheduled: <span className="font-medium text-slate-600 dark:text-slate-300">{formatScheduleTime(wfSummary.nextScheduledRun.nextRunAt)}</span> ·{" "}
+                      Next scheduled: <span className="font-medium text-slate-600 dark:text-slate-300" title={formatScheduleTimeUtc(wfSummary.nextScheduledRun.nextRunAt)}>{formatScheduleTime(wfSummary.nextScheduledRun.nextRunAt)}</span> ·{" "}
                       <span className="inline-block max-w-[160px] align-bottom truncate" title={wfSummary.nextScheduledRun.workflowName}>{wfSummary.nextScheduledRun.workflowName}</span>
                       {wfSummary.nextScheduledRun.description && <span className="block text-slate-400 dark:text-slate-500 mt-0.5">{wfSummary.nextScheduledRun.description}</span>}
                     </span>

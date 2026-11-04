@@ -4,7 +4,7 @@ import { Clock } from "lucide-react";
 import { WorkflowStatusBadge } from "./WorkflowStatusBadge";
 import { formatDuration } from "./DailyRunsChart";
 import { EnvTag, ProviderTag } from "./DeployTag";
-import { formatScheduleTime } from "@/lib/format-time";
+import { formatScheduleTime, formatScheduleTimeUtc } from "@/lib/format-time";
 import type { DeploymentStatus } from "@/lib/workflows/workflows";
 import type { WorkflowSchedule } from "./Workflows";
 
@@ -80,12 +80,14 @@ export function DeploymentCards({ deployments, schedulesByDeployment }: Props) {
             </div>
             {nextSchedule && (
               <div
-                className="flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500"
-                title={schedules.map((s) => `${s.workflowName}: ${formatScheduleTime(s.nextRunAt!)}`).join("\n")}
+                className="flex items-start gap-1 text-[11px] text-slate-400 dark:text-slate-500"
+                title={schedules.map((s) => `${s.workflowName}: ${formatScheduleTime(s.nextRunAt!)} (${formatScheduleTimeUtc(s.nextRunAt!)})`).join("\n")}
               >
-                <Clock className="h-3 w-3 shrink-0" />
-                <span>Next <span className="font-medium text-slate-600 dark:text-slate-300">{timeUntil(nextSchedule.nextRunAt!)}</span></span>
-                {schedules.length > 1 && <span className="text-slate-300 dark:text-slate-600">· +{schedules.length - 1} more</span>}
+                <Clock className="h-3 w-3 shrink-0 mt-0.5" />
+                <span>
+                  Next <span className="font-medium text-slate-600 dark:text-slate-300">{formatScheduleTime(nextSchedule.nextRunAt!)}</span> · {timeUntil(nextSchedule.nextRunAt!)}
+                  {schedules.length > 1 && <span className="text-slate-300 dark:text-slate-600"> · +{schedules.length - 1} more</span>}
+                </span>
               </div>
             )}
           </div>
