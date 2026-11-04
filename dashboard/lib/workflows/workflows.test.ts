@@ -10,6 +10,9 @@ import {
   runOutcome,
   optionalRunColumns,
   matchesStatusFilter,
+  describeRun,
+  addRetryContext,
+  applyRunJobs,
   type WorkflowRun,
   type WorkflowSchedule,
   type DeploymentStatus,
@@ -125,6 +128,143 @@ describe("runOutcome", () => {
 
   it.each(["cancelled", "skipped", "neutral", "stale"])("does not report %s as success", (conclusion) => {
     expect(runOutcome("completed", conclusion)).toBe("neutral");
+  });
+});
+
+describe("describeRun", () => {
+  const job = (name: string, conclusion: string | null) => ({ name, conclusion });
+
+  it("reports a scheduled run that skipped every deploy job as no changes", () => {
+    expect(describeRun("Deploy Production - AWS", "success", [job("check-changes", "success"), job("deploy", "skipped")]))
+      .toBe("Skipped - No changes found");
+  });
+
+  it("reports no changes across a multi-job chain", () => {
+    expect(describeRun("AWS Production - Pipeline", "success", [job("check-changes", "success"), job("job1", "skipped"), job("job2", "skipped"), job("job3", "skipped")]))
+      .toBe("Skipped - No changes found");
+  });
+
+  it("reports a deploy when the change check found work", () => {
+    expect(describeRun("Deploy Production - AWS", "success", [job("check-changes", "success"), job("deploy", "success")])).toBe("Deployed");
+  });
+
+  it("reports a manual deploy, which skips the change check, as deployed", () => {
+    expect(describeRun("Deploy Production - AWS", "success", [job("check-changes", "skipped"), job("deploy", "success")])).toBe("Deployed");
+  });
+
+  it("recognizes deploy workflows that the env classifier doesn't", () => {
+    expect(describeRun("Deploy to blog.groupdocs.com (S3)", "success", [job("build", "success")])).toBe("Deployed");
+  });
+
+  it("says nothing for a successful non-deploy workflow", () => {
+    expect(describeRun("Scan Missing Translations", "success", [job("scan", "success")])).toBeNull();
+  });
+
+  it("names the job a failed run stopped at", () => {
+    expect(describeRun("AWS Production - Pipeline", "failure", [job("job1", "success"), job("job2 / build-global", "failure"), job("job3", "skipped")]))
+      .toBe("Failed at job2 / build-global");
+  });
+
+  it("names the job a timed-out run stopped at, even when the run itself reports failure", () => {
+    expect(describeRun("Deploy Production - AWS", "failure", [job("deploy", "timed_out")])).toBe("Timed out at deploy");
+    expect(describeRun("Deploy Production - AWS", "timed_out", [job("deploy", "timed_out")])).toBe("Timed out at deploy");
+  });
+
+  it("names the job a cancelled run stopped at", () => {
+    expect(describeRun("AWS Production - Pipeline", "cancelled", [job("job1", "success"), job("job2", "cancelled")])).toBe("Cancelled during job2");
+  });
+
+  it("falls back to a plain outcome when no job explains it", () => {
+    expect(describeRun("Deploy Production - AWS", "failure", [])).toBe("Failed");
+    expect(describeRun("Deploy Production - AWS", "cancelled", [])).toBe("Cancelled");
+    expect(describeRun("Deploy Production - AWS", "startup_failure", [])).toBe("Failed to start");
+  });
+});
+
+describe("applyRunJobs", () => {
+  const noChangeJobs = [{ name: "check-changes", conclusion: "success" }, { name: "deploy", conclusion: "skipped" }];
+
+  it("reports a no-change run as skipped rather than success", () => {
+    const result = applyRunJobs(makeRun({ workflowName: "Deploy Production - AWS", status: "completed", conclusion: "success" }), noChangeJobs);
+    expect(result.conclusion).toBe("skipped");
+    expect(result.comment).toBe("Skipped - No changes found");
+  });
+
+  it("keeps a real deploy as success", () => {
+    const jobs = [{ name: "check-changes", conclusion: "success" }, { name: "deploy", conclusion: "success" }];
+    const result = applyRunJobs(makeRun({ workflowName: "Deploy Production - AWS", status: "completed", conclusion: "success" }), jobs);
+    expect(result.conclusion).toBe("success");
+    expect(result.comment).toBe("Deployed");
+  });
+
+  it("leaves no-change runs out of deployment success counts and averages", () => {
+    const createdAt = new Date().toISOString();
+    const skipped = applyRunJobs(makeRun({ workflowName: "Production - AWS", status: "completed", conclusion: "success", createdAt, durationSeconds: 8 }), noChangeJobs);
+    const deployed = makeRun({ workflowName: "Production - AWS", status: "completed", conclusion: "success", createdAt, durationSeconds: 100 });
+
+    expect(buildDeployments([deployed, skipped])[0].successCount).toBe(1);
+    const day = buildDailyStats([deployed, skipped], 3).find((s) => s.date === createdAt.slice(0, 10))!;
+    expect(day).toMatchObject({ success: 1, other: 1, avgDurationSeconds: 100 });
+  });
+});
+
+describe("startup_failure", () => {
+  it("counts as a failure in deployment totals and daily stats", () => {
+    const createdAt = new Date().toISOString();
+    const run = makeRun({ workflowName: "Production - AWS", status: "completed", conclusion: "startup_failure", createdAt });
+    expect(buildDeployments([run])[0].failureCount).toBe(1);
+    expect(buildDailyStats([run], 3).find((s) => s.date === createdAt.slice(0, 10))!.failure).toBe(1);
+  });
+});
+
+describe("addRetryContext", () => {
+  const run = (id: number, conclusion: string, comment: string | null, overrides: Partial<{ event: string; workflowName: string; status: string }> = {}) => ({
+    id, conclusion, comment, event: "schedule", workflowName: "Pipeline", status: "completed", ...overrides,
+  });
+  const chainedCheck = [{ name: "check-changes", steps: [{ name: "Find last deploy attempt", status: "completed", conclusion: "success" }] }];
+  const simpleCheck = [{ name: "check-changes", steps: [{ name: "Check for new commits", status: "completed", conclusion: "success" }] }];
+
+  it("says the change check was skipped for a chained pipeline after a failure", () => {
+    const result = addRetryContext([run(2, "success", "Deployed"), run(1, "failure", "Failed at job2")], new Map([[2, chainedCheck]]));
+    expect(result[0].comment).toBe("Last build failed - Change check skipped");
+  });
+
+  it("says deployed again when the workflow still ran its check", () => {
+    const result = addRetryContext([run(2, "success", "Deployed"), run(1, "failure", "Failed at deploy")], new Map([[2, simpleCheck]]));
+    expect(result[0].comment).toBe("Last build failed - Deployed again");
+  });
+
+  it("names a cancelled previous attempt", () => {
+    const result = addRetryContext([run(2, "success", "Deployed"), run(1, "cancelled", "Cancelled")], new Map([[2, chainedCheck]]));
+    expect(result[0].comment).toBe("Last build cancelled - Change check skipped");
+  });
+
+  it("looks past no-change runs to the last real attempt", () => {
+    const result = addRetryContext(
+      [run(3, "success", "Deployed"), run(2, "success", "Skipped - No changes found"), run(1, "failure", "Failed at job1")],
+      new Map([[3, simpleCheck]])
+    );
+    expect(result[0].comment).toBe("Last build failed - Deployed again");
+  });
+
+  it("leaves a deploy alone when the last attempt succeeded", () => {
+    const result = addRetryContext([run(2, "success", "Deployed"), run(1, "success", "Deployed")], new Map([[2, chainedCheck]]));
+    expect(result[0].comment).toBe("Deployed");
+  });
+
+  it("only compares runs of the same workflow", () => {
+    const result = addRetryContext([run(2, "success", "Deployed"), run(1, "failure", "Failed", { workflowName: "Other" })], new Map([[2, chainedCheck]]));
+    expect(result[0].comment).toBe("Deployed");
+  });
+
+  it("leaves manual runs alone, since a person chose to run them", () => {
+    const result = addRetryContext([run(2, "success", "Deployed", { event: "workflow_dispatch" }), run(1, "failure", "Failed")], new Map());
+    expect(result[0].comment).toBe("Deployed");
+  });
+
+  it("ignores an older run that is still in progress", () => {
+    const result = addRetryContext([run(2, "success", "Deployed"), run(1, "", null, { status: "in_progress" })], new Map([[2, chainedCheck]]));
+    expect(result[0].comment).toBe("Deployed");
   });
 });
 

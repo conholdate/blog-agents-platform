@@ -13,6 +13,28 @@ const PROVIDER_STYLES: Record<"aws" | "ceph", string> = {
   ceph: "bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-500/20 dark:text-teal-300 dark:border-teal-700",
 };
 
+const TRIGGER_LABELS: Record<string, string> = {
+  schedule: "Scheduled",
+  workflow_dispatch: "Manual",
+  push: "Push",
+  pull_request: "Pull request",
+};
+
+export function TriggerTag({ event, actor }: { event: string; actor: string | null }) {
+  const isManual = event === "workflow_dispatch";
+  const style = isManual
+    ? "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200 dark:bg-fuchsia-500/20 dark:text-fuchsia-300 dark:border-fuchsia-700"
+    : "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600";
+  return (
+    <span
+      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border whitespace-nowrap ${style}`}
+      title={isManual && actor ? `Run by ${actor}` : undefined}
+    >
+      {TRIGGER_LABELS[event] ?? event}
+    </span>
+  );
+}
+
 export function EnvTag({ env }: { env: "production" | "staging" }) {
   return (
     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wide border shrink-0 ${ENV_STYLES[env]}`}>

@@ -21,6 +21,7 @@ export interface WorkflowRun {
   updatedAt: string;
   runStartedAt: string;
   scheduledFor?: string | null;
+  comment?: string | null;
   durationSeconds: number | null;
   env: RunEnv;
   provider: RunProvider;
@@ -180,7 +181,7 @@ export function Workflows({ domain }: Props) {
             {summary.avgDurationSeconds != null && (
               <span
                 className="text-[11px] text-slate-400 dark:text-slate-500"
-                title={`Average across the last ${SUMMARY_RUNS_PAGE_SIZE} runs of all pipelines, including failed and cancelled runs`}
+                title={`Average across the last ${SUMMARY_RUNS_PAGE_SIZE} runs of all pipelines, including failed and cancelled runs but not runs skipped for no changes`}
               >
                 Avg build time, last {SUMMARY_RUNS_PAGE_SIZE} runs <span className="font-medium text-slate-600 dark:text-slate-300">{formatDuration(summary.avgDurationSeconds)}</span>
               </span>

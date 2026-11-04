@@ -6,6 +6,7 @@ const TICK_COLORS: Record<string, string> = {
   success:         "bg-green-500 dark:bg-green-400",
   failure:         "bg-red-500 dark:bg-red-400",
   timed_out:       "bg-red-500 dark:bg-red-400",
+  startup_failure: "bg-red-500 dark:bg-red-400",
   cancelled:       "bg-slate-300 dark:bg-slate-600",
   skipped:         "bg-slate-300 dark:bg-slate-600",
   action_required: "bg-amber-400 dark:bg-amber-500",

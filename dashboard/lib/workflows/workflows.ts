@@ -69,6 +69,7 @@ export interface WorkflowRun {
   updatedAt: string;
   runStartedAt: string;
   scheduledFor?: string | null; // the cron time a scheduled run belongs to, when known
+  comment?: string | null; // what the run actually did, derived from its jobs; see describeRun
   durationSeconds: number | null; // null until the run completes
   env: RunEnv;
   provider: RunProvider;
@@ -336,7 +337,7 @@ export function buildDeployments(runs: WorkflowRun[]): DeploymentStatus[] {
     if (r.env === "other" || r.provider === "other") continue;
     const key = `${r.env}:${r.provider}`;
     const isSuccess = r.status === "completed" && r.conclusion === "success";
-    const isFailure = r.status === "completed" && (r.conclusion === "failure" || r.conclusion === "timed_out");
+    const isFailure = runOutcome(r.status, r.conclusion) === "failed";
     const existing = byKey.get(key);
     if (!existing) {
       byKey.set(key, {
@@ -385,9 +386,9 @@ export function buildDailyStats(runs: WorkflowRun[], days = DAILY_STATS_WINDOW_D
     const bucket = byDate.get(date) ?? { success: 0, failure: 0, other: 0, durations: [] };
     if (r.status === "in_progress" || r.status === "queued" || r.status === "waiting") bucket.other++;
     else if (r.conclusion === "success") bucket.success++;
-    else if (r.conclusion === "failure" || r.conclusion === "timed_out") bucket.failure++;
+    else if (runOutcome(r.status, r.conclusion) === "failed") bucket.failure++;
     else bucket.other++;
-    if (r.durationSeconds != null) bucket.durations.push(r.durationSeconds);
+    if (r.durationSeconds != null && r.conclusion !== "skipped") bucket.durations.push(r.durationSeconds);
     byDate.set(date, bucket);
   }
 
@@ -414,18 +415,19 @@ export async function getWorkflowsSummary(domain: string): Promise<WorkflowsSumm
   const repo = getWorkflowsRepo(domain);
   if (!getGithubToken() || !repo) return { notConfigured: true };
 
-  const [{ runs }, schedules] = await Promise.all([
+  const [{ runs: recentRuns }, schedules] = await Promise.all([
     getRecentWorkflowRuns(domain, SUMMARY_RUNS_PAGE_SIZE),
     getWorkflowSchedules(domain),
   ]);
+  const runs = await withRunComments(domain, recentRuns);
 
   let successCount = 0, failureCount = 0, inProgressCount = 0;
   const durations: number[] = [];
   for (const r of runs) {
     if (r.status === "in_progress" || r.status === "queued" || r.status === "waiting") inProgressCount++;
     else if (r.conclusion === "success") successCount++;
-    else if (r.conclusion === "failure" || r.conclusion === "timed_out") failureCount++;
-    if (r.durationSeconds != null) durations.push(r.durationSeconds);
+    else if (runOutcome(r.status, r.conclusion) === "failed") failureCount++;
+    if (r.durationSeconds != null && r.conclusion !== "skipped") durations.push(r.durationSeconds);
   }
   const avgDurationSeconds = durations.length > 0 ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null;
 
@@ -475,33 +477,135 @@ interface RawJob {
   steps?: RawJobStep[];
 }
 
-// Run-level status has no failure reason — GitHub only exposes that on the job/step
-// breakdown, which is a separate API call per run. Fetched on demand (when a user
-// expands a failed run) rather than eagerly, to keep the summary/runs list cheap.
-export async function getFailedSteps(domain: string, runId: number): Promise<FailedStep[]> {
+// Run-level status says nothing about what a run did or why it failed — GitHub only
+// exposes that on the job/step breakdown, which is a separate API call per run. Only
+// call this for completed runs: their outcomes never change, so this can cache well
+// past TTL_WORKFLOWS, and each new run costs a single call.
+async function getRunJobs(domain: string, runId: number): Promise<RawJob[]> {
   const token = getGithubToken();
   const repo = getWorkflowsRepo(domain);
   if (!token || !repo) return [];
 
   const cacheKey = `workflows:jobs:${domain}:${runId}`;
-  const cached = getCached<FailedStep[]>(cacheKey, TTL_WORKFLOW_SCHEDULES);
+  const cached = getCached<RawJob[]>(cacheKey, TTL_WORKFLOW_SCHEDULES);
   if (cached) return cached;
 
   const res = await fetch(
-    `https://api.github.com/repos/${repo.owner}/${repo.repo}/actions/runs/${runId}/jobs`,
+    `https://api.github.com/repos/${repo.owner}/${repo.repo}/actions/runs/${runId}/jobs?per_page=100`,
     { headers: getHeaders(token) }
   );
   if (!res.ok) throw new Error(`GitHub API error ${res.status}: ${res.statusText}`);
 
   const json: { jobs?: RawJob[] } = await res.json();
+  const jobs = json.jobs ?? [];
+  setCached(cacheKey, jobs);
+  return jobs;
+}
+
+export async function getFailedSteps(domain: string, runId: number): Promise<FailedStep[]> {
   const failedSteps: FailedStep[] = [];
-  for (const job of json.jobs ?? []) {
+  for (const job of await getRunJobs(domain, runId)) {
     if (job.conclusion !== "failure" && job.conclusion !== "timed_out") continue;
     const failedStep = (job.steps ?? []).find((s) => s.conclusion === "failure" || s.conclusion === "timed_out");
     failedSteps.push({ jobName: job.name, stepName: failedStep?.name ?? "Unknown step", htmlUrl: job.html_url });
   }
-
-  // A completed run's job/step outcomes never change, so this can cache well past TTL_WORKFLOWS.
-  setCached(cacheKey, failedSteps);
   return failedSteps;
+}
+
+// Job and step names the deploy workflows in each domain's repo use. If those YAMLs
+// rename them, no-change runs fall back to reading as plain "Deployed".
+const CHECK_CHANGES_JOB = "check-changes";
+const LAST_ATTEMPT_STEP = "Find last deploy attempt";
+
+const NO_CHANGES_COMMENT = "Skipped - No changes found";
+const DEPLOYED_COMMENT = "Deployed";
+
+function isDeployWorkflow(workflowName: string): boolean {
+  return classifyEnv(workflowName) !== "other" || /deploy/i.test(workflowName);
+}
+
+// GitHub reports a run that found nothing to deploy as a plain "success", the same as
+// a real deploy, so the difference can only be read from which jobs actually ran.
+export function describeRun(workflowName: string, conclusion: string | null, jobs: Pick<RawJob, "name" | "conclusion">[]): string | null {
+  const stoppedAt = (jobConclusion: string) => jobs.find((j) => j.conclusion === jobConclusion)?.name;
+
+  switch (conclusion) {
+    case "success": {
+      const checkedChanges = jobs.some((j) => j.name === CHECK_CHANGES_JOB && j.conclusion === "success");
+      const work = jobs.filter((j) => j.name !== CHECK_CHANGES_JOB);
+      if (checkedChanges && work.length > 0 && work.every((j) => j.conclusion === "skipped")) return NO_CHANGES_COMMENT;
+      return isDeployWorkflow(workflowName) ? DEPLOYED_COMMENT : null;
+    }
+    case "failure":
+    case "timed_out": {
+      const timedOutJob = stoppedAt("timed_out");
+      if (timedOutJob) return `Timed out at ${timedOutJob}`;
+      const failedJob = stoppedAt("failure");
+      return failedJob ? `Failed at ${failedJob}` : "Failed";
+    }
+    case "cancelled": {
+      const cancelledJob = stoppedAt("cancelled");
+      return cancelledJob ? `Cancelled during ${cancelledJob}` : "Cancelled";
+    }
+    case "startup_failure":
+      return "Failed to start";
+    case "skipped":
+      return "Skipped";
+    default:
+      return null;
+  }
+}
+
+// A scheduled deploy right after a failed attempt isn't necessarily new content: the
+// pipelines redeploy until one completes. The chained pipelines (blog.aspose.com) skip
+// the commit check entirely in that case; the others still run it, so they get
+// different wording. `runs` must be newest-first, as the GitHub API returns them.
+export function addRetryContext<T extends Pick<WorkflowRun, "id" | "workflowName" | "event" | "status" | "conclusion" | "comment">>(
+  runs: T[],
+  jobsByRun: Map<number, Pick<RawJob, "name" | "steps">[]>
+): T[] {
+  return runs.map((run, i) => {
+    if (run.event !== "schedule" || run.comment !== DEPLOYED_COMMENT) return run;
+
+    const lastAttempt = runs.slice(i + 1).find((r) => r.workflowName === run.workflowName && r.status === "completed" && r.comment !== NO_CHANGES_COMMENT);
+    if (!lastAttempt) return run;
+
+    const lastResult = runOutcome(lastAttempt.status, lastAttempt.conclusion) === "failed" ? "failed" : lastAttempt.conclusion === "cancelled" ? "cancelled" : null;
+    if (!lastResult) return run;
+
+    const checkJob = jobsByRun.get(run.id)?.find((j) => j.name === CHECK_CHANGES_JOB);
+    const skipsCheck = checkJob?.steps?.some((s) => s.name === LAST_ATTEMPT_STEP);
+    return { ...run, comment: `Last build ${lastResult} - ${skipsCheck ? "Change check skipped" : "Deployed again"}` };
+  });
+}
+
+// Reports a no-change run as "skipped" rather than GitHub's "success". Everything
+// downstream reads the conclusion, so this one change keeps these runs out of the
+// green badges, success counts and build-time averages: nothing was deployed.
+export function applyRunJobs(run: WorkflowRun, jobs: Pick<RawJob, "name" | "conclusion">[]): WorkflowRun {
+  const comment = describeRun(run.workflowName, run.conclusion, jobs);
+  return { ...run, comment, conclusion: comment === NO_CHANGES_COMMENT ? "skipped" : run.conclusion };
+}
+
+// The Overview loads all 6 domains at once, so this keeps a cold cache at 90 concurrent
+// requests, under GitHub's secondary rate limit of 100.
+const JOB_LOOKUP_BATCH_SIZE = 15;
+
+export async function withRunComments(domain: string, runs: WorkflowRun[]): Promise<WorkflowRun[]> {
+  const jobsByRun = new Map<number, RawJob[]>();
+  const commented: WorkflowRun[] = [];
+  for (let i = 0; i < runs.length; i += JOB_LOOKUP_BATCH_SIZE) {
+    commented.push(...await Promise.all(runs.slice(i, i + JOB_LOOKUP_BATCH_SIZE).map(async (run) => {
+      if (run.status !== "completed") return run;
+      try {
+        const jobs = await getRunJobs(domain, run.id);
+        jobsByRun.set(run.id, jobs);
+        return applyRunJobs(run, jobs);
+      } catch {
+        // A comment only adds detail, so one failed lookup shouldn't hide the runs.
+        return run;
+      }
+    })));
+  }
+  return addRetryContext(commented, jobsByRun);
 }
