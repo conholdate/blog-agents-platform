@@ -9,6 +9,7 @@ import {
   withScheduledSlots,
   runOutcome,
   optionalRunColumns,
+  matchesStatusFilter,
   type WorkflowRun,
   type WorkflowSchedule,
   type DeploymentStatus,
@@ -124,6 +125,33 @@ describe("runOutcome", () => {
 
   it.each(["cancelled", "skipped", "neutral", "stale"])("does not report %s as success", (conclusion) => {
     expect(runOutcome("completed", conclusion)).toBe("neutral");
+  });
+});
+
+describe("matchesStatusFilter", () => {
+  it("matches everything for all", () => {
+    expect(matchesStatusFilter("completed", "cancelled", "all")).toBe(true);
+    expect(matchesStatusFilter("in_progress", null, "all")).toBe(true);
+  });
+
+  it("includes every failure conclusion under failed", () => {
+    for (const conclusion of ["failure", "timed_out", "startup_failure"]) {
+      expect(matchesStatusFilter("completed", conclusion, "failed")).toBe(true);
+    }
+    expect(matchesStatusFilter("completed", "success", "failed")).toBe(false);
+  });
+
+  it("matches unfinished runs under running", () => {
+    expect(matchesStatusFilter("queued", null, "running")).toBe(true);
+    expect(matchesStatusFilter("completed", "success", "running")).toBe(false);
+  });
+
+  it("groups cancelled, skipped and action_required under other", () => {
+    for (const conclusion of ["cancelled", "skipped", "action_required"]) {
+      expect(matchesStatusFilter("completed", conclusion, "other")).toBe(true);
+    }
+    expect(matchesStatusFilter("completed", "failure", "other")).toBe(false);
+    expect(matchesStatusFilter("completed", "success", "other")).toBe(false);
   });
 });
 

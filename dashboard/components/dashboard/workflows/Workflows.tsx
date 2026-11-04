@@ -6,7 +6,7 @@ import { DailyRunsChart, formatDuration } from "./DailyRunsChart";
 import { DeploymentCards } from "./DeploymentCards";
 import { ScheduledWorkflowsList } from "./ScheduledWorkflowsList";
 import { RunsTable } from "./RunsTable";
-import type { DailyRunStat, DeploymentStatus, RunEnv, RunProvider } from "@/lib/workflows/workflows";
+import { SUMMARY_RUNS_PAGE_SIZE, type DailyRunStat, type DeploymentStatus, type RunEnv, type RunProvider } from "@/lib/workflows/workflows";
 
 export interface WorkflowRun {
   id: number;
@@ -178,8 +178,11 @@ export function Workflows({ domain }: Props) {
           <div className="flex items-center justify-between mb-3">
             <span className="text-[12px] font-semibold text-slate-600 dark:text-slate-300">Daily Runs (last {summary.dailyStats.length} days)</span>
             {summary.avgDurationSeconds != null && (
-              <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                Avg build time <span className="font-medium text-slate-600 dark:text-slate-300">{formatDuration(summary.avgDurationSeconds)}</span>
+              <span
+                className="text-[11px] text-slate-400 dark:text-slate-500"
+                title={`Average across the last ${SUMMARY_RUNS_PAGE_SIZE} runs of all pipelines, including failed and cancelled runs`}
+              >
+                Avg build time, last {SUMMARY_RUNS_PAGE_SIZE} runs <span className="font-medium text-slate-600 dark:text-slate-300">{formatDuration(summary.avgDurationSeconds)}</span>
               </span>
             )}
           </div>

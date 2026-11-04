@@ -6,11 +6,58 @@ import { WorkflowStatusBadge } from "./WorkflowStatusBadge";
 import { formatDuration } from "./DailyRunsChart";
 import { EnvTag, ProviderTag } from "./DeployTag";
 import { formatClockTime, formatDelay, formatScheduleTime, formatScheduleTimeUtc } from "@/lib/format-time";
-import { optionalRunColumns, type FailedStep } from "@/lib/workflows/workflows";
+import { matchesStatusFilter, optionalRunColumns, runOutcome, type FailedStep, type RunStatusFilter } from "@/lib/workflows/workflows";
 import type { WorkflowRun } from "./Workflows";
 
 function isFailedRun(run: WorkflowRun): boolean {
-  return run.status === "completed" && (run.conclusion === "failure" || run.conclusion === "timed_out");
+  return runOutcome(run.status, run.conclusion) === "failed";
+}
+
+const STATUS_OPTIONS: { value: RunStatusFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "failed", label: "Failed" },
+  { value: "running", label: "Running" },
+  { value: "success", label: "Success" },
+  { value: "other", label: "Other" },
+];
+
+const ENV_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "production", label: "Production" },
+  { value: "staging", label: "Staging" },
+] as const;
+
+const PROVIDER_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "aws", label: "AWS" },
+  { value: "ceph", label: "Ceph" },
+] as const;
+
+function FilterGroup<T extends string>({ label, options, value, onChange }: {
+  label: string;
+  options: readonly { value: T; label: string; count?: number }[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5" role="group" aria-label={label}>
+      <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{label}</span>
+      <div className="flex items-center gap-1 p-1 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => onChange(option.value)}
+            aria-pressed={value === option.value}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+              value === option.value ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+            }`}
+          >
+            {option.label}{option.count != null && ` (${option.count})`}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function timeAgo(iso: string): string {
@@ -29,12 +76,13 @@ interface Props {
   runs: WorkflowRun[];
 }
 
-// The env/provider + workflow filter chips and the run history table, including
+// The status/env/provider + workflow filter chips and the run history table, including
 // on-demand failure-reason lookup for a clicked failed run. Owns its own filter
 // and expand state since none of it needs to be visible to the rest of the
 // CI/CD Status screen.
 export function RunsTable({ domain, runs }: Props) {
   const [filterWorkflow, setFilterWorkflow] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<RunStatusFilter>("all");
   const [filterEnv, setFilterEnv] = useState<"all" | "production" | "staging">("all");
   const [filterProvider, setFilterProvider] = useState<"all" | "aws" | "ceph">("all");
   const [expandedRunId, setExpandedRunId] = useState<number | null>(null);
@@ -62,10 +110,28 @@ export function RunsTable({ domain, runs }: Props) {
     workflowCounts[run.workflowName] = (workflowCounts[run.workflowName] ?? 0) + 1;
   }
 
-  const filteredRuns = runs
-    .filter((r) => filterWorkflow === "all" || r.workflowName === filterWorkflow)
-    .filter((r) => filterEnv === "all" || r.env === filterEnv)
-    .filter((r) => filterProvider === "all" || r.provider === filterProvider);
+  const matchesWorkflow = (r: WorkflowRun) => filterWorkflow === "all" || r.workflowName === filterWorkflow;
+  const matchesStatus = (r: WorkflowRun) => matchesStatusFilter(r.status, r.conclusion, filterStatus);
+  const matchesDeploy = (r: WorkflowRun) =>
+    (filterEnv === "all" || r.env === filterEnv) && (filterProvider === "all" || r.provider === filterProvider);
+
+  const filteredRuns = runs.filter((r) => matchesWorkflow(r) && matchesStatus(r) && matchesDeploy(r));
+
+  // Each count answers "how many rows would I get if I picked this?", so it applies
+  // every other active filter but not its own.
+  const statusPool = runs.filter((r) => matchesWorkflow(r) && matchesDeploy(r));
+  const statusOptions = STATUS_OPTIONS.map((option) => ({
+    ...option,
+    count: statusPool.filter((r) => matchesStatusFilter(r.status, r.conclusion, option.value)).length,
+  }));
+  const workflowPool = runs.filter((r) => matchesStatus(r) && matchesDeploy(r));
+
+  function clearFilters() {
+    setFilterWorkflow("all");
+    setFilterStatus("all");
+    setFilterEnv("all");
+    setFilterProvider("all");
+  }
 
   const columns = optionalRunColumns(runs);
   // Workflow, Status, Duration, Started, Updated and the link column are always shown.
@@ -73,64 +139,48 @@ export function RunsTable({ domain, runs }: Props) {
 
   return (
     <>
-      {/* Env / provider filter chips */}
-      <div className="flex flex-wrap items-center gap-3 mb-3">
-        <div className="flex items-center gap-1 p-1 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
-          {(["all", "production", "staging"] as const).map((env) => (
-            <button
-              key={env}
-              onClick={() => setFilterEnv(env)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all capitalize ${
-                filterEnv === env ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-              }`}
-            >
-              {env}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1 p-1 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
-          {(["all", "aws", "ceph"] as const).map((provider) => (
-            <button
-              key={provider}
-              onClick={() => setFilterProvider(provider)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all capitalize ${
-                filterProvider === provider ? "bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-              }`}
-            >
-              {provider}
-            </button>
-          ))}
-        </div>
+      {/* Status / env / provider filters */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3">
+        <FilterGroup label="Status" options={statusOptions} value={filterStatus} onChange={setFilterStatus} />
+        <FilterGroup label="Environment" options={ENV_OPTIONS} value={filterEnv} onChange={setFilterEnv} />
+        <FilterGroup label="Provider" options={PROVIDER_OPTIONS} value={filterProvider} onChange={setFilterProvider} />
       </div>
 
       {/* Workflow filter chips */}
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-3">
         <button
           onClick={() => setFilterWorkflow("all")}
+          aria-pressed={filterWorkflow === "all"}
           className={`px-3 py-1 rounded-full text-[12px] font-medium border transition-colors ${
             filterWorkflow === "all"
               ? "bg-slate-800 dark:bg-white text-white dark:text-slate-900 border-transparent"
               : "bg-white dark:bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-600 hover:border-slate-400"
           }`}
         >
-          All ({runs.length})
+          All ({workflowPool.length})
         </button>
+        {/* Sorted by the unfiltered counts so chips don't reorder as filters change. */}
         {Object.entries(workflowCounts)
           .sort((a, b) => b[1] - a[1])
-          .map(([name, count]) => (
+          .map(([name]) => (
             <button
               key={name}
               onClick={() => setFilterWorkflow(name)}
+              aria-pressed={filterWorkflow === name}
               className={`px-3 py-1 rounded-full text-[12px] font-medium border transition-colors ${
                 filterWorkflow === name
                   ? "bg-slate-800 dark:bg-white text-white dark:text-slate-900 border-transparent"
                   : "bg-white dark:bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-600 hover:border-slate-400"
               }`}
             >
-              {name} ({count})
+              {name} ({workflowPool.filter((r) => r.workflowName === name).length})
             </button>
           ))}
       </div>
+
+      <p className="mb-2 text-[11px] text-slate-500 dark:text-slate-400">
+        Showing {filteredRuns.length} of the latest {runs.length} runs
+      </p>
 
       {/* Table */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
@@ -151,6 +201,16 @@ export function RunsTable({ domain, runs }: Props) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+              {filteredRuns.length === 0 && (
+                <tr>
+                  <td colSpan={detailColSpan + 1} className="px-3 py-10 text-center text-slate-500 dark:text-slate-400">
+                    No runs match these filters.{" "}
+                    <button onClick={clearFilters} className="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
+                      Clear filters
+                    </button>
+                  </td>
+                </tr>
+              )}
               {filteredRuns.map((run) => {
                 const failed = isFailedRun(run);
                 const expanded = expandedRunId === run.id;

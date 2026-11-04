@@ -308,6 +308,15 @@ export function runOutcome(status: string, conclusion: string | null): RunOutcom
   }
 }
 
+export type RunStatusFilter = "all" | "failed" | "running" | "success" | "other";
+
+export function matchesStatusFilter(status: string, conclusion: string | null, filter: RunStatusFilter): boolean {
+  if (filter === "all") return true;
+  const outcome = runOutcome(status, conclusion);
+  if (filter === "other") return outcome === "attention" || outcome === "neutral";
+  return outcome === filter;
+}
+
 // Scheduled runs repeat the workflow name as their title, and most repos have one
 // branch and one actor, so these columns only earn their width when they differ.
 // Decided from the unfiltered runs so columns don't appear and vanish as filters change.
@@ -367,7 +376,7 @@ export interface WorkflowsSummary {
 
 const DAILY_STATS_WINDOW_DAYS = 14;
 // Wide enough to cover DAILY_STATS_WINDOW_DAYS for domains that run CI a few times a day.
-const SUMMARY_RUNS_PAGE_SIZE = 40;
+export const SUMMARY_RUNS_PAGE_SIZE = 40;
 
 export function buildDailyStats(runs: WorkflowRun[], days = DAILY_STATS_WINDOW_DAYS): DailyRunStat[] {
   const byDate = new Map<string, { success: number; failure: number; other: number; durations: number[] }>();
