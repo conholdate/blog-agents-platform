@@ -308,6 +308,17 @@ export function runOutcome(status: string, conclusion: string | null): RunOutcom
   }
 }
 
+// Scheduled runs repeat the workflow name as their title, and most repos have one
+// branch and one actor, so these columns only earn their width when they differ.
+// Decided from the unfiltered runs so columns don't appear and vanish as filters change.
+export function optionalRunColumns(runs: Pick<WorkflowRun, "workflowName" | "displayTitle" | "branch" | "actor">[]): { title: boolean; branch: boolean; actor: boolean } {
+  return {
+    title: runs.some((r) => r.displayTitle !== r.workflowName),
+    branch: new Set(runs.map((r) => r.branch)).size > 1,
+    actor: new Set(runs.map((r) => r.actor)).size > 1,
+  };
+}
+
 export function buildDeployments(runs: WorkflowRun[]): DeploymentStatus[] {
   const byKey = new Map<string, DeploymentStatus>();
   // `runs` is newest-first (GitHub API default), so the first run seen per

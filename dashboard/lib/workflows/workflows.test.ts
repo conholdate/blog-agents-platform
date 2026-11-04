@@ -8,6 +8,7 @@ import {
   describeCrons,
   withScheduledSlots,
   runOutcome,
+  optionalRunColumns,
   type WorkflowRun,
   type WorkflowSchedule,
   type DeploymentStatus,
@@ -123,6 +124,32 @@ describe("runOutcome", () => {
 
   it.each(["cancelled", "skipped", "neutral", "stale"])("does not report %s as success", (conclusion) => {
     expect(runOutcome("completed", conclusion)).toBe("neutral");
+  });
+});
+
+describe("optionalRunColumns", () => {
+  const run = { workflowName: "Deploy", displayTitle: "Deploy", branch: "main", actor: "a" };
+
+  it("hides all three when nothing varies", () => {
+    expect(optionalRunColumns([run, run])).toEqual({ title: false, branch: false, actor: false });
+  });
+
+  it("shows title when any run's title differs from its workflow name", () => {
+    expect(optionalRunColumns([run, { ...run, displayTitle: "Fix typo" }]).title).toBe(true);
+  });
+
+  it("shows title for a single run with its own title", () => {
+    expect(optionalRunColumns([{ ...run, displayTitle: "Fix typo" }]).title).toBe(true);
+  });
+
+  it("does not show title just because workflow names differ", () => {
+    expect(optionalRunColumns([run, { ...run, workflowName: "Other", displayTitle: "Other" }]).title).toBe(false);
+  });
+
+  it("shows branch and actor only when they vary", () => {
+    expect(optionalRunColumns([run, { ...run, branch: "dev" }]).branch).toBe(true);
+    expect(optionalRunColumns([run, { ...run, actor: "b" }]).actor).toBe(true);
+    expect(optionalRunColumns([run, { ...run, actor: null }]).actor).toBe(true);
   });
 });
 

@@ -6,7 +6,7 @@ import { WorkflowStatusBadge } from "./WorkflowStatusBadge";
 import { formatDuration } from "./DailyRunsChart";
 import { EnvTag, ProviderTag } from "./DeployTag";
 import { formatClockTime, formatDelay, formatScheduleTime, formatScheduleTimeUtc } from "@/lib/format-time";
-import type { FailedStep } from "@/lib/workflows/workflows";
+import { optionalRunColumns, type FailedStep } from "@/lib/workflows/workflows";
 import type { WorkflowRun } from "./Workflows";
 
 function isFailedRun(run: WorkflowRun): boolean {
@@ -66,6 +66,10 @@ export function RunsTable({ domain, runs }: Props) {
     .filter((r) => filterWorkflow === "all" || r.workflowName === filterWorkflow)
     .filter((r) => filterEnv === "all" || r.env === filterEnv)
     .filter((r) => filterProvider === "all" || r.provider === filterProvider);
+
+  const columns = optionalRunColumns(runs);
+  // Workflow, Status, Duration, Started, Updated and the link column are always shown.
+  const detailColSpan = 6 + Number(columns.title) + Number(columns.branch) + Number(columns.actor);
 
   return (
     <>
@@ -137,9 +141,9 @@ export function RunsTable({ domain, runs }: Props) {
                 <th className="px-3 py-2.5"></th>
                 <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Workflow</th>
                 <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Status</th>
-                <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400">Title</th>
-                <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Branch</th>
-                <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Actor</th>
+                {columns.title && <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400">Title</th>}
+                {columns.branch && <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Branch</th>}
+                {columns.actor && <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Actor</th>}
                 <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Duration</th>
                 <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Started</th>
                 <th className="text-left px-3 py-2.5 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Updated</th>
@@ -155,7 +159,9 @@ export function RunsTable({ domain, runs }: Props) {
                   <Fragment key={run.id}>
                     <tr
                       onClick={failed ? () => toggleFailureReason(run) : undefined}
-                      className={`hover:bg-slate-50 dark:hover:bg-slate-700/30 ${failed ? "cursor-pointer" : ""}`}
+                      className={failed
+                        ? "cursor-pointer bg-red-50/60 hover:bg-red-50 dark:bg-red-900/10 dark:hover:bg-red-900/20"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-700/30"}
                     >
                       <td className="px-3 py-2 whitespace-nowrap">
                         {failed && (
@@ -174,11 +180,13 @@ export function RunsTable({ domain, runs }: Props) {
                       <td className="px-3 py-2 whitespace-nowrap">
                         <WorkflowStatusBadge status={run.status} conclusion={run.conclusion} />
                       </td>
-                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400 max-w-[280px] truncate" title={run.displayTitle}>
-                        {run.displayTitle}
-                      </td>
-                      <td className="px-3 py-2 font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{run.branch}</td>
-                      <td className="px-3 py-2 text-slate-500 dark:text-slate-400 whitespace-nowrap">{run.actor ?? "—"}</td>
+                      {columns.title && (
+                        <td className="px-3 py-2 text-slate-600 dark:text-slate-400 max-w-[280px] truncate" title={run.displayTitle}>
+                          {run.displayTitle}
+                        </td>
+                      )}
+                      {columns.branch && <td className="px-3 py-2 font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{run.branch}</td>}
+                      {columns.actor && <td className="px-3 py-2 text-slate-500 dark:text-slate-400 whitespace-nowrap">{run.actor ?? "—"}</td>}
                       <td className="px-3 py-2 font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{formatDuration(run.durationSeconds)}</td>
                       <td
                         className="px-3 py-2 text-slate-500 dark:text-slate-400 whitespace-nowrap"
@@ -210,7 +218,7 @@ export function RunsTable({ domain, runs }: Props) {
                     {failed && expanded && (
                       <tr className="bg-red-50/50 dark:bg-red-900/10">
                         <td></td>
-                        <td colSpan={9} className="px-3 py-2.5 text-[12px]">
+                        <td colSpan={detailColSpan} className="px-3 py-2.5 text-[12px]">
                           {steps === "loading" && (
                             <span className="flex items-center gap-1.5 text-slate-400"><Loader2 className="h-3 w-3 animate-spin" />Loading failure detail…</span>
                           )}
