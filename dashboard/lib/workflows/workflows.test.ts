@@ -7,6 +7,7 @@ import {
   deploymentFailureCount,
   describeCrons,
   withScheduledSlots,
+  runOutcome,
   type WorkflowRun,
   type WorkflowSchedule,
   type DeploymentStatus,
@@ -100,6 +101,28 @@ describe("classifyWorkflowName", () => {
       env: "production",
       provider: "other",
     });
+  });
+});
+
+describe("runOutcome", () => {
+  it("reports success only for a successful completed run", () => {
+    expect(runOutcome("completed", "success")).toBe("success");
+  });
+
+  it.each(["failure", "timed_out", "startup_failure"])("treats %s as failed", (conclusion) => {
+    expect(runOutcome("completed", conclusion)).toBe("failed");
+  });
+
+  it.each(["in_progress", "queued", "waiting"])("treats %s as running", (status) => {
+    expect(runOutcome(status, null)).toBe("running");
+  });
+
+  it("flags action_required for attention", () => {
+    expect(runOutcome("completed", "action_required")).toBe("attention");
+  });
+
+  it.each(["cancelled", "skipped", "neutral", "stale"])("does not report %s as success", (conclusion) => {
+    expect(runOutcome("completed", conclusion)).toBe("neutral");
   });
 });
 

@@ -49,7 +49,10 @@ export function RunsTable({ domain, runs }: Props) {
     if (failedSteps[run.id]) return;
     setFailedSteps((prev) => ({ ...prev, [run.id]: "loading" }));
     fetch(`/api/workflows/${encodeURIComponent(domain)}/runs/${run.id}/jobs`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`Failed to load failure detail (${r.status})`);
+        return r.json();
+      })
       .then((d) => setFailedSteps((prev) => ({ ...prev, [run.id]: d.failedSteps ?? [] })))
       .catch(() => setFailedSteps((prev) => ({ ...prev, [run.id]: "error" })));
   }

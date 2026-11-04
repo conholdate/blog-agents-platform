@@ -5,8 +5,18 @@ import { WorkflowStatusBadge } from "./WorkflowStatusBadge";
 import { formatDuration } from "./DailyRunsChart";
 import { EnvTag, ProviderTag } from "./DeployTag";
 import { formatScheduleTime, formatScheduleTimeUtc } from "@/lib/format-time";
-import type { DeploymentStatus } from "@/lib/workflows/workflows";
+import { runOutcome, type DeploymentStatus, type RunOutcome } from "@/lib/workflows/workflows";
 import type { WorkflowSchedule } from "./Workflows";
+
+// The dark: variants are required: without them dark:border-slate-700 on the card
+// also recolors the left edge and the status accent disappears in dark mode.
+const OUTCOME_ACCENT: Record<RunOutcome, string> = {
+  success:   "border-l-green-500 dark:border-l-green-500",
+  failed:    "border-l-red-500 dark:border-l-red-500",
+  running:   "border-l-blue-500 dark:border-l-blue-500",
+  attention: "border-l-amber-500 dark:border-l-amber-500",
+  neutral:   "border-l-slate-400 dark:border-l-slate-500",
+};
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -43,12 +53,7 @@ export function DeploymentCards({ deployments, schedulesByDeployment }: Props) {
   return (
     <div className="mb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       {deployments.map((d) => {
-        const isFailing = d.latestRun.status === "completed" && (d.latestRun.conclusion === "failure" || d.latestRun.conclusion === "timed_out");
-        const borderClass = isFailing
-          ? "border-l-red-500"
-          : d.latestRun.status !== "completed"
-          ? "border-l-blue-500"
-          : "border-l-green-500";
+        const borderClass = OUTCOME_ACCENT[runOutcome(d.latestRun.status, d.latestRun.conclusion)];
         const schedules = (schedulesByDeployment.get(`${d.env}:${d.provider}`) ?? [])
           .sort((a, b) => (a.nextRunAt! < b.nextRunAt! ? -1 : 1));
         const nextSchedule = schedules[0];

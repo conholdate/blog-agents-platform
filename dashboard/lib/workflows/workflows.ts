@@ -288,6 +288,26 @@ export function deploymentFailureCount(deployments: DeploymentStatus[], env: "pr
   return deployments.filter((d) => d.env === env).reduce((sum, d) => sum + d.failureCount, 0);
 }
 
+export type RunOutcome = "success" | "failed" | "running" | "attention" | "neutral";
+
+// Green is reserved for an actual success: a cancelled or skipped latest run says
+// nothing about whether the deploy is healthy, so it must not read as passing.
+export function runOutcome(status: string, conclusion: string | null): RunOutcome {
+  if (status !== "completed") return "running";
+  switch (conclusion) {
+    case "success":
+      return "success";
+    case "failure":
+    case "timed_out":
+    case "startup_failure":
+      return "failed";
+    case "action_required":
+      return "attention";
+    default:
+      return "neutral";
+  }
+}
+
 export function buildDeployments(runs: WorkflowRun[]): DeploymentStatus[] {
   const byKey = new Map<string, DeploymentStatus>();
   // `runs` is newest-first (GitHub API default), so the first run seen per
