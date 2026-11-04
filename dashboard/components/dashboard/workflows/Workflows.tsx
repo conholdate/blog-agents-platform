@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Loader2, ExternalLink, RefreshCw, GitBranch } from "lucide-react";
-import { DailyRunsChart, formatDuration } from "./DailyRunsChart";
+import { DailyRunsChart } from "./DailyRunsChart";
 import { DeploymentCards } from "./DeploymentCards";
 import { ScheduledWorkflowsList } from "./ScheduledWorkflowsList";
 import { RunsTable } from "./RunsTable";
-import { formatClockTime } from "@/lib/format-time";
+import { formatClockTime, formatDuration } from "@/lib/format-time";
 import { SUMMARY_RUNS_PAGE_SIZE, type DailyRunStat, type DeploymentStatus, type RunEnv, type RunProvider } from "@/lib/workflows/workflows";
 
 export interface WorkflowRun {

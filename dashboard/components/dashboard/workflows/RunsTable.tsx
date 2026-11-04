@@ -3,9 +3,8 @@
 import { useState, Fragment } from "react";
 import { Loader2, ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
 import { WorkflowStatusBadge } from "./WorkflowStatusBadge";
-import { formatDuration } from "./DailyRunsChart";
 import { EnvTag, ProviderTag, TriggerTag } from "./DeployTag";
-import { formatClockTime, formatDelay, formatScheduleTime, formatScheduleTimeUtc } from "@/lib/format-time";
+import { formatClockTime, formatDelay, formatDuration, formatScheduleTime, formatScheduleTimeUtc } from "@/lib/format-time";
 import { matchesStatusFilter, optionalRunColumns, runOutcome, type FailedStep, type RunStatusFilter } from "@/lib/workflows/workflows";
 import type { WorkflowRun } from "./Workflows";
 

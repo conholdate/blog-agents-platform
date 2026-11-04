@@ -1,14 +1,7 @@
 "use client";
 
+import { formatDuration } from "@/lib/format-time";
 import type { DailyRunStat } from "@/lib/workflows/workflows";
-
-export function formatDuration(seconds: number | null): string {
-  if (seconds == null) return "—";
-  if (seconds < 60) return `${seconds}s`;
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}m ${s}s`;
-}
 
 function formatDayLabel(date: string): string {
   return new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });

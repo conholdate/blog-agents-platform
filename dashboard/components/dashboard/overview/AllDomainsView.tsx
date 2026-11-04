@@ -6,7 +6,8 @@ import { DOMAIN_LABELS } from "@/lib/config";
 import type { Section } from "../Sidebar";
 import { latestDeployment } from "@/lib/workflows/workflows";
 import { WorkflowStatusBadge } from "../workflows/WorkflowStatusBadge";
-import { DailyRunsChart, formatDuration } from "../workflows/DailyRunsChart";
+import { DailyRunsChart } from "../workflows/DailyRunsChart";
+import { formatDuration } from "@/lib/format-time";
 import { EnvTag, ProviderTag } from "../workflows/DeployTag";
 import { domainHealth, type DomainRow } from "./shared";
 

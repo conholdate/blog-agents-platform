@@ -2,9 +2,8 @@
 
 import { Clock } from "lucide-react";
 import { WorkflowStatusBadge } from "./WorkflowStatusBadge";
-import { formatDuration } from "./DailyRunsChart";
 import { EnvTag, ProviderTag } from "./DeployTag";
-import { formatScheduleTime, formatScheduleTimeUtc } from "@/lib/format-time";
+import { formatDuration, formatScheduleTime, formatScheduleTimeUtc } from "@/lib/format-time";
 import { runOutcome, SUMMARY_RUNS_PAGE_SIZE, type DeploymentStatus, type RunOutcome } from "@/lib/workflows/workflows";
 import type { WorkflowSchedule } from "./Workflows";
 
