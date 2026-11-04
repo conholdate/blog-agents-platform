@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Loader2, ExternalLink, RefreshCw, GitBranch } from "lucide-react";
 import { DailyRunsChart, formatDuration } from "./DailyRunsChart";
 import { DeploymentCards } from "./DeploymentCards";
 import { ScheduledWorkflowsList } from "./ScheduledWorkflowsList";
 import { RunsTable } from "./RunsTable";
+import { formatClockTime } from "@/lib/format-time";
 import { SUMMARY_RUNS_PAGE_SIZE, type DailyRunStat, type DeploymentStatus, type RunEnv, type RunProvider } from "@/lib/workflows/workflows";
 
 export interface WorkflowRun {
@@ -63,41 +64,63 @@ interface Props {
   domain: string;
 }
 
+// Matches the server's run cache (TTL_WORKFLOWS): polling faster would only re-read it.
+const AUTO_REFRESH_MS = 5 * 60 * 1000;
+
 export function Workflows({ domain }: Props) {
   const [data, setData] = useState<RunsResponse | null>(null);
   const [schedules, setSchedules] = useState<SchedulesResponse | null>(null);
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [checkedAt, setCheckedAt] = useState<string | null>(null);
+  const latestRequest = useRef(0);
 
   const base = `/api/workflows/${encodeURIComponent(domain)}/runs`;
   const schedulesBase = `/api/workflows/${encodeURIComponent(domain)}/schedules`;
   const summaryBase = `/api/workflows/${encodeURIComponent(domain)}/summary`;
 
   function load(forceRefresh = false) {
+    // Summaries can take seconds on a cold cache, so without this a slow response for
+    // the previous domain could overwrite the domain now on screen.
+    const request = ++latestRequest.current;
+    const ifCurrent = <T,>(apply: (value: T) => void) => (value: T) => {
+      if (request === latestRequest.current) apply(value);
+    };
+
     setLoading(true);
     const url = forceRefresh ? `${base}?refresh=1` : base;
     fetch(url)
       .then((r) => r.json())
-      .then(setData)
-      .catch((e) => setData({ runs: [], error: e.message }))
-      .finally(() => setLoading(false));
+      .then(ifCurrent((d: RunsResponse) => {
+        setData(d);
+        if (!d.error) setCheckedAt(new Date().toISOString());
+      }))
+      .catch(ifCurrent((e: Error) => setData({ runs: [], error: e.message })))
+      .finally(() => {
+        if (request === latestRequest.current) setLoading(false);
+      });
 
     fetch(forceRefresh ? `${schedulesBase}?refresh=1` : schedulesBase)
       .then((r) => r.json())
-      .then(setSchedules)
-      .catch((e) => setSchedules({ schedules: [], error: e.message }));
+      .then(ifCurrent(setSchedules))
+      .catch(ifCurrent((e: Error) => setSchedules({ schedules: [], error: e.message })));
 
     fetch(forceRefresh ? `${summaryBase}?refresh=1` : summaryBase)
       .then((r) => r.json())
-      .then(setSummary)
-      .catch((e) => setSummary({ avgDurationSeconds: null, dailyStats: [], deployments: [], error: e.message }));
+      .then(ifCurrent(setSummary))
+      .catch(ifCurrent((e: Error) => setSummary({ avgDurationSeconds: null, dailyStats: [], deployments: [], error: e.message })));
   }
 
   useEffect(() => {
     setData(null);
     setSchedules(null);
     setSummary(null);
+    setCheckedAt(null);
     load(false);
+    const timer = setInterval(() => {
+      if (!document.hidden) load(false);
+    }, AUTO_REFRESH_MS);
+    return () => clearInterval(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [domain]);
 
@@ -145,12 +168,20 @@ export function Workflows({ domain }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
+          {checkedAt && (
+            <span
+              className="text-[11px] text-slate-500 dark:text-slate-400"
+              title="Checks every 5 minutes while this tab is open. GitHub data can be up to 5 minutes old; the refresh button fetches it now."
+            >
+              Checked {formatClockTime(checkedAt)} GMT+5
+            </span>
+          )}
           {data?.repo && (
             <a
               href={`https://github.com/${data.repo}/actions`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[12px] font-medium text-slate-400 hover:text-indigo-600 dark:text-slate-500 dark:hover:text-indigo-400 transition-colors"
+              className="flex items-center gap-1 text-[12px] font-medium text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               View all on GitHub
@@ -160,12 +191,24 @@ export function Workflows({ domain }: Props) {
             onClick={() => load(true)}
             disabled={loading}
             title="Refresh"
+            aria-label="Refresh"
             className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
           </button>
         </div>
       </div>
+
+      {summary?.error && (
+        <div className="mb-5 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-[12px] text-red-700 dark:text-red-300">
+          Couldn&apos;t load the deployment cards and daily chart: {summary.error}
+        </div>
+      )}
+      {schedules?.error && (
+        <div className="mb-5 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-[12px] text-red-700 dark:text-red-300">
+          Couldn&apos;t load scheduled times: {schedules.error}
+        </div>
+      )}
 
       {summary && !summary.notConfigured && !summary.error && (
         <DeploymentCards deployments={summary.deployments} schedulesByDeployment={schedulesByDeployment} />
@@ -180,7 +223,7 @@ export function Workflows({ domain }: Props) {
             <span className="text-[12px] font-semibold text-slate-600 dark:text-slate-300">Daily Runs (last {summary.dailyStats.length} days)</span>
             {summary.avgDurationSeconds != null && (
               <span
-                className="text-[11px] text-slate-400 dark:text-slate-500"
+                className="text-[11px] text-slate-500 dark:text-slate-400"
                 title={`Average across the last ${SUMMARY_RUNS_PAGE_SIZE} runs of all pipelines, including failed and cancelled runs but not runs skipped for no changes`}
               >
                 Avg build time, last {SUMMARY_RUNS_PAGE_SIZE} runs <span className="font-medium text-slate-600 dark:text-slate-300">{formatDuration(summary.avgDurationSeconds)}</span>
@@ -210,7 +253,7 @@ export function Workflows({ domain }: Props) {
 
       {/* Loading */}
       {loading && !data && (
-        <div className="flex items-center justify-center py-24 gap-2 text-slate-400">
+        <div className="flex items-center justify-center py-24 gap-2 text-slate-500">
           <Loader2 className="h-5 w-5 animate-spin" />
           <span className="text-sm">Loading workflow runs…</span>
         </div>
@@ -218,7 +261,7 @@ export function Workflows({ domain }: Props) {
 
       {/* Empty */}
       {data && !data.notConfigured && !data.error && data.runs.length === 0 && !loading && (
-        <div className="flex flex-col items-center justify-center py-24 gap-3 text-center text-slate-400 dark:text-slate-500">
+        <div className="flex flex-col items-center justify-center py-24 gap-3 text-center text-slate-500 dark:text-slate-400">
           <GitBranch className="h-10 w-10" />
           <p className="text-base font-medium text-slate-600 dark:text-slate-400">No workflow runs found</p>
         </div>

@@ -12,6 +12,7 @@ const STYLES: Record<string, string> = {
   action_required: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700",
   queued:          "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700",
   in_progress:     "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700",
+  waiting:         "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700",
 };
 
 interface Props {
@@ -21,7 +22,7 @@ interface Props {
 
 export function WorkflowStatusBadge({ status, conclusion }: Props) {
   const key = conclusion ?? status;
-  const style = STYLES[key] ?? "bg-gray-100 text-gray-600 border-gray-200";
+  const style = STYLES[key] ?? "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600";
   const isSpinning = status === "in_progress" || status === "queued" || status === "waiting";
 
   return (

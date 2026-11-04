@@ -36,7 +36,7 @@ interface Props {
 
 export function RunHistoryStrip({ runs }: Props) {
   if (runs.length === 0) {
-    return <p className="text-[11px] text-slate-400 dark:text-slate-500">No recent runs</p>;
+    return <p className="text-[11px] text-slate-500 dark:text-slate-400">No recent runs</p>;
   }
 
   return (

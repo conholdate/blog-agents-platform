@@ -51,7 +51,7 @@ export function DailyRunsChart({ stats, variant = "full" }: Props) {
               title={title}
               className="flex-1 flex flex-col justify-end gap-[2px] rounded-t-[3px] overflow-hidden cursor-default"
             >
-              {d.other > 0 && <div className="bg-blue-400 dark:bg-blue-500" style={{ height: otherH }} />}
+              {d.other > 0 && <div className="bg-slate-400 dark:bg-slate-500" style={{ height: otherH }} />}
               {d.failure > 0 && <div className="bg-red-500 dark:bg-red-400" style={{ height: failureH }} />}
               {d.success > 0 && <div className="bg-green-500 dark:bg-green-400" style={{ height: successH }} />}
             </div>
@@ -60,12 +60,12 @@ export function DailyRunsChart({ stats, variant = "full" }: Props) {
       </div>
       {!compact && stats.length > 0 && (
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 text-[10px] text-slate-400 dark:text-slate-500">
+          <div className="flex items-center gap-3 text-[10px] text-slate-500 dark:text-slate-400">
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-500 dark:bg-green-400" />Success</span>
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500 dark:bg-red-400" />Failed</span>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-400 dark:bg-blue-500" />Other</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-400 dark:bg-slate-500" />Other</span>
           </div>
-          <div className="text-[10px] text-slate-400 dark:text-slate-500">
+          <div className="text-[10px] text-slate-500 dark:text-slate-400">
             {formatDayLabel(stats[0].date)} – {formatDayLabel(stats[stats.length - 1].date)}
           </div>
         </div>

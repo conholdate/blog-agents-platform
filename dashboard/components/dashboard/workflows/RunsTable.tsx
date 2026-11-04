@@ -85,11 +85,11 @@ function FailureDetail({ steps }: { steps: FailedStepsState | undefined }) {
   return (
     <>
       {steps === "loading" && (
-        <span className="flex items-center gap-1.5 text-slate-400"><Loader2 className="h-3 w-3 animate-spin" />Loading failure detail…</span>
+        <span className="flex items-center gap-1.5 text-slate-500"><Loader2 className="h-3 w-3 animate-spin" />Loading failure detail…</span>
       )}
       {steps === "error" && <span className="text-red-600 dark:text-red-400">Couldn&apos;t load failure detail.</span>}
       {Array.isArray(steps) && steps.length === 0 && (
-        <span className="text-slate-400 dark:text-slate-500">No failed step detail available for this run.</span>
+        <span className="text-slate-500 dark:text-slate-400">No failed step detail available for this run.</span>
       )}
       {Array.isArray(steps) && steps.length > 0 && (
         <ul className="flex flex-col gap-1">
@@ -249,7 +249,7 @@ export function RunsTable({ domain, runs }: Props) {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Open run on GitHub"
-                  className="shrink-0 p-1 -m-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                  className="shrink-0 p-1 -m-1 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
@@ -271,7 +271,7 @@ export function RunsTable({ domain, runs }: Props) {
               <div className="text-[11px] text-slate-500 dark:text-slate-400">
                 <div>{formatScheduleTime(run.runStartedAt)} · updated {timeAgo(run.updatedAt)}</div>
                 {run.scheduledFor && (
-                  <div className="text-slate-400 dark:text-slate-500">
+                  <div className="text-slate-500 dark:text-slate-400">
                     Scheduled {formatClockTime(run.scheduledFor)} · {formatDelay(run.scheduledFor, run.createdAt)} late
                   </div>
                 )}
@@ -335,9 +335,17 @@ export function RunsTable({ domain, runs }: Props) {
                     >
                       <td className="px-2.5 py-2 whitespace-nowrap">
                         {failed && (
-                          expanded
-                            ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-                            : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFailureReason(run);
+                            }}
+                            aria-expanded={expanded}
+                            aria-label={`Failure detail for ${run.workflowName}`}
+                            className="block rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-200"
+                          >
+                            {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                          </button>
                         )}
                       </td>
                       <td className="px-2.5 py-2 font-medium text-slate-700 dark:text-slate-300">
@@ -378,12 +386,12 @@ export function RunsTable({ domain, runs }: Props) {
                       >
                         <div>{formatScheduleTime(run.runStartedAt)}</div>
                         {run.scheduledFor && (
-                          <div className="text-[11px] text-slate-400 dark:text-slate-500">
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400">
                             Scheduled {formatClockTime(run.scheduledFor)} · {formatDelay(run.scheduledFor, run.createdAt)} late
                           </div>
                         )}
                       </td>
-                      <td className="px-2.5 py-2 text-slate-400 dark:text-slate-500 whitespace-nowrap">{timeAgo(run.updatedAt)}</td>
+                      <td className="px-2.5 py-2 text-slate-500 dark:text-slate-400 whitespace-nowrap">{timeAgo(run.updatedAt)}</td>
                       <td className="px-2.5 py-2 whitespace-nowrap">
                         <a
                           href={run.htmlUrl}
@@ -391,7 +399,7 @@ export function RunsTable({ domain, runs }: Props) {
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
                           aria-label="Open run on GitHub"
-                          className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                          className="text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
                         </a>
