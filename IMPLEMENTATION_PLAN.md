@@ -118,6 +118,7 @@ The web control center for all blog agents. AI agents run autonomously and write
 - [x] Cron schedules parsed from each workflow's YAML (`cron:` lines regex-extracted, since GitHub's API doesn't surface them on the run/workflow-list endpoints) and folded into the matching deployment card as "next scheduled run"; leftover non-deploy schedules shown separately
 - [x] 14-day daily runs chart, zero-filled, with average build time
 - [x] Run history table with env/provider + per-workflow filter chips
+- [x] Scheduled times in GMT+5 with UTC on hover; runs table shows when each run started and how late GitHub started scheduled runs (cron slot derived server-side, since GitHub doesn't record it)
 - [x] On-demand failed job/step lookup for a clicked failed run (separate, more expensive API call — fetched lazily, not eagerly for every run)
 - [x] Overview card + "CI/CD" column group on the All-Domains table
 - [x] Split into `Workflows.tsx` (orchestrator) + `DeploymentCards`/`ScheduledWorkflowsList`/`RunsTable` (owns its own filter/expand state) to keep individual files a manageable size

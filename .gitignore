@@ -36,3 +36,6 @@ Thumbs.db
 # Internal announcements & drafts — not for version control
 /announcement/
 /reviews/
+
+# Claude Code local permissions
+.claude/settings.json
