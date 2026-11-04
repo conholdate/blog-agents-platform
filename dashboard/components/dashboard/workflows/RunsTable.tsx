@@ -71,6 +71,44 @@ function timeAgo(iso: string): string {
   return `${days}d ago`;
 }
 
+type FailedStepsState = FailedStep[] | "loading" | "error";
+
+function DurationBar({ seconds, longest, className }: { seconds: number; longest: number; className: string }) {
+  return (
+    <div className={`h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden ${className}`} aria-hidden="true">
+      <div className="h-full rounded-full bg-slate-400 dark:bg-slate-400" style={{ width: `${Math.max(2, (seconds / longest) * 100)}%` }} />
+    </div>
+  );
+}
+
+function FailureDetail({ steps }: { steps: FailedStepsState | undefined }) {
+  return (
+    <>
+      {steps === "loading" && (
+        <span className="flex items-center gap-1.5 text-slate-400"><Loader2 className="h-3 w-3 animate-spin" />Loading failure detail…</span>
+      )}
+      {steps === "error" && <span className="text-red-600 dark:text-red-400">Couldn&apos;t load failure detail.</span>}
+      {Array.isArray(steps) && steps.length === 0 && (
+        <span className="text-slate-400 dark:text-slate-500">No failed step detail available for this run.</span>
+      )}
+      {Array.isArray(steps) && steps.length > 0 && (
+        <ul className="flex flex-col gap-1">
+          {steps.map((s, i) => (
+            <li key={i} className="flex flex-wrap items-center gap-x-2 text-red-700 dark:text-red-300">
+              <span className="font-medium">{s.jobName}</span>
+              <span className="text-red-300 dark:text-red-700">›</span>
+              <span>{s.stepName}</span>
+              <a href={s.htmlUrl} target="_blank" rel="noopener noreferrer" aria-label="Open failed job on GitHub" className="text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-300">
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
 interface Props {
   domain: string;
   runs: WorkflowRun[];
@@ -86,7 +124,7 @@ export function RunsTable({ domain, runs }: Props) {
   const [filterEnv, setFilterEnv] = useState<"all" | "production" | "staging">("all");
   const [filterProvider, setFilterProvider] = useState<"all" | "aws" | "ceph">("all");
   const [expandedRunId, setExpandedRunId] = useState<number | null>(null);
-  const [failedSteps, setFailedSteps] = useState<Record<number, FailedStep[] | "loading" | "error">>({});
+  const [failedSteps, setFailedSteps] = useState<Record<number, FailedStepsState>>({});
 
   function toggleFailureReason(run: WorkflowRun) {
     if (expandedRunId === run.id) {
@@ -184,8 +222,78 @@ export function RunsTable({ domain, runs }: Props) {
         Showing {filteredRuns.length} of the latest {runs.length} runs
       </p>
 
+      {/* Stacked runs, below the width where every table column fits without scrolling */}
+      <div className="min-[1280px]:hidden grid grid-cols-1 md:grid-cols-2 items-start gap-2">
+        {filteredRuns.length === 0 && (
+          <div className="md:col-span-2 px-3 py-10 text-center text-[13px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-500 dark:text-slate-400">
+            No runs match these filters.{" "}
+            <button onClick={clearFilters} className="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
+              Clear filters
+            </button>
+          </div>
+        )}
+        {filteredRuns.map((run) => {
+          const failed = isFailedRun(run);
+          const expanded = expandedRunId === run.id;
+          return (
+            <div
+              key={run.id}
+              className={`flex flex-col gap-2 p-3 text-[12px] border rounded-xl shadow-sm ${failed
+                ? "bg-red-50/60 dark:bg-red-900/10 border-red-200 dark:border-red-900"
+                : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300 min-w-0 break-words">{run.workflowName}</span>
+                <a
+                  href={run.htmlUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Open run on GitHub"
+                  className="shrink-0 p-1 -m-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <WorkflowStatusBadge status={run.status} conclusion={run.conclusion} />
+                <TriggerTag event={run.event} actor={run.actor} />
+                {run.env !== "other" && <EnvTag env={run.env} />}
+                {run.provider !== "other" && <ProviderTag provider={run.provider} />}
+                {columns.actor && <span className="text-[11px] text-slate-500 dark:text-slate-400">{run.actor ?? "—"}</span>}
+                {columns.branch && <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">{run.branch}</span>}
+              </div>
+              {columns.title && <p className="text-slate-600 dark:text-slate-400 break-words">{run.displayTitle}</p>}
+              {run.comment && <p className="text-slate-600 dark:text-slate-400 break-words">{run.comment}</p>}
+              <div className="flex items-center gap-2">
+                <span className="shrink-0 font-mono text-[11px] text-slate-500 dark:text-slate-400">{formatDuration(run.durationSeconds)}</span>
+                {run.durationSeconds != null && <DurationBar seconds={run.durationSeconds} longest={longestDuration} className="flex-1" />}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                <div>{formatScheduleTime(run.runStartedAt)} · updated {timeAgo(run.updatedAt)}</div>
+                {run.scheduledFor && (
+                  <div className="text-slate-400 dark:text-slate-500">
+                    Scheduled {formatClockTime(run.scheduledFor)} · {formatDelay(run.scheduledFor, run.createdAt)} late
+                  </div>
+                )}
+              </div>
+              {failed && (
+                <button
+                  onClick={() => toggleFailureReason(run)}
+                  aria-expanded={expanded}
+                  className="flex items-center gap-1 self-start py-1 text-[12px] font-medium text-red-700 dark:text-red-300"
+                >
+                  {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                  Failure detail
+                </button>
+              )}
+              {failed && expanded && <FailureDetail steps={failedSteps[run.id]} />}
+            </div>
+          );
+        })}
+      </div>
+
       {/* Table */}
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+      <div className="hidden min-[1280px]:block bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
@@ -217,7 +325,6 @@ export function RunsTable({ domain, runs }: Props) {
               {filteredRuns.map((run) => {
                 const failed = isFailedRun(run);
                 const expanded = expandedRunId === run.id;
-                const steps = failedSteps[run.id];
                 return (
                   <Fragment key={run.id}>
                     <tr
@@ -247,7 +354,7 @@ export function RunsTable({ domain, runs }: Props) {
                       <td className="px-2.5 py-2 whitespace-nowrap">
                         <WorkflowStatusBadge status={run.status} conclusion={run.conclusion} />
                       </td>
-                      <td className="px-2.5 py-2 text-[12px] text-slate-600 dark:text-slate-400 min-w-[130px] max-w-[190px]">
+                      <td className="px-2.5 py-2 text-[12px] text-slate-600 dark:text-slate-400 min-w-[120px] max-w-[190px]">
                         {run.comment ?? "—"}
                       </td>
                       {columns.title && (
@@ -259,12 +366,7 @@ export function RunsTable({ domain, runs }: Props) {
                       <td className="px-2.5 py-2 font-mono text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
                         <div>{formatDuration(run.durationSeconds)}</div>
                         {run.durationSeconds != null && (
-                          <div className="mt-1 h-1.5 w-20 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden" aria-hidden="true">
-                            <div
-                              className="h-full rounded-full bg-slate-400 dark:bg-slate-400"
-                              style={{ width: `${Math.max(2, (run.durationSeconds / longestDuration) * 100)}%` }}
-                            />
-                          </div>
+                          <DurationBar seconds={run.durationSeconds} longest={longestDuration} className="mt-1 w-16" />
                         )}
                       </td>
                       <td
@@ -288,6 +390,7 @@ export function RunsTable({ domain, runs }: Props) {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
+                          aria-label="Open run on GitHub"
                           className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
@@ -298,27 +401,7 @@ export function RunsTable({ domain, runs }: Props) {
                       <tr className="bg-red-50/50 dark:bg-red-900/10">
                         <td></td>
                         <td colSpan={detailColSpan} className="px-2.5 py-2.5 text-[12px]">
-                          {steps === "loading" && (
-                            <span className="flex items-center gap-1.5 text-slate-400"><Loader2 className="h-3 w-3 animate-spin" />Loading failure detail…</span>
-                          )}
-                          {steps === "error" && <span className="text-red-600 dark:text-red-400">Couldn&apos;t load failure detail.</span>}
-                          {Array.isArray(steps) && steps.length === 0 && (
-                            <span className="text-slate-400 dark:text-slate-500">No failed step detail available for this run.</span>
-                          )}
-                          {Array.isArray(steps) && steps.length > 0 && (
-                            <ul className="flex flex-col gap-1">
-                              {steps.map((s, i) => (
-                                <li key={i} className="flex items-center gap-2 text-red-700 dark:text-red-300">
-                                  <span className="font-medium">{s.jobName}</span>
-                                  <span className="text-red-300 dark:text-red-700">›</span>
-                                  <span>{s.stepName}</span>
-                                  <a href={s.htmlUrl} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-300">
-                                    <ExternalLink className="h-3 w-3" />
-                                  </a>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
+                          <FailureDetail steps={failedSteps[run.id]} />
                         </td>
                       </tr>
                     )}
