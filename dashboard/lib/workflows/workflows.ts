@@ -276,13 +276,16 @@ export interface DeploymentStatus {
   failureCount: number;
 }
 
-// The single most recently-updated deployment bucket for an environment, across
-// whichever provider(s) that domain deploys with (a domain may run both AWS and
-// Ceph pipelines for production, e.g. blog.aspose.com).
-export function latestDeployment(deployments: DeploymentStatus[], env: "production" | "staging"): DeploymentStatus | null {
+// The one deployment to summarize an environment with, across whichever provider(s)
+// that domain deploys with (a domain may run both AWS and Ceph pipelines for production,
+// e.g. blog.aspose.com). A failing deploy wins over a newer healthy one, otherwise a
+// failing Ceph deploy could hide behind an AWS run that merely finished more recently.
+export function headlineDeployment(deployments: DeploymentStatus[], env: "production" | "staging"): DeploymentStatus | null {
   const matches = deployments.filter((d) => d.env === env);
-  if (matches.length === 0) return null;
-  return matches.reduce((a, b) => (a.latestRun.updatedAt >= b.latestRun.updatedAt ? a : b));
+  const failing = matches.filter((d) => runOutcome(d.latestRun.status, d.latestRun.conclusion) === "failed");
+  const candidates = failing.length > 0 ? failing : matches;
+  if (candidates.length === 0) return null;
+  return candidates.reduce((a, b) => (a.latestRun.updatedAt >= b.latestRun.updatedAt ? a : b));
 }
 
 export function deploymentFailureCount(deployments: DeploymentStatus[], env: "production" | "staging"): number {

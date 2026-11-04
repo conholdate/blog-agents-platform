@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { BookMarked, Languages, TrendingUp, Link, Loader2, RefreshCw, GitBranch } from "lucide-react";
 import { DOMAIN_LABELS } from "@/lib/config";
 import type { Section } from "../Sidebar";
-import { latestDeployment } from "@/lib/workflows/workflows";
+import { headlineDeployment } from "@/lib/workflows/workflows";
 import { WorkflowStatusBadge } from "../workflows/WorkflowStatusBadge";
 import { DailyRunsChart } from "../workflows/DailyRunsChart";
 import { formatDuration } from "@/lib/format-time";
@@ -256,8 +256,8 @@ export function AllDomainsView({ onNavigate, onSelectDomain }: { onNavigate: (s:
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 bg-white dark:bg-slate-800">
                   {rows.map(({ domain, opt, url, tr, wf }) => {
-                    const prod = wf ? latestDeployment(wf.deployments, "production") : null;
-                    const staging = wf ? latestDeployment(wf.deployments, "staging") : null;
+                    const prod = wf ? headlineDeployment(wf.deployments, "production") : null;
+                    const staging = wf ? headlineDeployment(wf.deployments, "staging") : null;
                     const prodDeployments = wf?.deployments.filter((d) => d.env === "production") ?? [];
                     const prodSuccessCount = prodDeployments.reduce((s, d) => s + d.successCount, 0);
                     const prodFailureCount = prodDeployments.reduce((s, d) => s + d.failureCount, 0);
@@ -379,8 +379,8 @@ export function AllDomainsView({ onNavigate, onSelectDomain }: { onNavigate: (s:
                   ]} />
                 )}
                 {tab === "workflows" && row.wf && (() => {
-                  const prod = latestDeployment(row.wf.deployments, "production");
-                  const staging = latestDeployment(row.wf.deployments, "staging");
+                  const prod = headlineDeployment(row.wf.deployments, "production");
+                  const staging = headlineDeployment(row.wf.deployments, "staging");
                   const prodDeployments = row.wf.deployments.filter((d) => d.env === "production");
                   const prodSuccessCount = prodDeployments.reduce((s, d) => s + d.successCount, 0);
                   const prodFailureCount = prodDeployments.reduce((s, d) => s + d.failureCount, 0);

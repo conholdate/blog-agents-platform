@@ -37,6 +37,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - CI/CD Status showing misleading statuses — the deployment card accent disappeared in dark mode, cancelled runs read as green, `startup_failure` wasn't counted as failed, no-change runs counted as successful deploys, and a failed failure-detail lookup claimed no detail was available
 - CI/CD Status runs table clipping its Updated and GitHub link columns on laptop screens
+- Overview hiding a failing production or staging deploy behind a newer healthy one on another provider — a failing deploy now takes priority
 - CI/CD durations reading as "173m 52s" — they now show as `2hr 54m`, `31m` or `20s`, on the CI/CD Status screen and the Overview
 - CI/CD Status showing the previous domain's data when a slow response arrived after switching, and hiding the cards, chart or schedules without explanation when they failed to load
 - CI/CD Status accessibility: failed table rows can now be expanded by keyboard, faint text has more contrast, and links and the refresh button have accessible names

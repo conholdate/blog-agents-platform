@@ -5,7 +5,7 @@ import { Languages, TrendingUp, Link, Bot, Loader2, RefreshCw, GitBranch, Clock,
 import type { Section } from "../Sidebar";
 import type { TranslationSummary } from "@/lib/translation/translationSheets";
 import type { WorkflowsSummary } from "@/lib/workflows/workflows";
-import { latestDeployment } from "@/lib/workflows/workflows";
+import { headlineDeployment } from "@/lib/workflows/workflows";
 import { WorkflowStatusBadge } from "../workflows/WorkflowStatusBadge";
 import { RunHistoryStrip } from "../workflows/RunHistoryStrip";
 import { DailyRunsChart } from "../workflows/DailyRunsChart";
@@ -238,8 +238,8 @@ export function SingleDomainView({ domain, onNavigate }: { domain: string; onNav
             ) : section === "workflows" && wfSummary ? (
               <div className="flex flex-col gap-3">
                 {(() => {
-                  const prod = latestDeployment(wfSummary.deployments, "production");
-                  const staging = latestDeployment(wfSummary.deployments, "staging");
+                  const prod = headlineDeployment(wfSummary.deployments, "production");
+                  const staging = headlineDeployment(wfSummary.deployments, "staging");
                   return (prod || staging) ? (
                     <div className="flex flex-col gap-1.5">
                       {prod && (

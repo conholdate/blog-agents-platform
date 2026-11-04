@@ -3,7 +3,7 @@ import {
   classifyWorkflowName,
   buildDeployments,
   buildDailyStats,
-  latestDeployment,
+  headlineDeployment,
   deploymentFailureCount,
   describeCrons,
   withScheduledSlots,
@@ -411,7 +411,7 @@ describe("buildDailyStats", () => {
   });
 });
 
-describe("latestDeployment", () => {
+describe("headlineDeployment", () => {
   function makeDeployment(overrides: Partial<DeploymentStatus> = {}): DeploymentStatus {
     return {
       env: "production",
@@ -424,13 +424,31 @@ describe("latestDeployment", () => {
   }
 
   it("returns null when no deployment matches the env", () => {
-    expect(latestDeployment([makeDeployment({ env: "staging" })], "production")).toBeNull();
+    expect(headlineDeployment([makeDeployment({ env: "staging" })], "production")).toBeNull();
   });
 
   it("picks the most recently updated deployment among matches", () => {
     const older = makeDeployment({ provider: "aws", latestRun: { ...makeDeployment().latestRun, updatedAt: "2026-09-10T10:00:00Z" } });
     const newer = makeDeployment({ provider: "ceph", latestRun: { ...makeDeployment().latestRun, updatedAt: "2026-09-10T12:00:00Z" } });
-    expect(latestDeployment([older, newer], "production")).toBe(newer);
+    expect(headlineDeployment([older, newer], "production")).toBe(newer);
+  });
+
+  it("prefers a failing deployment over a newer healthy one", () => {
+    const failing = makeDeployment({ provider: "ceph", latestRun: { ...makeDeployment().latestRun, conclusion: "failure", updatedAt: "2026-09-10T10:00:00Z" } });
+    const skipped = makeDeployment({ provider: "aws", latestRun: { ...makeDeployment().latestRun, conclusion: "skipped", updatedAt: "2026-09-10T12:00:00Z" } });
+    expect(headlineDeployment([skipped, failing], "production")).toBe(failing);
+  });
+
+  it("picks the most recent when several deployments are failing", () => {
+    const older = makeDeployment({ provider: "aws", latestRun: { ...makeDeployment().latestRun, conclusion: "timed_out", updatedAt: "2026-09-10T10:00:00Z" } });
+    const newer = makeDeployment({ provider: "ceph", latestRun: { ...makeDeployment().latestRun, conclusion: "failure", updatedAt: "2026-09-10T12:00:00Z" } });
+    expect(headlineDeployment([older, newer], "production")).toBe(newer);
+  });
+
+  it("only considers the requested environment", () => {
+    const failingStaging = makeDeployment({ env: "staging", latestRun: { ...makeDeployment().latestRun, conclusion: "failure" } });
+    const healthyProd = makeDeployment();
+    expect(headlineDeployment([failingStaging, healthyProd], "production")).toBe(healthyProd);
   });
 });
 
