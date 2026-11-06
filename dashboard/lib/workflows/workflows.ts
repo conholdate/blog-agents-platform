@@ -210,7 +210,8 @@ export async function getWorkflowSchedules(domain: string): Promise<WorkflowSche
 
         const contentJson: { content?: string } = await contentRes.json();
         const yamlText = contentJson.content ? Buffer.from(contentJson.content, "base64").toString("utf-8") : "";
-        const crons = [...yamlText.matchAll(/cron:\s*['"]([^'"]+)['"]/g)].map((m) => m[1]);
+        // Anchored to a "- cron:" list item so a commented-out schedule doesn't count.
+        const crons = [...yamlText.matchAll(/^\s*-\s*cron:\s*['"]([^'"]+)['"]/gm)].map((m) => m[1]);
 
         return { workflowName: w.name, path: w.path, crons, description: describeCrons(crons), nextRunAt: earliestNextRun(crons), ...classifyWorkflowName(w.name) };
       } catch {

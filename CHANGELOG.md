@@ -36,6 +36,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Split the oversized `Overview.tsx` (849 lines) and `Workflows.tsx` (523 lines) into focused per-view components (`overview/{Overview,SingleDomainView,AllDomainsView}`, `workflows/{Workflows,DeploymentCards,ScheduledWorkflowsList,RunsTable}`)
 
 ### Fixed
+- **CI/CD Status: commented-out schedules no longer show as upcoming runs** — the schedule reader now only counts real `- cron:` entries, so a workflow whose schedule is commented out (blog.aspose.com Ceph Staging) stops showing a next run
 - CI/CD Status showing misleading statuses — the deployment card accent disappeared in dark mode, cancelled runs read as green, `startup_failure` wasn't counted as failed, no-change runs counted as successful deploys, and a failed failure-detail lookup claimed no detail was available
 - CI/CD Status runs table clipping its Updated and GitHub link columns on laptop screens
 - Overview hiding a failing production or staging deploy behind a newer healthy one on another provider — a failing deploy now takes priority
