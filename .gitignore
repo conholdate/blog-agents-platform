@@ -39,3 +39,6 @@ Thumbs.db
 
 # Claude Code local permissions
 .claude/settings.json
+
+# Local CI/CD log copies, kept out of this public repo
+/logs/
