@@ -13,6 +13,8 @@ import {
   describeRun,
   addRetryContext,
   applyRunJobs,
+  stepThatFailed,
+  describeFailureReason,
   type WorkflowRun,
   type WorkflowSchedule,
   type DeploymentStatus,
@@ -22,6 +24,7 @@ function makeRun(overrides: Partial<WorkflowRun> = {}): WorkflowRun {
   const { env, provider } = classifyWorkflowName(overrides.workflowName ?? "");
   return {
     id: 1,
+    runNumber: 1,
     workflowName: "Some Workflow",
     displayTitle: "",
     status: "completed",
@@ -416,7 +419,7 @@ describe("headlineDeployment", () => {
     return {
       env: "production",
       provider: "aws",
-      latestRun: { status: "completed", conclusion: "success", updatedAt: "2026-09-10T10:00:00Z", durationSeconds: 100, workflowName: "w", htmlUrl: "https://x" },
+      latestRun: { status: "completed", conclusion: "success", updatedAt: "2026-09-10T10:00:00Z", durationSeconds: 100, workflowName: "w", runNumber: 1, htmlUrl: "https://x" },
       successCount: 1,
       failureCount: 0,
       ...overrides,
@@ -455,10 +458,54 @@ describe("headlineDeployment", () => {
 describe("deploymentFailureCount", () => {
   it("sums failureCount only across deployments matching the given env", () => {
     const deployments: DeploymentStatus[] = [
-      { env: "production", provider: "aws", failureCount: 2, successCount: 0, latestRun: { status: "completed", conclusion: "failure", updatedAt: "2026-09-10T10:00:00Z", durationSeconds: 1, workflowName: "w", htmlUrl: "https://x" } },
-      { env: "production", provider: "ceph", failureCount: 3, successCount: 0, latestRun: { status: "completed", conclusion: "failure", updatedAt: "2026-09-10T10:00:00Z", durationSeconds: 1, workflowName: "w", htmlUrl: "https://x" } },
-      { env: "staging", provider: "aws", failureCount: 10, successCount: 0, latestRun: { status: "completed", conclusion: "failure", updatedAt: "2026-09-10T10:00:00Z", durationSeconds: 1, workflowName: "w", htmlUrl: "https://x" } },
+      { env: "production", provider: "aws", failureCount: 2, successCount: 0, latestRun: { status: "completed", conclusion: "failure", updatedAt: "2026-09-10T10:00:00Z", durationSeconds: 1, workflowName: "w", runNumber: 1, htmlUrl: "https://x" } },
+      { env: "production", provider: "ceph", failureCount: 3, successCount: 0, latestRun: { status: "completed", conclusion: "failure", updatedAt: "2026-09-10T10:00:00Z", durationSeconds: 1, workflowName: "w", runNumber: 1, htmlUrl: "https://x" } },
+      { env: "staging", provider: "aws", failureCount: 10, successCount: 0, latestRun: { status: "completed", conclusion: "failure", updatedAt: "2026-09-10T10:00:00Z", durationSeconds: 1, workflowName: "w", runNumber: 1, htmlUrl: "https://x" } },
     ];
     expect(deploymentFailureCount(deployments, "production")).toBe(5);
+  });
+});
+
+describe("stepThatFailed", () => {
+  it("prefers a step GitHub marked failed", () => {
+    expect(stepThatFailed([
+      { name: "Checkout", status: "completed", conclusion: "success" },
+      { name: "Build", status: "completed", conclusion: "failure" },
+      { name: "Deploy", status: "completed", conclusion: "cancelled" },
+    ])).toBe("Build");
+  });
+
+  it("falls back to the step a dead runner left in progress or cancelled", () => {
+    expect(stepThatFailed([
+      { name: "Checkout", status: "completed", conclusion: "success" },
+      { name: "Build Skeleton Site", status: "in_progress", conclusion: null },
+      { name: "Deploy", status: "pending", conclusion: null },
+    ])).toBe("Build Skeleton Site");
+    expect(stepThatFailed([{ name: "Build Tags Only", status: "completed", conclusion: "cancelled" }])).toBe("Build Tags Only");
+  });
+
+  it("returns null when no step explains the failure", () => {
+    expect(stepThatFailed([{ name: "Checkout", status: "completed", conclusion: "success" }])).toBeNull();
+  });
+});
+
+describe("describeFailureReason", () => {
+  it("names runner shutdowns and lost connections", () => {
+    expect(describeFailureReason([
+      "The runner has received a shutdown signal. This can happen when the runner service is stopped.",
+      "The operation was canceled.",
+    ])).toBe("Runner was shut down");
+    expect(describeFailureReason(["The hosted runner lost communication with the server. Anything in your workflow ..."])).toBe("Runner lost connection");
+  });
+
+  it("passes other reasons through, shortened, and ignores a trailing cancel message", () => {
+    expect(describeFailureReason(["The operation was canceled.", "Process completed with exit code 1."])).toBe("Process completed with exit code 1.");
+    const long = "x".repeat(200);
+    expect(describeFailureReason([long])).toHaveLength(158);
+  });
+
+  it("reads a lone cancel message as stopped mid-step, and nothing as unknown", () => {
+    expect(describeFailureReason(["The operation was canceled."])).toBe("Stopped mid-step");
+    expect(describeFailureReason([])).toBeNull();
   });
 });

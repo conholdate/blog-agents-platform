@@ -11,6 +11,7 @@ import { SUMMARY_RUNS_PAGE_SIZE, type DailyRunStat, type DeploymentStatus, type 
 
 export interface WorkflowRun {
   id: number;
+  runNumber: number;
   workflowName: string;
   displayTitle: string;
   status: string;

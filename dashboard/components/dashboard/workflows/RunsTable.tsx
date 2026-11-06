@@ -5,7 +5,7 @@ import { Loader2, ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
 import { WorkflowStatusBadge } from "./WorkflowStatusBadge";
 import { EnvTag, ProviderTag, TriggerTag } from "./DeployTag";
 import { formatClockTime, formatDelay, formatDuration, formatScheduleTime, formatScheduleTimeUtc } from "@/lib/format-time";
-import { matchesStatusFilter, optionalRunColumns, runOutcome, type FailedStep, type RunStatusFilter } from "@/lib/workflows/workflows";
+import { matchesStatusFilter, optionalRunColumns, runOutcome, type RunFailureDetail, type RunStatusFilter } from "@/lib/workflows/workflows";
 import type { WorkflowRun } from "./Workflows";
 
 function isFailedRun(run: WorkflowRun): boolean {
@@ -70,7 +70,7 @@ function timeAgo(iso: string): string {
   return `${days}d ago`;
 }
 
-type FailedStepsState = FailedStep[] | "loading" | "error";
+type FailureState = RunFailureDetail | "loading" | "error";
 
 function DurationBar({ seconds, longest, className }: { seconds: number; longest: number; className: string }) {
   return (
@@ -80,23 +80,26 @@ function DurationBar({ seconds, longest, className }: { seconds: number; longest
   );
 }
 
-function FailureDetail({ steps }: { steps: FailedStepsState | undefined }) {
+function FailureDetail({ detail }: { detail: FailureState | undefined }) {
+  if (detail === "loading") {
+    return <span className="flex items-center gap-1.5 text-slate-500"><Loader2 className="h-3 w-3 animate-spin" />Loading failure detail…</span>;
+  }
+  if (detail === "error") return <span className="text-red-600 dark:text-red-400">Couldn&apos;t load failure detail.</span>;
+  if (!detail) return null;
+  const { failedSteps, report } = detail;
+  if (failedSteps.length === 0 && !report) {
+    return <span className="text-slate-500 dark:text-slate-400">No failed step detail available for this run.</span>;
+  }
   return (
-    <>
-      {steps === "loading" && (
-        <span className="flex items-center gap-1.5 text-slate-500"><Loader2 className="h-3 w-3 animate-spin" />Loading failure detail…</span>
-      )}
-      {steps === "error" && <span className="text-red-600 dark:text-red-400">Couldn&apos;t load failure detail.</span>}
-      {Array.isArray(steps) && steps.length === 0 && (
-        <span className="text-slate-500 dark:text-slate-400">No failed step detail available for this run.</span>
-      )}
-      {Array.isArray(steps) && steps.length > 0 && (
+    <div className="flex flex-col gap-1.5">
+      {failedSteps.length > 0 && (
         <ul className="flex flex-col gap-1">
-          {steps.map((s, i) => (
+          {failedSteps.map((s, i) => (
             <li key={i} className="flex flex-wrap items-center gap-x-2 text-red-700 dark:text-red-300">
               <span className="font-medium">{s.jobName}</span>
               <span className="text-red-300 dark:text-red-700">›</span>
               <span>{s.stepName}</span>
+              {s.reason && <span className="text-red-600/80 dark:text-red-400/80">· {s.reason}</span>}
               <a href={s.htmlUrl} target="_blank" rel="noopener noreferrer" aria-label="Open failed job on GitHub" className="text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-300">
                 <ExternalLink className="h-3 w-3" />
               </a>
@@ -104,7 +107,16 @@ function FailureDetail({ steps }: { steps: FailedStepsState | undefined }) {
           ))}
         </ul>
       )}
-    </>
+      {report && (
+        <div className="flex flex-col gap-0.5 text-slate-600 dark:text-slate-300">
+          <a href={report.htmlUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 self-start font-medium hover:text-indigo-600 dark:hover:text-indigo-400">
+            Failure report with memory readings
+            <ExternalLink className="h-3 w-3" />
+          </a>
+          {report.notes.map((n, i) => <span key={i} className="text-slate-500 dark:text-slate-400">{n}</span>)}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -123,7 +135,7 @@ export function RunsTable({ domain, runs }: Props) {
   const [filterEnv, setFilterEnv] = useState<"all" | "production" | "staging">("all");
   const [filterProvider, setFilterProvider] = useState<"all" | "aws" | "ceph">("all");
   const [expandedRunId, setExpandedRunId] = useState<number | null>(null);
-  const [failedSteps, setFailedSteps] = useState<Record<number, FailedStepsState>>({});
+  const [failureDetails, setFailureDetails] = useState<Record<number, FailureState>>({});
 
   function toggleFailureReason(run: WorkflowRun) {
     if (expandedRunId === run.id) {
@@ -131,15 +143,15 @@ export function RunsTable({ domain, runs }: Props) {
       return;
     }
     setExpandedRunId(run.id);
-    if (failedSteps[run.id]) return;
-    setFailedSteps((prev) => ({ ...prev, [run.id]: "loading" }));
+    if (failureDetails[run.id]) return;
+    setFailureDetails((prev) => ({ ...prev, [run.id]: "loading" }));
     fetch(`/api/workflows/${encodeURIComponent(domain)}/runs/${run.id}/jobs`)
       .then((r) => {
         if (!r.ok) throw new Error(`Failed to load failure detail (${r.status})`);
         return r.json();
       })
-      .then((d) => setFailedSteps((prev) => ({ ...prev, [run.id]: d.failedSteps ?? [] })))
-      .catch(() => setFailedSteps((prev) => ({ ...prev, [run.id]: "error" })));
+      .then((d: RunFailureDetail) => setFailureDetails((prev) => ({ ...prev, [run.id]: { failedSteps: d.failedSteps ?? [], report: d.report ?? null } })))
+      .catch(() => setFailureDetails((prev) => ({ ...prev, [run.id]: "error" })));
   }
 
   const workflowCounts: Record<string, number> = {};
@@ -242,7 +254,7 @@ export function RunsTable({ domain, runs }: Props) {
                 : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"}`}
             >
               <div className="flex items-start justify-between gap-2">
-                <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300 min-w-0 break-words">{run.workflowName}</span>
+                <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300 min-w-0 break-words">{run.workflowName} <span className="shrink-0 font-mono text-[11px] font-normal text-slate-500 dark:text-slate-400">#{run.runNumber}</span></span>
                 <a
                   href={run.htmlUrl}
                   target="_blank"
@@ -285,7 +297,7 @@ export function RunsTable({ domain, runs }: Props) {
                   Failure detail
                 </button>
               )}
-              {failed && expanded && <FailureDetail steps={failedSteps[run.id]} />}
+              {failed && expanded && <FailureDetail detail={failureDetails[run.id]} />}
             </div>
           );
         })}
@@ -349,7 +361,8 @@ export function RunsTable({ domain, runs }: Props) {
                       </td>
                       <td className="px-2.5 py-2 font-medium text-slate-700 dark:text-slate-300">
                         <div className="flex items-center gap-1.5 max-w-[260px]">
-                          <span className="truncate min-w-0" title={run.workflowName}>{run.workflowName}</span>
+                          <span className="truncate min-w-0" title={`${run.workflowName} #${run.runNumber}`}>{run.workflowName}</span>
+                          <span className="shrink-0 font-mono text-[11px] font-normal text-slate-500 dark:text-slate-400">#{run.runNumber}</span>
                           {run.env !== "other" && <EnvTag env={run.env} />}
                           {run.provider !== "other" && <ProviderTag provider={run.provider} />}
                         </div>
@@ -408,7 +421,7 @@ export function RunsTable({ domain, runs }: Props) {
                       <tr className="bg-red-50/50 dark:bg-red-900/10">
                         <td></td>
                         <td colSpan={detailColSpan} className="px-2.5 py-2.5 text-[12px]">
-                          <FailureDetail steps={failedSteps[run.id]} />
+                          <FailureDetail detail={failureDetails[run.id]} />
                         </td>
                       </tr>
                     )}

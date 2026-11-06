@@ -58,6 +58,7 @@ export function classifyWorkflowName(workflowName: string): { env: RunEnv; provi
 
 export interface WorkflowRun {
   id: number;
+  runNumber: number; // the per-workflow "#192" GitHub shows
   workflowName: string;
   displayTitle: string;
   status: string; // "queued" | "in_progress" | "completed" | "waiting"
@@ -83,6 +84,7 @@ export interface WorkflowRunsResult {
 
 interface RawRun {
   id: number;
+  run_number: number;
   name: string | null;
   display_title: string | null;
   status: string;
@@ -124,6 +126,7 @@ export async function getRecentWorkflowRuns(domain: string, perPage = 20): Promi
   const json: { workflow_runs?: RawRun[] } = await res.json();
   const runs: WorkflowRun[] = (json.workflow_runs ?? []).map((r) => ({
     id: r.id,
+    runNumber: r.run_number,
     workflowName: r.name ?? "Unknown",
     displayTitle: r.display_title ?? "",
     status: r.status,
@@ -265,6 +268,7 @@ export interface DeploymentLatestRun {
   updatedAt: string;
   durationSeconds: number | null;
   workflowName: string;
+  runNumber: number;
   htmlUrl: string;
 }
 
@@ -346,7 +350,7 @@ export function buildDeployments(runs: WorkflowRun[]): DeploymentStatus[] {
       byKey.set(key, {
         env: r.env as "production" | "staging",
         provider: r.provider as "aws" | "ceph",
-        latestRun: { status: r.status, conclusion: r.conclusion, updatedAt: r.updatedAt, durationSeconds: r.durationSeconds, workflowName: r.workflowName, htmlUrl: r.htmlUrl },
+        latestRun: { status: r.status, conclusion: r.conclusion, updatedAt: r.updatedAt, durationSeconds: r.durationSeconds, workflowName: r.workflowName, runNumber: r.runNumber, htmlUrl: r.htmlUrl },
         successCount: isSuccess ? 1 : 0,
         failureCount: isFailure ? 1 : 0,
       });
@@ -463,7 +467,18 @@ export async function getWorkflowsSummary(domain: string): Promise<WorkflowsSumm
 export interface FailedStep {
   jobName: string;
   stepName: string;
+  reason: string | null;
   htmlUrl: string;
+}
+
+export interface FailureReport {
+  htmlUrl: string;
+  notes: string[];
+}
+
+export interface RunFailureDetail {
+  failedSteps: FailedStep[];
+  report: FailureReport | null;
 }
 
 interface RawJobStep {
@@ -472,7 +487,14 @@ interface RawJobStep {
   conclusion: string | null;
 }
 
+interface RawAnnotation {
+  annotation_level: string;
+  title: string | null;
+  message: string;
+}
+
 interface RawJob {
+  id: number;
   name: string;
   status: string;
   conclusion: string | null;
@@ -505,14 +527,81 @@ async function getRunJobs(domain: string, runId: number): Promise<RawJob[]> {
   return jobs;
 }
 
-export async function getFailedSteps(domain: string, runId: number): Promise<FailedStep[]> {
-  const failedSteps: FailedStep[] = [];
-  for (const job of await getRunJobs(domain, runId)) {
-    if (job.conclusion !== "failure" && job.conclusion !== "timed_out") continue;
-    const failedStep = (job.steps ?? []).find((s) => s.conclusion === "failure" || s.conclusion === "timed_out");
-    failedSteps.push({ jobName: job.name, stepName: failedStep?.name ?? "Unknown step", htmlUrl: job.html_url });
-  }
-  return failedSteps;
+// Annotations hold GitHub's reason a job ended, including runner deaths that leave no
+// failed step behind. Like jobs, a completed run's annotations never change. They only
+// add detail, so a failed lookup returns none instead of hiding the failed steps.
+async function getJobAnnotations(domain: string, jobId: number): Promise<RawAnnotation[]> {
+  const token = getGithubToken();
+  const repo = getWorkflowsRepo(domain);
+  if (!token || !repo) return [];
+
+  const cacheKey = `workflows:annotations:${domain}:${jobId}`;
+  const cached = getCached<RawAnnotation[]>(cacheKey, TTL_WORKFLOW_SCHEDULES);
+  if (cached) return cached;
+
+  const res = await fetch(
+    `https://api.github.com/repos/${repo.owner}/${repo.repo}/check-runs/${jobId}/annotations`,
+    { headers: getHeaders(token) }
+  );
+  if (!res.ok) return [];
+  const annotations: RawAnnotation[] = await res.json();
+  setCached(cacheKey, annotations);
+  return annotations;
+}
+
+// A runner that dies mid-step never marks that step failed. The step it was running is
+// left in progress or ends cancelled, so that's the one to show.
+export function stepThatFailed(steps: Pick<RawJobStep, "name" | "status" | "conclusion">[]): string | null {
+  const failed = steps.find((s) => s.conclusion === "failure" || s.conclusion === "timed_out");
+  const stopped = steps.find((s) => s.conclusion === "cancelled" || s.status === "in_progress");
+  return (failed ?? stopped)?.name ?? null;
+}
+
+// "The operation was canceled." follows almost every other reason, so it only counts
+// when it's the sole message. Only failed jobs come here, and a job someone cancels
+// ends "cancelled" instead, so on its own it means GitHub stopped the job.
+export function describeFailureReason(messages: string[]): string | null {
+  if (messages.some((m) => /received a shutdown signal/i.test(m))) return "Runner was shut down";
+  if (messages.some((m) => /lost communication with the server/i.test(m))) return "Runner lost connection";
+  const other = messages.find((m) => !/^The operation was canceled\.?$/i.test(m.trim()));
+  if (other) return other.length > 160 ? `${other.slice(0, 157)}…` : other;
+  return messages.length > 0 ? "Stopped mid-step" : null;
+}
+
+// Names the blog.aspose.com pipelines use for their failure-report.yml job and the
+// annotation title it writes peak memory under.
+const FAILURE_REPORT_JOB = "failure-report";
+const PEAK_MEMORY_NOTE = "Peak memory";
+
+export async function getRunFailureDetail(domain: string, runId: number): Promise<RunFailureDetail> {
+  const repo = getWorkflowsRepo(domain);
+  const jobs = await getRunJobs(domain, runId);
+  const failedJobs = jobs.filter(
+    (j) => (j.conclusion === "failure" || j.conclusion === "timed_out") && !j.name.startsWith(FAILURE_REPORT_JOB)
+  );
+  const reportJob = jobs.find((j) => j.name.startsWith(FAILURE_REPORT_JOB) && j.conclusion !== "skipped");
+
+  const [failedSteps, notes] = await Promise.all([
+    Promise.all(
+      failedJobs.map(async (job): Promise<FailedStep> => {
+        const failures = (await getJobAnnotations(domain, job.id)).filter((a) => a.annotation_level === "failure");
+        return {
+          jobName: job.name,
+          stepName: stepThatFailed(job.steps ?? []) ?? "Unknown step",
+          reason: describeFailureReason(failures.map((a) => a.message)),
+          htmlUrl: job.html_url,
+        };
+      })
+    ),
+    reportJob
+      ? getJobAnnotations(domain, reportJob.id).then((as) => as.filter((a) => a.title === PEAK_MEMORY_NOTE).map((a) => a.message))
+      : Promise.resolve([]),
+  ]);
+
+  const report = reportJob && repo
+    ? { htmlUrl: `https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId}`, notes }
+    : null;
+  return { failedSteps, report };
 }
 
 // Job and step names the deploy workflows in each domain's repo use. If those YAMLs

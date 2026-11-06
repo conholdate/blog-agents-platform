@@ -75,9 +75,9 @@ export function DeploymentCards({ deployments, schedulesByDeployment }: Props) {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block min-w-0 text-[11px] text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 truncate transition-colors"
-                title={d.latestRun.workflowName}
+                title={`${d.latestRun.workflowName} #${d.latestRun.runNumber}`}
               >
-                {d.latestRun.workflowName}
+                {d.latestRun.workflowName} <span className="font-mono">#{d.latestRun.runNumber}</span>
               </a>
               <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1.5 border-t border-slate-100 dark:border-slate-700/60">
                 <span>
