@@ -76,6 +76,7 @@ dashboard/
     ├── cache.ts            # Server-side in-memory cache with TTL
     ├── optimization/optimizationSheets.ts  # Optimization queue/log parsing + getOptimizationSummary
     ├── translation/translationSheets.ts    # Translation queue/cleanup/history parsing + getTranslationSummary
+    ├── translation/queueOrder.ts           # Work order + 72 h settling wait, mirroring the translation agent (pure, used client-side)
     ├── url-validator/url-validator-sheets.ts # URL Validator sheet I/O + getUrlValidatorSummary
     ├── workflows/workflows.ts              # CI/CD run + schedule parsing + getWorkflowsSummary
     └── repo-doctor/                         # see "Repo Doctor" below — detect.ts, github.ts, llm.ts, sitemap.ts,

@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { TRANSLATION_SHEET_ID } from "../config";
+import { isOpen } from "./queueOrder";
 
 function getAuth() {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
@@ -14,8 +15,8 @@ export type QueueState = "queued" | "partial" | "hold" | "invalid";
 
 export interface QueueRow {
   sheetRow: number;
-  workOrder: number | null;
   missingSince: string;
+  readyAt: string;
   daysMissing: number;
   priority: string;
   product: string;
@@ -73,10 +74,6 @@ const CLEANUP_TAB = "cleanup";
 // Mirrors blog-translation-agent: no scheduled translation run, and config.py NO_HISTORY_DOMAINS drops closed rows.
 const REPORT_ONLY_DOMAINS = new Set(["blog.groupdocs.com"]);
 
-// Mirrors config.py PRIORITY_RANK / DEFAULT_PRIORITY so the work order matches what Step 2 runs.
-const PRIORITY_RANK: Record<string, number> = { Urgent: 0, High: 1, Normal: 2, Low: 3 };
-const DEFAULT_PRIORITY: Record<string, string> = { MISSING: "High", ISSUE: "Normal", OUTDATED: "Low" };
-
 function splitLangs(s: string): string[] {
   return s.split(",").map((l) => l.trim()).filter((l) => l && l !== "-");
 }
@@ -120,22 +117,15 @@ function stateOf(status: string): QueueState {
   return "hold";
 }
 
-function priorityRank(row: QueueRow): number {
-  const p = PRIORITY_RANK[row.priority] !== undefined ? row.priority : DEFAULT_PRIORITY[row.issue] ?? "Normal";
-  return PRIORITY_RANK[p];
+// The agent writes "2026-11-22 14:05 UTC"; an unreadable value counts as ready, as in scan_queue.parse_ready_after().
+function readyAtIso(value: string): string {
+  const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/.exec(value);
+  return m ? `${m[1]}T${m[2]}:00Z` : "";
 }
 
-// Same rule as scan_queue.order_rows(): by priority, sheet order within a priority,
-// except OUTDATED rows take their priority's OUTDATED places newest post first.
-function assignWorkOrder(rows: QueueRow[]): void {
-  const open = rows.filter((r) => r.state === "queued" || r.state === "partial");
-  const ordered = [...open].sort((a, b) => priorityRank(a) - priorityRank(b));
-  for (const rank of new Set(ordered.map(priorityRank))) {
-    const places = ordered.flatMap((r, i) => (priorityRank(r) === rank && r.issue === "OUTDATED" ? [i] : []));
-    const newest = places.map((i) => ordered[i]).sort((a, b) => b.postDate.localeCompare(a.postDate));
-    places.forEach((p, k) => { ordered[p] = newest[k]; });
-  }
-  ordered.forEach((r, i) => { r.workOrder = i + 1; });
+// The scan's "⏳ Waiting until" line goes stale between scans; the screen derives waiting from Ready After instead.
+function withoutWaitingLine(notes: string): string {
+  return notes.split("\n").filter((l) => !l.startsWith("⏳ Waiting until")).join("\n").trim();
 }
 
 function parseQueue(raw: string[][]): QueueRow[] {
@@ -148,8 +138,8 @@ function parseQueue(raw: string[][]): QueueRow[] {
     const status = get(row, "Status");
     rows.push({
       sheetRow: i + 2,
-      workOrder: null,
       missingSince: get(row, "Missing Since"),
+      readyAt: readyAtIso(get(row, "Ready After")),
       daysMissing: parseInt(get(row, "Days Missing")) || 0,
       priority: capitalize(get(row, "Priority")),
       product: get(row, "Product"),
@@ -163,11 +153,10 @@ function parseQueue(raw: string[][]): QueueRow[] {
       status,
       state: stateOf(status),
       source: get(row, "Source"),
-      notes: get(row, "Notes"),
+      notes: withoutWaitingLine(get(row, "Notes")),
       comments: get(row, "Comments"),
     });
   });
-  assignWorkOrder(rows);
   return rows;
 }
 
@@ -240,7 +229,7 @@ export interface TranslationSummary {
 
 export async function getTranslationSummary(domain: string): Promise<TranslationSummary> {
   const { queue, history } = await getTranslationData(domain);
-  const open = queue.filter((r) => r.workOrder !== null);
+  const open = queue.filter(isOpen);
   return {
     missing:     open.filter((r) => r.issue === "MISSING").length,
     retranslate: open.filter((r) => r.issue !== "MISSING").length,

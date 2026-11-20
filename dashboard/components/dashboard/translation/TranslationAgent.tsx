@@ -1,8 +1,10 @@
 "use client";
 
 import { Fragment, useState, useEffect, useMemo, type ReactNode } from "react";
-import { ExternalLink, RefreshCw, Loader2, Languages, CheckCircle2, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronRight, Trash2, Info } from "lucide-react";
+import { ExternalLink, RefreshCw, Loader2, Languages, CheckCircle2, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronRight, Trash2, Info, Hourglass } from "lucide-react";
 import type { QueueRow, CleanupRow, HistoryRow, QueueState, TranslationData } from "@/lib/translation/translationSheets";
+import { PRIORITY_RANK, isOpen, waitsUntil, workOrder } from "@/lib/translation/queueOrder";
+import { formatScheduleTime, formatScheduleTimeUtc } from "@/lib/format-time";
 import { PRODUCT_LABELS } from "@/lib/config";
 
 interface Props { domain: string }
@@ -14,7 +16,8 @@ type Data = TranslationData & { sheetUrl?: string | null };
 const PAGE_SIZE = 100;
 const LANG_CHIP_LIMIT = 6;
 
-const PRIORITY_RANK: Record<string, number> = { Urgent: 0, High: 1, Normal: 2, Low: 3 };
+const SETTLE_HOURS = 72;
+const WAITING = "waiting";
 
 const PRIORITY_STYLES: Record<string, string> = {
   Urgent: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700",
@@ -47,6 +50,12 @@ function shortUrl(url: string) {
 
 function priorityRank(p: string) {
   return PRIORITY_RANK[p] ?? 9;
+}
+
+function timeLeft(ms: number) {
+  const mins = Math.max(1, Math.round(ms / 60000));
+  const d = Math.floor(mins / 1440), h = Math.floor((mins % 1440) / 60), m = mins % 60;
+  return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
 function StatChip({ label, value, sub, tone = "text-slate-900 dark:text-white" }: { label: string; value: number | string; sub?: string; tone?: string }) {
@@ -159,10 +168,10 @@ const DEFAULT_SORT: Record<Section, { key: string; dir: SortDir }> = {
   history: { key: "completedDate", dir: "desc" },
 };
 
-function sortValue(section: Section, row: QueueRow | CleanupRow | HistoryRow, key: string): string | number {
+function sortValue(section: Section, row: QueueRow | CleanupRow | HistoryRow, key: string, queuePlace: (r: QueueRow) => number): string | number {
   if (section === "queue") {
     const r = row as QueueRow;
-    if (key === "workOrder") return r.workOrder ?? Number.MAX_SAFE_INTEGER;
+    if (key === "workOrder") return queuePlace(r);
     if (key === "priority") return priorityRank(r.priority);
   }
   const v = (row as unknown as Record<string, unknown>)[key];
@@ -183,12 +192,13 @@ export function TranslationAgent({ domain }: Props) {
   const [sortKey, setSortKey]             = useState(DEFAULT_SORT.queue.key);
   const [sortDir, setSortDir]             = useState<SortDir>(DEFAULT_SORT.queue.dir);
   const [expanded, setExpanded]           = useState<Set<number>>(new Set());
+  const [now, setNow]                     = useState(0);
 
   function load(refresh = false) {
     setLoading(true); setError(null);
     fetch(`/api/translation/${encodeURIComponent(domain)}${refresh ? "?refresh=1" : ""}`)
       .then((r) => r.json())
-      .then((d) => { if (d.error) throw new Error(d.error); setData(d); setPage(1); })
+      .then((d) => { if (d.error) throw new Error(d.error); setNow(Date.now()); setData(d); setPage(1); })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }
@@ -206,6 +216,12 @@ export function TranslationAgent({ domain }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [domain]);
 
+  // Rows leave the settling wait on their own; ticking keeps countdowns and the work order current between loads.
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   function handleSort(col: string) {
     if (col === sortKey) setSortDir((d) => d === "asc" ? "desc" : "asc");
     else { setSortKey(col); setSortDir(col === "workOrder" || col === "priority" ? "asc" : "desc"); }
@@ -219,6 +235,24 @@ export function TranslationAgent({ domain }: Props) {
       return next;
     });
   }
+
+  const order = useMemo(() => (data ? workOrder(data.queue, now) : new Map<number, number>()), [data, now]);
+  const waitAt = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const r of data?.queue ?? []) {
+      const at = isOpen(r) ? waitsUntil(r, now) : null;
+      if (at !== null) m.set(r.sheetRow, at);
+    }
+    return m;
+  }, [data, now]);
+
+  // Ready rows in run order, then waiting rows by when they become ready, then held / invalid rows.
+  const queuePlace = useMemo(() => (r: QueueRow) => {
+    const place = order.get(r.sheetRow);
+    if (place !== undefined) return place;
+    const at = waitAt.get(r.sheetRow);
+    return at !== undefined ? 1e15 + at : Number.MAX_SAFE_INTEGER;
+  }, [order, waitAt]);
 
   const source = useMemo<(QueueRow | CleanupRow | HistoryRow)[]>(() => {
     if (!data) return [];
@@ -238,39 +272,42 @@ export function TranslationAgent({ domain }: Props) {
       if (productFilter !== "All" && r.product !== productFilter) return false;
       if (langFilter !== "All" && !r.langs.includes(langFilter)) return false;
       if (issueFilter !== "All" && "issue" in r && r.issue !== issueFilter) return false;
-      if (stateFilter !== "All" && "state" in r && r.state !== stateFilter) return false;
+      if (stateFilter === WAITING && !waitAt.has(r.sheetRow)) return false;
+      if (stateFilter !== "All" && stateFilter !== WAITING && "state" in r && r.state !== stateFilter) return false;
       if (q && !r.postUrl.toLowerCase().includes(q) && !r.product.toLowerCase().includes(q) && !r.author.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [source, productFilter, langFilter, issueFilter, stateFilter, search]);
+  }, [source, productFilter, langFilter, issueFilter, stateFilter, search, waitAt]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
     arr.sort((a, b) => {
-      const av = sortValue(section, a, sortKey);
-      const bv = sortValue(section, b, sortKey);
+      const av = sortValue(section, a, sortKey, queuePlace);
+      const bv = sortValue(section, b, sortKey, queuePlace);
       const cmp = typeof av === "number" && typeof bv === "number" ? av - bv : String(av).localeCompare(String(bv));
       return sortDir === "desc" ? -cmp : cmp;
     });
     return arr;
-  }, [filtered, section, sortKey, sortDir]);
+  }, [filtered, section, sortKey, sortDir, queuePlace]);
 
   const visible = sorted.slice(0, page * PAGE_SIZE);
   const hasMore = visible.length < sorted.length;
 
   const stats = useMemo(() => {
     if (!data) return null;
-    const open = data.queue.filter((r) => r.workOrder !== null);
+    const open = data.queue.filter(isOpen);
     return {
       open:        open.length,
       openLangs:   open.reduce((s, r) => s + r.count, 0),
       missing:     open.filter((r) => r.issue === "MISSING").length,
       retranslate: open.filter((r) => r.issue !== "MISSING").length,
       partial:     open.filter((r) => r.state === "partial").length,
+      ready:       order.size,
+      waiting:     waitAt.size,
       skipped:     data.queue.length - open.length,
       oldest:      open.reduce((m, r) => Math.max(m, r.daysMissing), 0),
     };
-  }, [data]);
+  }, [data, order, waitAt]);
 
   const thProps = { sortKey, sortDir, onSort: handleSort };
   const selectCls = "px-2.5 py-1.5 text-[12px] rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400";
@@ -302,6 +339,8 @@ export function TranslationAgent({ domain }: Props) {
           <StatChip label="Missing"      value={stats.missing}     tone="text-amber-600 dark:text-amber-400" />
           <StatChip label="Retranslate"  value={stats.retranslate} tone="text-violet-600 dark:text-violet-400" />
           <StatChip label="In Progress"  value={stats.partial}     tone="text-blue-600 dark:text-blue-400" />
+          <StatChip label="Ready Now"    value={stats.ready}       tone="text-emerald-600 dark:text-emerald-400" />
+          <StatChip label="Waiting"      value={stats.waiting}     sub={`${SETTLE_HOURS} h after edit`} tone="text-orange-600 dark:text-orange-400" />
           {stats.skipped > 0 && <StatChip label="Held / Invalid" value={stats.skipped} tone="text-yellow-600 dark:text-yellow-400" />}
           {data.cleanup.length > 0 && <StatChip label="Cleanup" value={data.cleanup.length} />}
           <StatChip label="Completed"    value={data.reportOnly ? "—" : data.history.length} tone="text-green-700 dark:text-green-400" />
@@ -333,7 +372,7 @@ export function TranslationAgent({ domain }: Props) {
           <Info className="h-3.5 w-3.5 mt-px shrink-0" />
           {section === "queue" && (data.reportOnly
             ? <span>Report-only blog: this queue is not translated on a schedule. # shows the order a manual translation run would follow.</span>
-            : <span># is the order the next translation runs will work the open rows: by Priority, first in first out, except OUTDATED rows go newest post first. Raise a row&apos;s Priority or set its Status to <code>hold</code> in the Sheet to change it.</span>)}
+            : <span># is the order the next translation runs will work the ready rows: by Priority, first in first out, except OUTDATED rows go newest post first. A post waits until its English has gone {SETTLE_HOURS} h without an edit (<Hourglass className="inline h-3 w-3 -mt-px" />), so mistakes are fixed before they reach every language; Urgent and ISSUE rows don&apos;t wait. Raise a row&apos;s Priority or set its Status to <code>hold</code> in the Sheet to change the order.</span>)}
           {section === "cleanup" && <span>Junk translation files found in the repo (EXTRA), to be deleted by the translation run. The list is rebuilt on every scan.</span>}
           {section === "history" && (data.reportOnly
             ? <span>Report-only blog: closed rows are dropped, not kept in history.</span>
@@ -361,6 +400,7 @@ export function TranslationAgent({ domain }: Props) {
             <select value={stateFilter} onChange={(e) => { setStateFilter(e.target.value); setPage(1); }} className={selectCls}>
               <option value="All">All statuses</option>
               {(Object.keys(STATE_STYLES) as QueueState[]).map((s) => <option key={s} value={s}>{STATE_STYLES[s].label}</option>)}
+              <option value={WAITING}>Waiting ({SETTLE_HOURS} h)</option>
             </select>
           )}
           {products.length > 1 && (
@@ -420,11 +460,23 @@ export function TranslationAgent({ domain }: Props) {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 bg-white dark:bg-slate-800">
                   {section === "queue" && (visible as QueueRow[]).map((row) => {
                     const open = expanded.has(row.sheetRow);
+                    const place = order.get(row.sheetRow);
+                    const wait = waitAt.get(row.sheetRow);
+                    const exempt = row.priority === "Urgent" || row.issue === "ISSUE";
+                    const readyLabel = exempt
+                      ? "Doesn't wait (Urgent / ISSUE)"
+                      : row.readyAt
+                        ? `${formatScheduleTime(row.readyAt)} — ${wait !== undefined ? `in ${timeLeft(wait - now)}` : "passed"}`
+                        : "";
                     return (
                       <Fragment key={row.sheetRow}>
-                        <tr className={`hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors ${row.workOrder === null ? "opacity-60" : ""}`}>
+                        <tr className={`hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors ${place === undefined && wait === undefined ? "opacity-60" : ""}`}>
                           <td className="pl-2 py-2"><ExpandToggle open={open} onClick={() => toggle(row.sheetRow)} /></td>
-                          <td className="px-3 py-2 text-[11px] font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">{row.workOrder ?? "—"}</td>
+                          <td className="px-3 py-2 text-[11px] font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                            {place ?? (wait !== undefined
+                              ? <span title={`Waiting for the English to settle — ready ${formatScheduleTime(row.readyAt)} (${formatScheduleTimeUtc(row.readyAt)})`}><Hourglass className="h-3.5 w-3.5 text-orange-500" /></span>
+                              : "—")}
+                          </td>
                           <td className="px-3 py-2"><PriorityBadge priority={row.priority} /></td>
                           <td className="px-3 py-2"><IssueBadge issue={row.issue} /></td>
                           <td className="px-3 py-2 max-w-[340px]"><PostCell product={row.product} postUrl={row.postUrl} postDate={row.postDate} /></td>
@@ -435,7 +487,16 @@ export function TranslationAgent({ domain }: Props) {
                               <LangChips langs={row.langs} />
                             </div>
                           </td>
-                          <td className="px-3 py-2"><StateBadge state={row.state} status={row.status} /></td>
+                          <td className="px-3 py-2">
+                            <div className="flex flex-col items-start gap-1">
+                              <StateBadge state={row.state} status={row.status} />
+                              {wait !== undefined && (
+                                <span className="text-[10px] text-orange-600 dark:text-orange-400 whitespace-nowrap" title={formatScheduleTimeUtc(row.readyAt)}>
+                                  Ready in {timeLeft(wait - now)}
+                                </span>
+                              )}
+                            </div>
+                          </td>
                           <td className="px-3 py-2 text-right font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap" title={row.missingSince ? `Flagged ${row.missingSince}` : undefined}>{row.daysMissing}d</td>
                         </tr>
                         {open && (
@@ -448,6 +509,7 @@ export function TranslationAgent({ domain }: Props) {
                                 <div className="flex flex-col gap-2">
                                   <Detail label="Flagged by" value={row.source} />
                                   <Detail label="Flagged on" value={row.missingSince} />
+                                  <Detail label={`Ready after (${SETTLE_HOURS} h after last English edit)`} value={readyLabel} />
                                   <Detail label="Folder" value={row.dirBase} mono />
                                   <Detail label="Sheet row" value={String(row.sheetRow)} mono />
                                 </div>
