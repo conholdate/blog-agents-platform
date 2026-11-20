@@ -157,7 +157,7 @@ export function AllDomainsView({ onNavigate, onSelectDomain }: { onNavigate: (s:
                   <tr>
                     <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Domain</th>
                     <th className="px-3 py-2.5 text-center text-[10px] font-medium text-amber-500">Missing</th>
-                    <th className="px-3 py-2.5 text-center text-[10px] font-medium text-sky-500">Pending</th>
+                    <th className="px-3 py-2.5 text-center text-[10px] font-medium text-sky-500">Retranslate</th>
                     <th className="px-3 py-2.5 text-center text-[10px] font-medium text-green-600 dark:text-green-400">Completed</th>
                   </tr>
                 </thead>
@@ -171,7 +171,7 @@ export function AllDomainsView({ onNavigate, onSelectDomain }: { onNavigate: (s:
                         {tr ? <button onClick={() => goTo(domain, "translations")} className="font-mono text-amber-600 dark:text-amber-400 hover:underline">{tr.missing}</button> : <span className="text-slate-300 dark:text-slate-600">—</span>}
                       </td>
                       <td className="px-3 py-3 text-center">
-                        {tr ? <button onClick={() => goTo(domain, "translations")} className="font-mono text-sky-600 dark:text-sky-400 hover:underline">{tr.pending}</button> : <span className="text-slate-300 dark:text-slate-600">—</span>}
+                        {tr ? <button onClick={() => goTo(domain, "translations")} className="font-mono text-sky-600 dark:text-sky-400 hover:underline">{tr.retranslate}</button> : <span className="text-slate-300 dark:text-slate-600">—</span>}
                       </td>
                       <td className="px-3 py-3 text-center">
                         {tr ? <button onClick={() => goTo(domain, "translations")} className="font-mono text-green-600 dark:text-green-400 hover:underline">{tr.completed}</button> : <span className="text-slate-300 dark:text-slate-600">—</span>}
@@ -361,7 +361,7 @@ export function AllDomainsView({ onNavigate, onSelectDomain }: { onNavigate: (s:
                 {tab === "translations" && row.tr && (
                   <MobileMetricGroup label="Translations" labelColor="text-sky-500 dark:text-sky-400" onClick={() => goTo(row.domain, "translations")} metrics={[
                     { value: row.tr.missing, text: "missing", color: "text-amber-600 dark:text-amber-400" },
-                    { value: row.tr.pending, text: "pending", color: "text-sky-600 dark:text-sky-400" },
+                    { value: row.tr.retranslate, text: "retranslate", color: "text-sky-600 dark:text-sky-400" },
                     { value: row.tr.completed, text: "completed", color: "text-green-600 dark:text-green-400" },
                   ]} />
                 )}

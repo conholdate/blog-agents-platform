@@ -169,15 +169,15 @@ export function SingleDomainView({ domain, onNavigate }: { domain: string; onNav
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-4 gap-2">
                   <StatBox label="Missing"   value={trSummary.missing}   valueColor="text-amber-600 dark:text-amber-400"   bgClass="bg-amber-50 dark:bg-slate-800/60"  labelColor="text-amber-500/80 dark:text-slate-400" />
-                  <StatBox label="Pending"   value={trSummary.pending}   valueColor="text-sky-600 dark:text-sky-400"       bgClass="bg-sky-50 dark:bg-slate-800/60"    labelColor="text-sky-500/80 dark:text-slate-400" />
-                  <StatBox label="Partial"   value={trSummary.partial}   valueColor="text-blue-600 dark:text-blue-400"     bgClass="bg-blue-50 dark:bg-slate-800/60"   labelColor="text-blue-500/80 dark:text-slate-400" />
+                  <StatBox label="Retranslate" value={trSummary.retranslate} valueColor="text-sky-600 dark:text-sky-400"   bgClass="bg-sky-50 dark:bg-slate-800/60"    labelColor="text-sky-500/80 dark:text-slate-400" />
+                  <StatBox label="In Progress" value={trSummary.partial}     valueColor="text-blue-600 dark:text-blue-400" bgClass="bg-blue-50 dark:bg-slate-800/60"   labelColor="text-blue-500/80 dark:text-slate-400" />
                   <StatBox label="Completed" value={trSummary.completed} valueColor="text-green-700 dark:text-green-400"   bgClass="bg-green-50 dark:bg-slate-800/60"  labelColor="text-green-600/70 dark:text-slate-400" />
                 </div>
-                {trSummary.missing + trSummary.pending + trSummary.partial + trSummary.completed > 0 && (
+                {trSummary.missing + trSummary.retranslate + trSummary.completed > 0 && (
                   <Meter
-                    label="Fully translated"
+                    label="Completed vs open"
                     value={trSummary.completed}
-                    total={trSummary.missing + trSummary.pending + trSummary.partial + trSummary.completed}
+                    total={trSummary.missing + trSummary.retranslate + trSummary.completed}
                     fillClass="bg-sky-500 dark:bg-sky-400"
                     trackClass="bg-sky-100 dark:bg-slate-800/60"
                   />

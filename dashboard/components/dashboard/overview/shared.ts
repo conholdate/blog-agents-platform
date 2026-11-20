@@ -6,7 +6,7 @@ export interface DomainRow {
   kw:  { queued: number; approved: number; generated: number } | null;
   opt: { pending: number; high: number; optimized: number } | null;
   url: { totalIssues: number; latestScan: string | null } | null;
-  tr:  { missing: number; pending: number; completed: number } | null;
+  tr:  { missing: number; retranslate: number; completed: number } | null;
   wf:  WorkflowsSummary | null;
 }
 

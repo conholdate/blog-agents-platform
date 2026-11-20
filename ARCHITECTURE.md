@@ -39,8 +39,8 @@ dashboard/
 │       │   ├── route.ts        # GET — optimization queue rows
 │       │   └── summary/        # GET — priority breakdown counts
 │       ├── translation/[domain]/
-│       │   ├── route.ts        # GET — missing-translation scan + history rows
-│       │   └── summary/        # GET — missing/pending/partial/completed counts
+│       │   ├── route.ts        # GET — translation queue (with work order) + cleanup + history rows
+│       │   └── summary/        # GET — missing/retranslate/partial/completed counts
 │       ├── url-validator/[domain]/
 │       │   ├── run/            # POST — trigger a scan
 │       │   ├── status/         # GET — scan status
@@ -75,7 +75,7 @@ dashboard/
     ├── config.ts           # Domain → Sheet ID map, brand colors, platform colors
     ├── cache.ts            # Server-side in-memory cache with TTL
     ├── optimization/optimizationSheets.ts  # Optimization queue/log parsing + getOptimizationSummary
-    ├── translation/translationSheets.ts    # Translation scan/history parsing + getTranslationSummary
+    ├── translation/translationSheets.ts    # Translation queue/cleanup/history parsing + getTranslationSummary
     ├── url-validator/url-validator-sheets.ts # URL Validator sheet I/O + getUrlValidatorSummary
     ├── workflows/workflows.ts              # CI/CD run + schedule parsing + getWorkflowsSummary
     └── repo-doctor/                         # see "Repo Doctor" below — detect.ts, github.ts, llm.ts, sitemap.ts,
