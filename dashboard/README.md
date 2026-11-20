@@ -14,7 +14,7 @@ AI agents run autonomously and produce output — keyword briefs, SEO priority r
 Landing page for the active domain. Shows live stats for each active tool and click **View →** to jump directly to any section. Toggle between **This Domain** (cards for the selected domain) and **All Domains** (one table, every domain at once).
 
 - **Keyword Agent card** — queued / approved / rejected / generated counts + per-product approved/total chips
-- **Translation Agent card** — Missing / Pending / Partial / Completed counts
+- **Translation Agent card** — Missing / Retranslate / In Progress / Completed counts (only MISSING rows turn a domain amber)
 - **Optimization Agent card** — Pending / High / Medium / Optimized counts + Page 2 Posts / Avg Position / Avg Impressions / Avg CTR
 - **URL Validator card** — Total Issues / Products Affected / Scans Run / Last Scan date + top 3 error types with proportional bars
 - **CI/CD Status card** — latest production/staging deployment badges, run history strip, 14-day daily runs chart, next scheduled run
@@ -128,16 +128,24 @@ Priority tiers: 🔴 High (score ≥ 400) · 🟡 Medium (100–399) · ⚪ Low 
 **Filters:** product filter chips (product extracted from URL path) + URL search box · click `#` to restore original sheet order
 
 ### Translation Agent
-Tracks missing translations and translation progress across all domains. Powered by a single consolidated Google Sheet: one persistent tab per domain (overwritten on each daily scan) plus a shared `history` tab that tracks each post's translation status over time.
+Shows the translation agent's work queue for the active domain. Powered by a single consolidated Google Sheet whose domain tabs are a **persistent queue** (since 18 Nov 2026: scans update rows instead of rewriting the tab, so manual Priority / Status / row splits survive), a shared `cleanup` tab and a shared `history` tab. Read-only: changes are made in the Sheet.
 
-**Two tabs:**
+**Stats bar:** open posts (and total languages), Missing, Retranslate (OUTDATED + ISSUE), In Progress (`partial`), Ready Now, Waiting, Held / Invalid (when any), Cleanup (when any), Completed, Oldest Open (days).
 
-- **Missing Translations** — posts from the active domain's scan tab that are still missing at least one translation: product, post link, author, missing count, missing-language chips, and any extra (orphaned) translation files
-- **History** — every post the agent has ever tracked for this domain, with a status badge: `pending` (not yet started) / `partial` (some languages done) / `completed` (fully translated), plus the completion date once done
+**Three tabs:**
 
-**Filters:** product filter chips, a language dropdown (options are derived from the data itself, not hardcoded — each domain supports a different language set), and a URL/product search box. Click any column header to sort.
+- **Queue** — every row of the domain tab:
+  - **#** — the row's place in the order the next translation runs will work it, mirroring the agent: by Priority (Urgent → High → Normal → Low; blank falls back to MISSING High, ISSUE Normal, OUTDATED Low), first in first out within a priority, except OUTDATED rows go newest post first
+  - **Waiting** (hourglass in #, "Ready in 1d 4h" under Status) — the post's English was edited less than 72 h ago (sheet column `Ready After`), so the run holds it back to let mistakes be fixed first. Urgent and ISSUE rows never wait. Worked out in the browser against the current time and rechecked every minute, so it doesn't go stale between scans. Waiting rows have no # until they're ready
+  - **Issue** — `MISSING` (no translation yet) / `OUTDATED` (English changed after translation) / `ISSUE` (bad translation flagged by a person or agent)
+  - **Status** — Queued (blank / `pending`), In progress (`partial`), On hold (any other value, e.g. `hold`), Invalid (manual row the scanner couldn't match). Held and invalid rows are skipped by the runs and shown dimmed
+  - Expand a row (chevron) for why it was flagged (Notes), each run's result (Comments), who flagged it, when, Ready After (GMT+5), folder and sheet row
+- **Cleanup** — junk translation files (EXTRA) for this domain from the shared `cleanup` tab; deleted by the translation run, rebuilt every scan
+- **History** — rows the runs closed, newest first, with the run comments. **blog.groupdocs.com is report-only**: not translated on a schedule and its closed rows are dropped, so it has no history
 
-**Out of scope:** the agent's separate Quality Check / Retranslate steps write to per-domain quality-score sheets that aren't wired into this screen yet.
+**Filters:** issue chips, status (incl. Waiting), product, language (derived from the data — each domain has its own language set), and a URL / product / author search. Click any column header to sort; the default is work order.
+
+**Kept in sync with the agent by hand:** `lib/translation/queueOrder.ts` copies the agent's priority ranks, ordering rule and settling rule (`scan_queue.py` `order_rows` / `is_settled`), and `translationSheets.ts` lists the report-only domains. Update them if the agent's `config.py` changes.
 
 ### Post Generation Agent
 Coming soon.
@@ -193,10 +201,11 @@ A virtual tab at the end of the tab bar aggregates all rows with `status=generat
 ### Translation Agent — Browsing
 1. Select a **domain** from the top nav
 2. Click **Translation Agent** in the sidebar
-3. **Missing Translations** tab shows posts still missing at least one language for the active domain
-4. **History** tab shows every tracked post's status (`pending` / `partial` / `completed`) for the active domain
-5. Use the language dropdown to find posts missing a specific language, or the product chips / search box to narrow further
-6. Click the external link icon on any row to open the post in a new tab
+3. **Queue** tab lists open rows in the order the translation runs will work them (#); hourglass rows are waiting out the 72 h settling time
+4. Expand a row to see why it was flagged and what each run did
+5. Filter by issue, status (e.g. Waiting), product or language, or search by URL / product / author
+6. **Cleanup** lists junk translation files; **History** lists closed rows
+7. To change what runs next, edit the Sheet: raise Priority (e.g. `Urgent`, which also skips the wait) or set Status to `hold` — use **Open Sheet**, then **Refresh** here
 
 ### URL Validator — Running a Scan
 1. Select a **domain** from the top nav
@@ -282,7 +291,7 @@ URL_VALIDATOR_SHEET_ID_CONHOLDATE_CLOUD=
 SHEET_ID_TO_BE_OPTIMIZED=
 SHEET_ID_OPTIMIZATION_LOG=
 
-# Translation Agent — single shared sheet (tabs = domain names + "history")
+# Translation Agent — single shared sheet (tabs = domain names + "cleanup" + "history")
 TRANSLATION_SCAN_SHEET_ID=
 
 # Content dirs — absolute path to each blog's Hugo content folder
@@ -388,38 +397,32 @@ The `Consolidated` tab in the log sheet also includes a `Domain` column and aggr
 
 ### Translation Agent sheets
 
-One consolidated sheet (`TRANSLATION_SCAN_SHEET_ID`): one persistent tab per domain (named exactly as the domain, e.g. `blog.aspose.com`) overwritten on each daily scan, plus a shared `history` tab.
+One consolidated sheet (`TRANSLATION_SCAN_SHEET_ID`, written by the `blog-translation-agent` repo): one persistent queue tab per domain (named exactly as the domain, e.g. `blog.aspose.com`), plus shared `cleanup`, `history` and `config` tabs. Columns are read by name, so their order doesn't matter.
 
-**Domain tabs** — current missing-translation snapshot:
-
-| Column | Description |
-|---|---|
-| `Scan Date` | Date of the scan that produced this row |
-| `Domain` | Blog domain |
-| `Product` | Product slug (e.g. `barcode`) |
-| `Blog Post Directory` | Source post folder name |
-| `Blog Post URL` | Full post URL |
-| `Author` | Post author |
-| `Missing Count` | Number of languages still missing |
-| `Missing Translations` | Comma-separated missing language codes |
-| `Extra Translations` | Comma-separated orphaned language codes (translation exists but no longer matches a tracked language), or `-` |
-| `Extra Files Count` | Count of extra translation files |
-| `Status` | Reserved; currently always blank on domain tabs |
-
-**`history` tab** — append-only, shared across all domains:
+**Domain tabs** — the translation queue (scans add, update and close rows; people may edit Priority / Status, add rows or split a row's languages):
 
 | Column | Description |
 |---|---|
-| `Scan Date` | Date of the scan that last touched this row |
-| `Domain` | Blog domain |
-| `Product` | Product slug |
-| `Blog Post Directory` | Source post folder name |
-| `Blog Post URL` | Full post URL |
-| `Author` | Post author |
-| `Missing Translations` | Comma-separated still-missing language codes |
-| `Missing Count` | Number of languages still missing |
-| `Status` | `pending` (new) / `partial` (some languages done) / `completed` (all done or post removed) |
-| `Completed Date` | Date the row reached `completed` |
+| `Scan Date` | Last scan that saw the row |
+| `Missing Since` | Date the row was first flagged (never changes) |
+| `Days Missing` | Days since `Missing Since` |
+| `Priority` | `Urgent` (people only) / `High` / `Normal` / `Low`; defaults MISSING High, ISSUE Normal, OUTDATED Low |
+| `Domain`, `Product`, `Blog Post Directory`, `Blog Post URL`, `Author` | The post |
+| `Issue` | `MISSING` / `OUTDATED` / `ISSUE` |
+| `Count` | Number of languages in `Target Translations` |
+| `Target Translations` | Comma-separated language codes to translate or retranslate |
+| `Action` | `Translate` (MISSING) / `Retranslate` (OUTDATED, ISSUE) |
+| `Status` | blank / `pending` / `partial` = open; `invalid` = unmatched manual row; anything else (e.g. `hold`) = skipped |
+| `Source` | Who flagged it: `Scanner`, `Manual`, or an agent's name |
+| `Notes` | Why it was flagged (the scan's "⏳ Waiting until" line is hidden by the dashboard) |
+| `Comments` | Each translation run's result |
+| `Ready After` | Last English commit + 72 h, `YYYY-MM-DD HH:MM UTC`; the run skips the row until then (blank = ready) |
+
+**`cleanup` tab** — EXTRA (junk translation file) rows of every domain, rebuilt per domain each scan: `Scan Date, Domain, Product, Blog Post Directory, Blog Post URL, Author, Issue, Count, Target Translations, Action, Status, Notes`.
+
+**`history` tab** — completed rows only, shared across domains: `Scan Date, Domain, Product, Blog Post Directory, Blog Post URL, Author, Issue, Target Translations, Count, Status, Completed Date, Comments, Notes, Priority, Source`. A post can have several rows (one per language set or issue).
+
+**`config` tab** — per-domain language list, language count and repo URLs (not read by the dashboard).
 
 ### URL Validator sheets
 

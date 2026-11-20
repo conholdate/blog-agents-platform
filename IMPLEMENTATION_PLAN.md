@@ -51,7 +51,7 @@ The web control center for all blog agents. AI agents run autonomously and write
 
 #### Overview Section
 - [x] Keywords stats card — pending / ok / rejected counts + per-product progress bars (live data)
-- [x] Translation Agent card — Missing / Pending / Partial / Completed counts (live data)
+- [x] Translation Agent card — Missing / Retranslate / In Progress / Completed counts (live data)
 - [x] WIP placeholder cards for Post Generation Agent (Optimization Agent and URL Validator are also live, predating this list)
 - [x] "View →" link navigates directly to the relevant section
 - [x] `/api/sheets/[domain]/summary` endpoint — fetches all tabs in parallel, returns status counts
@@ -59,10 +59,13 @@ The web control center for all blog agents. AI agents run autonomously and write
 - [x] Fixed: `/api/overview/all` returned no data in production — it was self-fetching its own API routes over an unset `NEXT_PUBLIC_BASE_URL` (falling back to a `localhost:3000` that doesn't exist inside a Vercel serverless function). Summary logic was extracted into shared `lib` functions (`getKeywordSummary`, `getOptimizationSummary`, `getUrlValidatorSummary`, `getTranslationSummary`) and called in-process instead
 
 #### Translation Agent
-- [x] Reads the consolidated scan sheet (`TRANSLATION_SCAN_SHEET_ID`) — one tab per domain (overwritten on each daily scan) plus a shared `history` tab
-- [x] "Missing Translations" tab — posts still missing a translation, with author, missing count, missing/extra language chips
-- [x] "History" tab — per-post translation progress (`pending` / `partial` / `completed`) filtered to the active domain from the shared history log
-- [x] Product filter pills, language filter dropdown (options derived from the data, not hardcoded per domain), URL/product search, sortable columns
+- [x] Reads the consolidated scan sheet (`TRANSLATION_SCAN_SHEET_ID`) — one persistent queue tab per domain plus shared `cleanup` and `history` tabs
+- [x] 2026-11-20: rebuilt for the persistent queue (the 18 Nov schema change had left the screen showing zeros)
+- [x] "Queue" tab — work order (#) mirroring the agent, Priority, Issue (MISSING / OUTDATED / ISSUE), Status (Queued / In progress / On hold / Invalid), days open, expandable Notes / Comments
+- [x] 72 h settling wait — waiting rows marked with a live countdown from `Ready After`; Ready Now / Waiting counts; Urgent and ISSUE rows exempt
+- [x] "Cleanup" tab (EXTRA junk files) and "History" tab (closed rows, run comments); blog.groupdocs.com labelled report-only
+- [x] Issue chips, status / product / language filters, URL / product / author search, sortable columns
+- [x] Work-order and settling rules unit-tested (`lib/translation/queueOrder.test.ts`)
 - [x] "Open Sheet" link, manual Refresh (bypasses cache)
 - [x] `/api/translation/[domain]` and `/api/translation/[domain]/summary` endpoints
 
