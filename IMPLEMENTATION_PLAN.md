@@ -115,13 +115,14 @@ The web control center for all blog agents. AI agents run autonomously and write
 #### CI/CD Status (Workflows agent)
 - [x] Read-only GitHub Actions viewer — not an AI agent, reads live via `GITHUB_READONLY_TOKEN` (no Sheet involved)
 - [x] Deployment status cards per (environment, provider) combo, classified from workflow display names (`prod`/`stag`, `aws`/`ceph`)
-- [x] Cron schedules parsed from each workflow's YAML (`cron:` lines regex-extracted, since GitHub's API doesn't surface them on the run/workflow-list endpoints) and folded into the matching deployment card as "next scheduled run"; leftover non-deploy schedules shown separately
+- [x] Cron schedules parsed from each workflow's YAML (`- cron:` list entries regex-extracted, so commented-out schedules don't count, since GitHub's API doesn't surface them on the run/workflow-list endpoints) and folded into the matching deployment card as "next scheduled run"; leftover non-deploy schedules shown separately
 - [x] 14-day daily runs chart, zero-filled, with average build time
 - [x] Run history table with status/env/provider + per-workflow filters; counts reflect the other active filters; stacked cards below 1280px
 - [x] Scheduled/manual trigger tag and duration bar on each run
 - [x] Per-run comment derived from its jobs (`describeRun`). GitHub reports a no-change run as plain `success`, so the summary and runs routes fetch each completed run's jobs (up to 40 calls per domain on a cold cache, batched and cached 6h) and report those runs as `skipped`, which keeps them out of success counts and averages
 - [x] Scheduled times in GMT+5 with UTC on hover; runs table shows when each run started and how late GitHub started scheduled runs (cron slot derived server-side, since GitHub doesn't record it)
-- [x] Failed job/step detail for a clicked failed run, read from the same cached job data as the comments
+- [x] Failed job/step detail for a clicked failed run, read from the same cached job data as the comments. When a runner dies mid-step it shows the step that was running and GitHub's reason from the job's annotations ("Runner was shut down", "Runner lost connection", "Stopped mid-step"), and for blog.aspose.com it links the pipeline's failure report and shows its `Peak memory` notes
+- [x] Run numbers (`#192`) on runs and deployment cards
 - [x] Refresh every 5 minutes while visible, a "Checked" time, stale-response protection when switching domains, and notices when the summary or schedules fail to load
 - [ ] Scheduled deploys start hours after their cron time (5-8 hours as of Nov 2026). Trial running since 2026-11-04: `blog.conholdate.cloud` staging moved to `37 1 * * 1-5`, with its production workflows left on the hour for comparison. Review around 2026-11-11, then roll out or move to an external scheduler calling `workflow_dispatch` (which needs the deploy YAMLs' `check-changes` condition changed)
 - [x] Overview card + "CI/CD" column group on the All-Domains table
